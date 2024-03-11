@@ -1,0 +1,16 @@
+using sysbus
+
+mach create "headsail"
+
+machine LoadPlatformDescription $ORIGIN/../vp/devel/cpus.repl
+machine LoadPlatformDescription $ORIGIN/../vp/devel/memory.repl
+machine LoadPlatformDescription $ORIGIN/../vp/devel/peripherals.repl
+
+:emulation CreateUartPtyTerminal "term" "/tmp/uart" True
+:connector Connect sysbus.uart term
+
+:showAnalyzer sysbus.uart
+
+machine StartGdbServer 3333 true sysbus.cpu_hpc
+sysbus LoadELF $bin false true sysbus.cpu_hpc
+start;
