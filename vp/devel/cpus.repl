@@ -1,0 +1,8 @@
+cpu_hpc: CPU.RiscV64 @ sysbus
+    cpuType: "rv64imac"
+    hartId: 0
+    timeProvider: empty
+
+cpu_sysctrl: CPU.IbexRiscV32 @ sysbus
+    cpuType: "rv64gc"
+    timeProvider: empty
