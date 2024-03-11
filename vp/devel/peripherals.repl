@@ -1,0 +1,249 @@
+C2C_config: Python.PythonPeripheral @ sysbus 0xFFB00000
+    size: 0x0040
+    initable: true
+    filename: python_peripherals/C2C_config.py
+
+C2C_parallel: Python.PythonPeripheral @ sysbus 0x70080000
+    size: 0x10000000
+    initable: true
+    filename: python_peripherals/C2C_parallel.py
+
+C2C_serial: Python.PythonPeripheral @ sysbus 0xFFC00000
+    size: 0x0074
+    initable: true
+    filename: python_peripherals/C2C_serial.py
+
+C2C_serial_0: Python.PythonPeripheral @ sysbus 0x80080000
+    size: 0x10000000
+    initable: true
+    filename: python_peripherals/C2C_serial_0.py
+
+DLA: Python.PythonPeripheral @ sysbus 0xFF700000
+    size: 0x0068
+    initable: true
+    filename: python_peripherals/DLA.py
+
+DSP: Python.PythonPeripheral @ sysbus 0xFF800000
+    size: 0x0354
+    initable: true
+    filename: python_peripherals/DSP.py
+
+DSP_0: Python.PythonPeripheral @ sysbus 0xFF820000
+    size: 0x00010000
+    initable: true
+    filename: python_peripherals/DSP_0.py
+
+RGMII_adapter_registers: Python.PythonPeripheral @ sysbus 0xFB000200
+    size: 0x0200
+    initable: true
+    filename: python_peripherals/RGMII_adapter_registers.py
+
+RGMII_adapter_registers_0: Python.PythonPeripheral @ sysbus 0xFB000400
+    size: 0x0200
+    initable: true
+    filename: python_peripherals/RGMII_adapter_registers_0.py
+
+MII_DMA_PORT_CONFIG_REGISTERS: Python.PythonPeripheral @ sysbus 0xFA200000
+    size: 0xC000
+    initable: true
+    filename: python_peripherals/MII_DMA_PORT_CONFIG_REGISTERS.py
+
+MII_DMA_PORT_CONFIG_REGISTERS_0: Python.PythonPeripheral @ sysbus 0xFA210000
+    size: 0x8020
+    initable: true
+    filename: python_peripherals/MII_DMA_PORT_CONFIG_REGISTERS_0.py
+
+MII_DMA_PORT_CONFIG_REGISTERS_1: Python.PythonPeripheral @ sysbus 0xFA220000
+    size: 0x8020
+    initable: true
+    filename: python_peripherals/MII_DMA_PORT_CONFIG_REGISTERS_1.py
+
+SWITCH_CONFIG_REGISTERS: Python.PythonPeripheral @ sysbus 0xFA800000
+    size: 0x00010000
+    initable: true
+    filename: python_peripherals/SWITCH_CONFIG_REGISTERS.py
+
+AC: Python.PythonPeripheral @ sysbus 0xFA000000
+    size: 0x1102
+    initable: true
+    filename: python_peripherals/AC.py
+
+IBC: Python.PythonPeripheral @ sysbus 0xFA100000
+    size: 0x2120
+    initable: true
+    filename: python_peripherals/IBC.py
+
+FRTC: Python.PythonPeripheral @ sysbus 0xFA190000
+    size: 0x2008
+    initable: true
+    filename: python_peripherals/FRTC.py
+
+FPTS: Python.PythonPeripheral @ sysbus 0xFA120000
+    size: 0x1118
+    initable: true
+    filename: python_peripherals/FPTS.py
+
+FSC: Python.PythonPeripheral @ sysbus 0xFA1C0000
+    size: 0x00013000
+    initable: true
+    filename: python_peripherals/FSC.py
+
+FSC_0: Python.PythonPeripheral @ sysbus 0xFA1E0000
+    size: 0x00018000
+    initable: true
+    filename: python_peripherals/FSC_0.py
+
+FRTC_0: Python.PythonPeripheral @ sysbus 0xFA180000
+    size: 0x2008
+    initable: true
+    filename: python_peripherals/FRTC_0.py
+
+RGMII_adapter_registers_1: Python.PythonPeripheral @ sysbus 0xFD000200
+    size: 0x0200
+    initable: true
+    filename: python_peripherals/RGMII_adapter_registers_1.py
+
+RGMII_adapter_registers_2: Python.PythonPeripheral @ sysbus 0xFD000400
+    size: 0x0200
+    initable: true
+    filename: python_peripherals/RGMII_adapter_registers_2.py
+
+MII_DMA_PORT_CONFIG_REGISTERS_2: Python.PythonPeripheral @ sysbus 0xFC200000
+    size: 0xC000
+    initable: true
+    filename: python_peripherals/MII_DMA_PORT_CONFIG_REGISTERS_2.py
+
+MII_DMA_PORT_CONFIG_REGISTERS_3: Python.PythonPeripheral @ sysbus 0xFC210000
+    size: 0x8020
+    initable: true
+    filename: python_peripherals/MII_DMA_PORT_CONFIG_REGISTERS_3.py
+
+MII_DMA_PORT_CONFIG_REGISTERS_4: Python.PythonPeripheral @ sysbus 0xFC220000
+    size: 0x8020
+    initable: true
+    filename: python_peripherals/MII_DMA_PORT_CONFIG_REGISTERS_4.py
+
+SWITCH_CONFIG_REGISTERS_0: Python.PythonPeripheral @ sysbus 0xFC800000
+    size: 0xF000
+    initable: true
+    filename: python_peripherals/SWITCH_CONFIG_REGISTERS_0.py
+
+AC_0: Python.PythonPeripheral @ sysbus 0xFC000000
+    size: 0x1102
+    initable: true
+    filename: python_peripherals/AC_0.py
+
+IBC_0: Python.PythonPeripheral @ sysbus 0xFC100000
+    size: 0x2120
+    initable: true
+    filename: python_peripherals/IBC_0.py
+
+FRTC_1: Python.PythonPeripheral @ sysbus 0xFC190000
+    size: 0x2008
+    initable: true
+    filename: python_peripherals/FRTC_1.py
+
+FPTS_0: Python.PythonPeripheral @ sysbus 0xFC120000
+    size: 0x1118
+    initable: true
+    filename: python_peripherals/FPTS_0.py
+
+FSC_1: Python.PythonPeripheral @ sysbus 0xFC1C0000
+    size: 0xA000
+    initable: true
+    filename: python_peripherals/FSC_1.py
+
+FSC_2: Python.PythonPeripheral @ sysbus 0xFC1E0000
+    size: 0xA000
+    initable: true
+    filename: python_peripherals/FSC_2.py
+
+FRTC_2: Python.PythonPeripheral @ sysbus 0xFC180000
+    size: 0x2008
+    initable: true
+    filename: python_peripherals/FRTC_2.py
+
+EthSSPadConf: Python.PythonPeripheral @ sysbus 0xFE000000
+    size: 0x0044
+    initable: true
+    filename: python_peripherals/EthSSPadConf.py
+
+mdio_map: Python.PythonPeripheral @ sysbus 0xFE000200
+    size: 0x001C
+    initable: true
+    filename: python_peripherals/mdio_map.py
+
+mdio_map_0: Python.PythonPeripheral @ sysbus 0xFE000400
+    size: 0x001C
+    initable: true
+    filename: python_peripherals/mdio_map_0.py
+
+HPC: Python.PythonPeripheral @ sysbus 0xFFE00000
+    size: 0x1000
+    initable: true
+    filename: python_peripherals/HPC.py
+
+HPC_0: Python.PythonPeripheral @ sysbus 0xFFE50000
+    size: 0x00040000
+    initable: true
+    filename: python_peripherals/HPC_0.py
+
+apb_gpio: Python.PythonPeripheral @ sysbus 0xFFF04000
+    size: 0x0070
+    initable: true
+    filename: python_peripherals/apb_gpio.py
+
+apb_i2c: Python.PythonPeripheral @ sysbus 0xFFF05000
+    size: 0x0018
+    initable: true
+    filename: python_peripherals/apb_i2c.py
+
+apb_spi_master: Python.PythonPeripheral @ sysbus 0xFFF02000
+    size: 0x002C
+    initable: true
+    filename: python_peripherals/apb_spi_master.py
+
+apb_uart: Python.PythonPeripheral @ sysbus 0xFFF00000
+    size: 0x0020
+    initable: true
+    filename: python_peripherals/apb_uart.py
+
+apb_spi_master_0: Python.PythonPeripheral @ sysbus 0xFFF03000
+    size: 0x002C
+    initable: true
+    filename: python_peripherals/apb_spi_master_0.py
+
+apb_uart_0: Python.PythonPeripheral @ sysbus 0xFFF01000
+    size: 0x0020
+    initable: true
+    filename: python_peripherals/apb_uart_0.py
+
+apb_sw_irq: Python.PythonPeripheral @ sysbus 0xFFF06000
+    size: 0x000C
+    initable: true
+    filename: python_peripherals/apb_sw_irq.py
+
+apb_pad_conf_reg_array: Python.PythonPeripheral @ sysbus 0xFFF07000
+    size: 0x0134
+    initable: true
+    filename: python_peripherals/apb_pad_conf_reg_array.py
+
+sdram_cfg: Python.PythonPeripheral @ sysbus 0xFFD00000
+    size: 0x0074
+    initable: true
+    filename: python_peripherals/sdram_cfg.py
+
+SYSCTRL: Python.PythonPeripheral @ sysbus 0xFF901000
+    size: 0x00020000
+    initable: true
+    filename: python_peripherals/SYSCTRL.py
+
+DMA: Python.PythonPeripheral @ sysbus 0xFFA00000
+    size: 0x0240
+    initable: true
+    filename: python_peripherals/DMA.py
+
+DMA_0: Python.PythonPeripheral @ sysbus 0xFFA08000
+    size: 0x0240
+    initable: true
+    filename: python_peripherals/DMA_0.py
