@@ -6,6 +6,9 @@ machine LoadPlatformDescription $ORIGIN/../vp/devel/cpus.repl
 machine LoadPlatformDescription $ORIGIN/../vp/devel/memory.repl
 machine LoadPlatformDescription $ORIGIN/../vp/devel/peripherals.repl
 
+: Disable SysCtrl on start
+sysbus.cpu_sysctrl IsHalted true
+
 emulation CreateUartPtyTerminal "term" "/tmp/uart" True
 connector Connect sysbus.apb_uart term
 
