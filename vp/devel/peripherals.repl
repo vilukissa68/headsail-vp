@@ -1,0 +1,37 @@
+apb_uart: UART.NS16550 @ sysbus 0xFFF00000
+    wideRegisters: true
+
+apb_uart_0: UART.NS16550 @ sysbus 0xFFF01000
+    wideRegisters: true
+
+dla: Python.PythonPeripheral @ sysbus 0xFF700000
+    size: 0x0068
+    initable: true
+    filename: "python_peripherals/DLA.py"
+
+apb_spi_master: SPI.STM32SPI @ sysbus 0xFFF02000
+
+apb_spi_master_0: SPI.STM32SPI @ sysbus 0xFFF03000
+
+apb_gpio: GPIOPort.CC2538_GPIO @ sysbus 0xFFF04000
+
+apb_i2c: I2C.STM32F4_I2C @ sysbus 0xFFF05000
+
+sysbus:
+    init:
+        Tag <0xFB000200 0x200> "rgmii_adapter_registers"
+        Tag <0xFB000400 0x200> "rgmii_adapter_registers_0"
+        Tag <0xFD000200 0x200> "rgmii_adapter_registers_1"
+        Tag <0xFD000400 0x200> "rgmii_adapter_registers_2"
+        Tag <0xFA200000 0xC000> "mii_dma_port_config_registers"
+        Tag <0xFA210000 0x8020> "mii_dma_port_config_registers_0"
+        Tag <0xFA220000 0x8020> "mii_dma_port_config_registers_1"
+        Tag <0xFC200000 0xC000> "mii_dma_port_config_registers_2"
+        Tag <0xFC210000 0x8020> "mii_dma_port_config_registers_3"
+        Tag <0xFC220000 0x8020> "mii_dma_port_config_registers_4"
+        Tag <0xFA800000 0x10000> "switch_config_registers"
+        Tag <0xFC800000 0xF000> "switch_config_registers_0"
+        Tag <0xFFE00000 0x1000> "hpc"
+        Tag <0xFFE50000 0x1000> "hpc_0"
+        Tag <0xFFA00000 0x0240> "dma"
+        Tag <0xFFA08000 0x0240> "dma_0"
