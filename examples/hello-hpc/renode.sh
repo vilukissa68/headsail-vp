@@ -1,5 +1,5 @@
 #!/bin/sh
-set -x #echo on
+set -x # echo on
 
 BASEDIR=$(dirname "$0")
 BIN=${BIN=$1}
