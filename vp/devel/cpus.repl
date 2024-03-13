@@ -4,6 +4,5 @@ cpu_hpc: CPU.RiscV64 @ sysbus
     timeProvider: empty
 
 cpu_sysctrl: CPU.IbexRiscV32 @ sysbus
-    // The ISA on Headsail should actually be rv32e but SW & VP support for that is sketchy
     cpuType: "rv32imc"
     timeProvider: empty
