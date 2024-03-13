@@ -4,5 +4,5 @@ cpu_hpc: CPU.RiscV64 @ sysbus
     timeProvider: empty
 
 cpu_sysctrl: CPU.IbexRiscV32 @ sysbus
-    cpuType: "rv64gc"
+    cpuType: "rv32imc"
     timeProvider: empty
