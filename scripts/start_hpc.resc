@@ -10,9 +10,9 @@ machine LoadPlatformDescription $ORIGIN/../vp/devel/peripherals.repl
 sysbus.cpu_sysctrl IsHalted true
 
 emulation CreateUartPtyTerminal "term" "/tmp/uart" True
-connector Connect sysbus.apb_uart term
+connector Connect sysbus.apb_uart_0 term
 
-showAnalyzer sysbus.apb_uart
+showAnalyzer sysbus.apb_uart_0
 
 machine StartGdbServer 3333 true sysbus.cpu_hpc
 sysbus LoadELF $bin false true sysbus.cpu_hpc
