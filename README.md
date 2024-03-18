@@ -26,7 +26,9 @@ Set renode installation path to RENODE_PATH variable in renode.sh
 cargo run --example dla
 ```
 
-### Run Robot Tests
+## Run Robot Tests
+
+You'll need to have [built the binaries](#run-dla-example) prior to running Robot Tests.
 
 ```sh
 renode-test scripts/robot/hello_dla.robot
