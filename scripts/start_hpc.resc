@@ -6,6 +6,11 @@ machine LoadPlatformDescription $ORIGIN/../vp/devel/cpus.repl
 machine LoadPlatformDescription $ORIGIN/../vp/devel/memory.repl
 machine LoadPlatformDescription $ORIGIN/../vp/devel/peripherals.repl
 
+: Enable full logs
+:logFile @logs/noisyLog
+:logLevel -1 file
+:sysbus LogPeripheralAccess sysbus.dla
+
 : Disable SysCtrl on start
 sysbus.cpu_sysctrl IsHalted true
 
