@@ -2,6 +2,11 @@
 
 ## Software testing requirements
 
+1. Rust <https://rustup.rs/>
+2. Codegen backend for target cores
+    * `rustup target add riscv64imac-unknown-none-elf`
+    * `rustup target add riscv32imc-unknown-none-elf`
+
 ### Run UART example
 
 ```sh
