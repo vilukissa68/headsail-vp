@@ -10,6 +10,8 @@ env:
   CI: 1
   CARGO_TERM_COLOR: always
   RENODE_PATH: /opt/renode/
+  # Used by renode-test to generate snapshots of failed tests
+  RENODE_CI_MODE: YES
 
 jobs:
   build-dla-example:
@@ -43,7 +45,7 @@ jobs:
       BIN: dla
 
     steps:
-    - uses: actions/checkout@v3.0.2
+    - uses: actions/checkout@v4
     - name: Download artifact
       uses: actions/download-artifact@v4
       with:
@@ -51,4 +53,9 @@ jobs:
     - name: Create Renode peripheral symlinks
       run: ln -s $(readlink -f "./vp/devel/python_peripherals/DLA.py") "$RENODE_PATH/scripts/pydev/DLA.py"
     - name: Run example
-      run: renode --console -e "set bin @$BIN; include @$BASEDIR/scripts/start_hpc.resc"
+      run: renode-test scripts/robot/hello_dla.robot --variable BIN:"$(readlink -f $BIN)"
+    - name: Upload snapshots
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        path: snapshots/
