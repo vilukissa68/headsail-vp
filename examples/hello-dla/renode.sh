@@ -11,7 +11,7 @@ VP_PYTHON_PERIPHERALS="$BASEDIR/../../vp/devel/python_peripherals"
 if [ ! -h "$RENODE_PYTHON_PERIPHERALS/DLA.py" ]; then
    echo "Symlinks not found"
    read -p "Create symlinks and continue? (y/N): " confirm && [[ $confirm == [yY] || $confirm == [yY][eE][sS] ]] || exit 1
-   ln -s  $(readlink -f "$VP_PYTHON_PERIPHERALS/DLA.py") "$RENODE_PYTHON_PERIPHERALS/DLA.py"
+   ln -s $(readlink -f "$VP_PYTHON_PERIPHERALS/DLA.py") "$RENODE_PYTHON_PERIPHERALS/DLA.py"
 fi
 
 # Update python peripheral to renode directory
