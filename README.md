@@ -1,17 +1,22 @@
 # Headsail - Virtual Platform
 
-## Run uart example
+## Software testing requirements
+
+### Run UART example
 
 ```sh
 cd examples/hello-hpc
 cargo run --example uart0
 ```
-## Run dla example
+
+### Run DLA example
 
 ```sh
 cd examples/hello-dla
 ```
-Set renode installation path to RENODE_PATH variable in renode.sh 
+
+Set renode installation path to RENODE_PATH variable in renode.sh
+
 ```sh
 cargo run --example dla
 ```
