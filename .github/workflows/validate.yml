@@ -29,7 +29,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: dla-debug
-        path: ./examples/target/riscv64imac-unknown-none-elf/debug/examples/dla
+        path: ./examples/hpc/hello-dla/target/riscv64imac-unknown-none-elf/debug/examples/dla
         if-no-files-found: error
         retention-days: 14
 
