@@ -1,6 +1,6 @@
 //! Set panicking behavior to print into UART
 
-use crate::ufmt::uDisplay;
+use crate::{sprintln, ufmt::uDisplay};
 use core::panic::PanicInfo;
 
 pub(crate) struct PanicInfoWrapper<'a>(pub(crate) &'a PanicInfo<'a>);

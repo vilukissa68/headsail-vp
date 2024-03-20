@@ -9,6 +9,7 @@ pub use riscv_rt as rt;
 pub use ufmt;
 
 mod mmap;
+#[cfg(any(feature = "panic-uart"))]
 mod ufmt_panic;
 
 /// # Safety

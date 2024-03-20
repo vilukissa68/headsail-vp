@@ -22,7 +22,7 @@ macro_rules! sprintln {
     }};
     // IMPORTANT use `tt` fragments instead of `expr` fragments (i.e. `$($exprs:expr),*`)
     ($($tt:tt)*) => {{
-        use $crate::{sprint, sprintln};
+        use $crate::sprint;
         sprint!($($tt)*);
         sprint!("\r\n");
     }};

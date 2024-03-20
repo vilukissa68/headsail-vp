@@ -21,3 +21,18 @@ rt = ["dep:riscv-rt", "dep:riscv"]
 ufmt = "0.2.0"
 riscv-rt = { version = "0.12.2", optional = true }
 riscv = { version = "0.11.1", optional = true }
+
+[[example]]
+name = "panic"
+path = "examples/panic.rs"
+required-features = ["panic-uart", "rt"]
+
+[[example]]
+name = "uart0"
+path = "examples/uart0.rs"
+required-features = ["rt"]
+
+[[example]]
+name = "sprintln"
+path = "examples/sprintln.rs"
+required-features = ["rt"]
