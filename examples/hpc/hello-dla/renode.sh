@@ -5,7 +5,7 @@ BASEDIR=$(dirname "$0")
 BIN=${BIN=$1}
 RENODE_PATH=$(dirname $(which renode))
 RENODE_PYTHON_PERIPHERALS="$RENODE_PATH/scripts/pydev"
-VP_PYTHON_PERIPHERALS="$BASEDIR/../../vp/devel/python_peripherals"
+VP_PYTHON_PERIPHERALS="$BASEDIR/../../../vp/devel/python_peripherals"
 
 # Check if symlinks exist
 if [ ! -h "$RENODE_PYTHON_PERIPHERALS/DLA.py" ]; then
@@ -15,4 +15,4 @@ if [ ! -h "$RENODE_PYTHON_PERIPHERALS/DLA.py" ]; then
    ln -s $(readlink -f "$VP_PYTHON_PERIPHERALS/DLA.py") "$RENODE_PYTHON_PERIPHERALS/DLA.py"
 fi
 
-renode --console -e "set bin @$BIN; include @$BASEDIR/../../scripts/2_run_hpc.resc"
+renode --console -e "set bin @$BIN; include @$BASEDIR/../../../scripts/2_run_hpc.resc"

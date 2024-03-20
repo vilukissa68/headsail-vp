@@ -2,7 +2,7 @@
 ${SCRIPT}                       ${CURDIR}/../1_hpc.resc
 ${CPU}                          sysbus.cpu_hpc
 ${UART}                         sysbus.apb_uart_0
-${BIN}                          ${CURDIR}/../../examples/hello-dla/target/riscv64imac-unknown-none-elf/debug/examples/dla
+${BIN}                          ${CURDIR}/../../examples/hpc/hello-dla/target/riscv64imac-unknown-none-elf/debug/examples/dla
 
 *** Settings ***
 Suite Setup     Setup

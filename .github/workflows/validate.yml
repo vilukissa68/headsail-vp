@@ -23,13 +23,13 @@ jobs:
     - name: Install requirements
       run: rustup target add riscv64imac-unknown-none-elf
     - name: Build examples
-      working-directory: ./examples/hello-dla
+      working-directory: ./examples/hpc/hello-dla
       run: cargo build --example dla
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
         name: dla-debug
-        path: ./examples/hello-dla/target/riscv64imac-unknown-none-elf/debug/examples/dla
+        path: ./examples/target/riscv64imac-unknown-none-elf/debug/examples/dla
         if-no-files-found: error
         retention-days: 14
 

@@ -1,0 +1,11 @@
+[workspace]
+members = [
+    "headsail-bsp",
+    "hpc/hello-hpc",
+    "hpc/hello-dla",
+    "sysctrl/hello-sysctrl",
+]
+resolver = "2"
+
+[profile.release]
+debug = true
