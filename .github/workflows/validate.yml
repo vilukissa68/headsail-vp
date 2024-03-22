@@ -9,9 +9,10 @@ on:
 env:
   CI: 1
   CARGO_TERM_COLOR: always
-  RENODE_PATH: /opt/renode/
+  RENODE_DIR: /opt/renode/
   # Used by renode-test to generate snapshots of failed tests
   RENODE_CI_MODE: YES
+  DLA_BIN: dla
 
 jobs:
   build-dla-example:
@@ -28,7 +29,7 @@ jobs:
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
-        name: dla-debug
+        name: $DLA_BIN
         path: ./examples/hpc/hello-dla/target/riscv64imac-unknown-none-elf/debug/examples/dla
         if-no-files-found: error
         retention-days: 14
@@ -41,19 +42,16 @@ jobs:
       image: antmicro/renode:1.14.0
       options: --user root
 
-    env:
-      BIN: dla
-
     steps:
     - uses: actions/checkout@v4
     - name: Download artifact
       uses: actions/download-artifact@v4
       with:
-        name: dla-debug
+        name: $DLA_BIN
     - name: Create Renode peripheral symlinks
-      run: ln -s $(readlink -f "./vp/devel/python_peripherals/DLA.py") "$RENODE_PATH/scripts/pydev/DLA.py"
+      run: ln -s $(readlink -f "./vp/devel/python_peripherals/DLA.py") "$RENODE_DIR/scripts/pydev/DLA.py"
     - name: Run example
-      run: renode-test scripts/robot/hello_dla.robot --variable BIN:"$(readlink -f $BIN)"
+      run: renode-test scripts/robot/hello_dla.robot --variable BIN:"$(readlink -f $DLA_BIN)"
     - name: Upload snapshots
       if: failure()
       uses: actions/upload-artifact@v4

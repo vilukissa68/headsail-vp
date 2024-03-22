@@ -1,5 +1,5 @@
 *** Variables ***
-${SCRIPT}                       ${CURDIR}/../1_hpc.resc
+${SCRIPT}                       ${CURDIR}/../resc/1_hpc.resc
 ${CPU}                          sysbus.cpu_hpc
 ${UART}                         sysbus.apb_uart_0
 ${BIN}                          ${CURDIR}/../../examples/hpc/hello-dla/target/riscv64imac-unknown-none-elf/debug/examples/dla

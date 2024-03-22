@@ -2,7 +2,7 @@ using sysbus
 
 mach create "headsail"
 
-machine LoadPlatformDescription $ORIGIN/../vp/devel/common.repl
+machine LoadPlatformDescription $ORIGIN/../../vp/devel/common.repl
 
 emulation CreateUartPtyTerminal "term0" "/tmp/uart0" True
 emulation CreateUartPtyTerminal "term1" "/tmp/uart1" True
