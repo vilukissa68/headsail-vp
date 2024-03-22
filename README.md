@@ -33,3 +33,10 @@ You'll need to have [built the binaries](#run-dla-example) prior to running Robo
 ```sh
 renode-test scripts/robot/hello_dla.robot
 ```
+
+## Run an arbitrary ELF on Headsail
+
+```sh
+./scripts/run_on_hpc.sh $bin
+./scripts/run_on_sysctrl.sh $bin
+```
