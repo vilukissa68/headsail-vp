@@ -1,0 +1,19 @@
+[package]
+name = "headsail-bsp-c"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+# Pick the runtime that matches the core
+hpc-rt = ["headsail-bsp/hpc-rt"]
+sysctrl-rt = ["headsail-bsp/sysctrl-rt"]
+
+panic-uart = ["headsail-bsp/panic-uart"]
+
+[dependencies]
+headsail-bsp = { version = "0.1.0", path = "../headsail-bsp" }
+
+[build-dependencies]
+cbindgen = "0.26.0"

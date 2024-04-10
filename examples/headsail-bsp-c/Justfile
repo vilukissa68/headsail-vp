@@ -1,0 +1,6 @@
+build-sysctrl:
+    cargo build --target=riscv32imc-unknown-none-elf -Fsysctrl-rt
+
+build-hpc:
+    cargo build --target=riscv64imac-unknown-none-elf -Fhpc-rt
+

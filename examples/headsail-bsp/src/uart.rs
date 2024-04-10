@@ -8,7 +8,7 @@ pub fn uart_write(s: &str) {
 }
 
 #[inline]
-fn putc(c: u8) {
+pub fn putc(c: u8) {
     // Safety: we don't know if u8 writes work for all target architectures
     unsafe { write_u8(UART0_ADDR, c as u8) };
 }
