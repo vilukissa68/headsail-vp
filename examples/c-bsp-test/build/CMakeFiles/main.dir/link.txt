@@ -1,0 +1,1 @@
+/opt/homebrew/Cellar/riscv-gnu-toolchain/main/bin/riscv64-unknown-elf-gcc  -march=rv64imac -mabi=lp64 -fno-builtin CMakeFiles/main.dir/main.c.obj -o main  /Users/vainogranat/work/headsail-vp/examples/c-bsp-test/../headsail-bsp-ffi/target/riscv64imac-unknown-none-elf/debug/libheadsail_bsp_ffi.a

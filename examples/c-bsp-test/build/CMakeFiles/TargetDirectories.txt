@@ -1,0 +1,3 @@
+/Users/vainogranat/work/headsail-vp/examples/c-bsp-test/build/CMakeFiles/main.dir
+/Users/vainogranat/work/headsail-vp/examples/c-bsp-test/build/CMakeFiles/edit_cache.dir
+/Users/vainogranat/work/headsail-vp/examples/c-bsp-test/build/CMakeFiles/rebuild_cache.dir
