@@ -6,8 +6,12 @@
 
 # Detect renode location
 RENODE="${RENODE:-$(which renode)}"
-RENODE_DIR="$(dirname $(which renode))"
+if ! [ -f "$RENODE" ]; then
+  echo "renode not found. Add Renode install directory to path."
+  exit 1
+fi
 
+RENODE_DIR="$(dirname $(which renode))"
 RENODE_PYTHON_PERIPHERALS="$RENODE_DIR/scripts/pydev"
 REQUIRED_SYMLINK="$RENODE_PYTHON_PERIPHERALS/DLA.py"
 

@@ -1,0 +1,8 @@
+{
+    "rust-analyzer.linkedProjects": [
+        "examples/headsail-bsp/Cargo.toml",
+        "examples/headsail-bsp-ffi/Cargo.toml",
+        "examples/hpc/Cargo.toml",
+        "examples/sysctrl/Cargo.toml",
+    ]
+}
