@@ -10,8 +10,8 @@ crate-type = ["staticlib"]
 
 [features]
 # Pick the runtime that matches the core
-hpc-rt = ["headsail-bsp/hpc-rt"]
-sysctrl-rt = ["headsail-bsp/sysctrl-rt"]
+hpc-rt = ["headsail-bsp/hpc-rt", "panic-uart"]
+sysctrl-rt = ["headsail-bsp/sysctrl-rt", "panic-uart"]
 
 panic-uart = ["headsail-bsp/panic-uart"]
 
