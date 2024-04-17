@@ -2,6 +2,21 @@
 #![no_std]
 #![no_main]
 
+/// Runtime shim
+///
+/// Calls external `cmain`.
+#[cfg(feature = "rt")]
+#[headsail_bsp::rt::entry]
+unsafe fn rust_main() -> ! {
+    extern "C" {
+        fn cmain();
+    }
+
+    cmain();
+
+    loop {}
+}
+
 // Make symbols available in the C header by making a symbol visible here, and according to the
 // following format:
 //

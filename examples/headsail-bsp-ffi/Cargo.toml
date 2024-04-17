@@ -10,10 +10,10 @@ crate-type = ["staticlib"]
 
 [features]
 # Pick the runtime that matches the core
-hpc-rt = ["headsail-bsp/hpc-rt", "panic-uart"]
-sysctrl-rt = ["headsail-bsp/sysctrl-rt", "panic-uart"]
+hpc-rt = ["headsail-bsp/hpc-rt", "rt"]
+sysctrl-rt = ["headsail-bsp/sysctrl-rt", "rt"]
 
-panic-uart = ["headsail-bsp/panic-uart"]
+rt = ["headsail-bsp/panic-uart"]
 
 [dependencies]
 headsail-bsp = { version = "0.1.0", path = "../headsail-bsp" }
