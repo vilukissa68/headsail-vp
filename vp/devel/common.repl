@@ -25,8 +25,11 @@ apb_uart_0: UART.NS16550 @ sysbus 0xFFF00000
 apb_uart_1: UART.NS16550 @ sysbus 0xFFF01000
     wideRegisters: true
 
-dla: Python.PythonPeripheral @ sysbus 0xFF700000
-    size: 0x0068
+dla: Python.PythonPeripheral @ {
+    sysbus new Bus.BusMultiRegistration {address: 0xFF700000; size: 0x0068; region: "cfg"};
+    sysbus new Bus.BusMultiRegistration {address: 0x70000000; size: 0x80000; region: "data"}
+    }
+    size: 0x80068
     initable: true
     filename: "scripts/pydev/DLA.py"
 

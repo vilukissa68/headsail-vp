@@ -4,4 +4,4 @@ cpu_hpc: CPU.RiscV64 @ sysbus
     timeProvider: empty
 
 sdram: Memory.MappedMemory @ sysbus 0x10000000
-    size: 0x70000000
+    size: 0x60000000

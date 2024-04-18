@@ -1,0 +1,6 @@
+[target.riscv64imac-unknown-none-elf]
+runner = "../../../scripts/run_on_hpc.sh"
+rustflags = ["-C", "link-arg=-Tmem_hpc.x", "-C", "link-arg=-Tlink.x"]
+
+[build]
+target = "riscv64imac-unknown-none-elf"
