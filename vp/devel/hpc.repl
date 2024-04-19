@@ -22,7 +22,7 @@ sdram: Memory.MappedMemory @ sysbus 0x10000000
     size: 0x60000000
 
 /*
- * CLINT <> [^1]
+ * CLINT [^1]
  *
  * [IP](https://gitlab.tuni.fi/soc-hub/common/hw/cva6/-/tree/master/corev_apu/clint)
  * [Specification](https://github.com/pulp-platform/clint) (unconfirmed)
@@ -33,7 +33,7 @@ clint: IRQControllers.CoreLevelInterruptor  @ sysbus 0x60000
     [4, 5] -> cpu_hpc2@[3, 7] // msoft, mtimer
     [6, 7] -> cpu_hpc3@[3, 7] // msoft, mtimer
     numberOfTargets: 4
-    frequency: 100000 // we guess board reference frequency
+    frequency: 32768 // we guess the usual RTC freq. of 32.768 kHz
 
 /*
  * PLIC [^1]
