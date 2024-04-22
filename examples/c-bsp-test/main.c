@@ -1,9 +1,12 @@
+#include "headsail_bsp.h"
+#include "boot.h"
 
-int cmain() {
+int main() {
   int a = 0;
-  for (;;) {
-    ++a;
-    putc('A');
+  char * str = "Hello world";
+
+  for (int i = 0; i <= 11; i++) {
+    putc(str[i]);
   }
   return 0;
 }
