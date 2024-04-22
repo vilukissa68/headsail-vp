@@ -19,3 +19,5 @@ report.html
 logs/
 *.xml
 snapshots/
+
+**/build/
