@@ -610,14 +610,14 @@ class Dla:
         """Clip pp values if register is set"""
         clip_amount = self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5)
         if clip_amount > 0:
-            return execute_for_all_elements(clip, values, clip_amount, True)
+            return execute_for_all_elements(clip, values, clip_amount, True, True)
         return values
 
     def mac_clip(self, values):
         """Clip mac values if register is set"""
         clip_amount = self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5)
         if clip_amount > 0:
-            return execute_for_all_elements(clip, values, clip_amount, True)
+            return execute_for_all_elements(clip, values, clip_amount, True, True)
         return values
 
     def process(self):
