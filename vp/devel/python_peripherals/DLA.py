@@ -181,7 +181,6 @@ def flatten_tensor(data):
 
 def flat_to_CWH(data, channels, width, height):
     """Takes in 1d array of length C*W*H and reshapes it to tensor of format CWH"""
-    print(len(data), channels, width, height)
     assert channels * width * height == len(data)
     output = [[[0 for _ in range(height)] for _ in range(width)] for _ in range(channels)]
     i = 0
@@ -238,7 +237,7 @@ def execute_for_all_elements(f, tensor, *args):
     else:  # Base case: tensor is not a list, apply f
         return f(tensor, *args)
 
-def clip(value, clip, no_overflow=False):
+def clip(value, clip, no_overflow=False, unsigned=False):
     """Value to possibly clip is clipped to max of bit length set by clip
     params:
     value = value to clip
@@ -248,15 +247,22 @@ def clip(value, clip, no_overflow=False):
     a = value resulting from the clipping
     b = amount of owerflow due to clipping, 0 if no clipping
     """
-    mask = sum(range(0,clip + 1))
-    if value > mask:
-        if no_overflow:
-            return mask
-        return (mask, value - mask)
+    mask = pow(2, clip) if unsigned else pow(2, clip) // 2 # 256 if unsigned, 128 if signed
+
+    if unsigned:
+        if value > mask:
+            return mask if no_overflow else (mask, value - mask)
+        elif value < 0:
+            return 0 if no_overflow else (0, value)
+
     else:
-        if no_overflow:
-            value
-        return (value, 0)
+        if value > mask:
+                return mask-1 if no_overflow else (mask-1, value - mask)
+        elif value < -mask:
+                return -mask if no_overflow else (-mask, value + mask)
+
+    return value if no_overflow else (value, 0)
+
 
 def rounding(value):
     """Round given value
@@ -641,9 +647,8 @@ class Dla:
         # Clip results
         res = dla.mac_clip(res)
 
-        print("Results:")
-        for r in res:
-            print_matrix(r)
+        for i, r in enumerate(res):
+            print_matrix(r, "{} MAC:".format(i))
 
         # TODO: Post process
         # Check if PP is used
@@ -653,21 +658,20 @@ class Dla:
                 #bias_amount = self.get_bias()
                 bias_amount = 1
                 res = execute_for_all_elements(self.mac.bias_native, res, bias_amount)
-                print("bias:")
-                for r in res:
-                    print_matrix(r)
+                for (i, r) in enumerate(res):
+                    print_matrix(r, "{} BIAS:".format(i))
 
             # ReLU (active low)
             if self.get_register(PP_CTRL, ACTIVE_MODE_OFFSET, 2) == 0:
                 res = execute_for_all_elements(self.mac.relu_native, res)
                 res = dla.pp_clip(res)
                 res = dla.round(res)
-                print("ReLU:")
-                for r in res:
-                    print_matrix(r)
+                for (i, r) in enumerate(res):
+                    print_matrix(r, "{} ReLU:".format(i))
 
             # TODO: Pool
 
+        # After calculating one layer the device needs new configuration
         # TODO: Write result somewhere
 
         # Set Done status
@@ -933,10 +937,13 @@ if __name__ == "__main__":
     dla.set_register(BUF_DATA_BANK, BUF_DATA_BANK_B_OFFSET, 4, 8)
 
     # Generate 256 x 256 image
-    A = [[[random.randint(-1,1) for _ in range(A_ch) ] for _ in range(A_h)] for _ in range(A_w)]
-    B = [[[random.randint(-1, 1) for _ in range(B_ch) ] for _ in range(B_h)] for _ in range(B_w)]
+    A = [[[random.randint(-127,127) for _ in range(A_ch) ] for _ in range(A_h)] for _ in range(A_w)]
+    B = [[[random.randint(-127, 127) for _ in range(B_ch) ] for _ in range(B_h)] for _ in range(B_w)]
     A = reshape_to_cwh(A) # HWC to CWH
     B = reshape_to_cwh(B)
+
+    print_matrix(A[0], "A0:")
+    print_matrix(B[0], "B0:")
 
     A = separate_channels(A) # CHW to 2D
     B = separate_channels(B)
@@ -960,9 +967,16 @@ if __name__ == "__main__":
     dla.set_register(PP_CTRL, PP_SELECT_OFFSET, 1, 1)
     dla.set_register(PP_CTRL, ACTIVE_MODE_OFFSET, 2, 0)
 
+    ## Mac clip
+    dla.set_register(MAC_CTRL, MAC_CLIP_OFFSET, 5, 8)
+    # PP clip
+    dla.set_register(PP_CTRL, PP_CLIP_OFFSET, 5, 8)
+
     # Input data is ready
     dla.set_register(BUF_CTRL, READ_A_VALID_OFFSET, 1, 0x1) # All weight data ready
     dla.set_register(BUF_CTRL, READ_B_VALID_OFFSET, 1, 0x1) # All input data ready
+
+
 
     dla.process()
 
