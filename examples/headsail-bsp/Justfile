@@ -1,0 +1,2 @@
+run example target='riscv64imac':
+	cargo run --example {{example}} -Fhpc-rt -Fpanic-uart --target {{target}}-unknown-none-elf

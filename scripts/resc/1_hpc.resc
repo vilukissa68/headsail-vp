@@ -2,4 +2,9 @@ include $ORIGIN/0_mach_create.resc
 
 machine LoadPlatformDescription $ORIGIN/../../vp/devel/hpc.repl
 
-machine StartGdbServer 3335 true sysbus.cpu_hpc
+# Suspend all cores except for core #0
+sysbus.cpu_hpc1 IsHalted True
+sysbus.cpu_hpc2 IsHalted True
+sysbus.cpu_hpc3 IsHalted True
+
+machine StartGdbServer 3335 true sysbus.cpu_hpc0

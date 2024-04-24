@@ -4,10 +4,15 @@
 pub mod sprintln;
 pub mod uart;
 
-#[cfg(any(feature = "rt"))]
+#[cfg(feature = "hpc")]
+pub use hpc::*;
+pub use riscv;
+#[cfg(feature = "rt")]
 pub use riscv_rt as rt;
 pub use ufmt;
 
+#[cfg(feature = "hpc")]
+mod hpc;
 mod mmap;
 #[cfg(any(feature = "panic-uart"))]
 mod ufmt_panic;
