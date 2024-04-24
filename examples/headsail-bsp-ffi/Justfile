@@ -1,6 +1,6 @@
 build-sysctrl:
-    cargo build --target=riscv32imc-unknown-none-elf -Fsysctrl-rt
+    cargo build --target=riscv32imc-unknown-none-elf -Fpanic-uart
 
 build-hpc:
-    cargo build --target=riscv64imac-unknown-none-elf -Fhpc-rt
+    cargo build --target=riscv64imac-unknown-none-elf -Fpanic-uart
 
