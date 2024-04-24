@@ -58,7 +58,7 @@ target_include_directories(utvmcrt.elf PRIVATE ${HEADSAIL_BSP_FFI}/target)
 
 # Link bsp static lib
 link_directories(${HEADSAIL_BSP_HPC_DIR})
-#target_link_libraries(utvmcrt.elf ${HEADSAIL_BSP_HPC_DIR}/libheadsail_bsp_ffi.a)
+target_link_libraries(utvmcrt.elf ${HEADSAIL_BSP_HPC_DIR}/libheadsail_bsp_ffi.a)
 
 # Include utvm runtime
 target_include_directories(utvmcrt.elf

@@ -11,7 +11,8 @@ ENTRY(_enter)
 
 MEMORY
 {
-    ram (airwx) : ORIGIN = 0x10000, LENGTH = 0x80000
+    /*ram (airwx) : ORIGIN = 0x10000, LENGTH = 0x8000*/
+    ram (airwx) : ORIGIN = 0x00000000, LENGTH = 0x10000000
 }
 
 PHDRS
