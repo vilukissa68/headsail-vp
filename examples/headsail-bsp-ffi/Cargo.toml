@@ -14,6 +14,7 @@ hpc-rt = ["headsail-bsp/hpc-rt", "rt"]
 sysctrl-rt = ["headsail-bsp/sysctrl-rt", "rt"]
 
 rt = ["headsail-bsp/panic-uart"]
+panic-uart = ["headsail-bsp/panic-uart"]
 
 [dependencies]
 headsail-bsp = { version = "0.1.0", path = "../headsail-bsp" }
