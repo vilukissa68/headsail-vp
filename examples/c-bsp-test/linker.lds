@@ -1,5 +1,11 @@
 /* Copyright (c) 2020 SiFive Inc. */
 /* SPDX-License-Identifier: Apache-2.0 */
+/*                                     */
+/* Copyright (c) 2024 Soc-Hub */
+/* SPDX-License-Identifier: Apache-2.0*/
+/*                                     */
+/* Modifications: */
+/* Applied original linker structure for singular memory region.*/
 OUTPUT_ARCH("riscv")
 
 /* Default Linker Script
