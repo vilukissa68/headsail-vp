@@ -1,5 +1,14 @@
 cmake_minimum_required(VERSION 3.10)
+
+# Set riscv target
+set(CMAKE_SYSTEM_NAME Generic)
+set(CMAKE_SYSTEM_PROCESSOR riscv64)
+
 project(RISCV_Compiler C)
+
+set(CMAKE_C_COMPILER $ENV{CC})
+set(CMAKE_ASM_COMPILER $ENV{CC}/../riscv64-unknown-elf-as)
+set(CMAKE_LINKER $ENV{CC}/../riscv64-unknown-elf-ld)
 
 ## Add bsp
 set(HEADSAIL_BSP_FFI ${CMAKE_CURRENT_SOURCE_DIR}/../headsail-bsp-ffi)
