@@ -221,6 +221,9 @@ def print_matrix(A, name=""):
             row = row + str(A[x][y]) + " "
         print(row)
 
+def memory_bank_to_offset(bank):
+    return bank * MEMORY_BANK_SIZE
+
 def execute_for_all_elements(f, tensor, *args):
     """Execute function that takes a single matrix element for all element in a matrix.
 
@@ -247,7 +250,7 @@ def clip(value, clip, no_overflow=False, unsigned=False):
     a = value resulting from the clipping
     b = amount of owerflow due to clipping, 0 if no clipping
     """
-    mask = pow(2, clip) if unsigned else pow(2, clip) // 2 # 256 if unsigned, 128 if signed
+    mask = pow(2, clip)-1 if unsigned else pow(2, clip) // 2 # 256 if unsigned, 128 if signed
 
     if unsigned:
         if value > mask:
@@ -296,7 +299,7 @@ class MemoryBank:
         """
         return self.size == self.idx
 
-    def write(self, data):
+    def write(self, data, overwrite=False):
         """Write data to bank. Starting from first free address.
 
         Params:
@@ -305,6 +308,10 @@ class MemoryBank:
         Returns:
         unwritten -- [Int] data that didn't fit to bank
         """
+        if overwrite:
+            for i in range(len(data)):
+                self.mem[i] = data[i]
+            return
         for i in range(len(data)):
             if self.is_bank_full():
                 # Memory has been filled
@@ -321,6 +328,9 @@ class MemoryBank:
         data -- [Int] all data in the bank
         """
         return self.mem[0:self.idx] # Read until write pointer, rest is padded
+
+    def read_offset(self, offset):
+        return self.mem[offset]
 
     def available_memory(self):
         """Get the amount of free space left in the bank.
@@ -363,7 +373,7 @@ class Dla:
         """
         return self.mem[offset]
 
-    def set_register(self, register, offset, width, value):
+    def set_register(self, register, offset, width, value, preserve_register=True):
         """Set value of specific registers offset
 
         Params:
@@ -372,10 +382,11 @@ class Dla:
         width -- width of the area in memory modified starting from offset
         value -- value to be written to register
         """
-
-        start_reg = register - (register % 4)
-        full_reg = self.mem[register:register+4]
-        full_reg = full_reg[0] +  (full_reg[1] << 8)  + (full_reg[2] << 16) + (full_reg[3] << 24)
+        if preserve_register:
+            full_reg = self.mem[register:register+4]
+            full_reg = full_reg[0] +  (full_reg[1] << 8)  + (full_reg[2] << 16) + (full_reg[3] << 24)
+        else:
+            full_reg = 0
         zeroing_mask = ~(((width*width)-1) << offset)
 
         full_reg = full_reg & zeroing_mask # Zero region to be written
@@ -400,7 +411,7 @@ class Dla:
         full_reg = self.mem[register:register+4]
         full_reg = full_reg[0] +  (full_reg[1] << 8)  + (full_reg[2] << 16) + (full_reg[3] << 24)
         value = full_reg >> offset
-        mask = sum(range(0,width+1))
+        mask = pow(2,width) - 1
         return value & mask
 
     def get_registers(self):
@@ -417,13 +428,16 @@ class Dla:
         Params:
         register: integer representing register to print
         """
-        print("{0:x}: {1}".format(register, bin(self.mem[register])))
+        print("{0:x}: {1:08b}|{2:08b}|{3:08b}|{4:08b}".format(register,
+                                                              self.mem[register + 3],
+                                                              self.mem[register + 2],
+                                                              self.mem[register + 1],
+                                                              self.mem[register]))
 
     def print_registers(self):
         """Print all registers"""
-        for (i, reg) in enumerate(self.get_registers()):
-            #print("{:x}: {:b}".format(i, reg))
-            print("{}: {}".format(hex(i), hex(reg)))
+        for x in range(0,HANDSHAKE+4, 4):
+            self.print_register(x)
         return
 
     def get_memory_banks(self):
@@ -442,6 +456,15 @@ class Dla:
         """
         target_bank = (request.absolute - MEMORY_BANK_ADDR) // MEMORY_BANK_SIZE
         self.banks[target_bank].write([request.value])
+
+    def write_bank(self, bank, data):
+        self.banks[bank].write(data, overwrite=True)
+
+    def handle_bank_read(self, request):
+        target_bank = (request.absolute - MEMORY_BANK_ADDR) // MEMORY_BANK_SIZE
+        offset = request.absolute - MEMORY_BANK_ADDR - memory_bank_to_offset(target_bank)
+        print("read bank:", target_bank, "offset:", offset , "value:", self.banks[target_bank].read_offset(offset))
+        return self.banks[target_bank].read_offset(offset)
 
     def set_weight_data(self, data):
         """Sets weight data to memory banks
@@ -673,6 +696,7 @@ class Dla:
 
         # After calculating one layer the device needs new configuration
         # TODO: Write result somewhere
+        self.write_bank(0, flatten_tensor(res))
 
         # Set Done status
         self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 0x1)
@@ -682,9 +706,9 @@ class Dla:
         # TODO: Wait for validation
 
         # After validation set done bits to 0
-        self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 0x0)
-        self.set_register(STATUS_ADDR, MAC_DONE_OFFSET, 1, 0x0)
-        self.set_register(STATUS_ADDR, PP_DONE_OFFSET, 1, 0x0)
+        # self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 0x0)
+        # self.set_register(STATUS_ADDR, MAC_DONE_OFFSET, 1, 0x0)
+        # self.set_register(STATUS_ADDR, PP_DONE_OFFSET, 1, 0x0)
 
 
 class DlaMac:
@@ -900,7 +924,7 @@ def write(request, dla):
     self.NoisyLog("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
     print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
     if int(request.absolute) >= DLA_ADDR:
-        dla.set_register(request.offset, 0, 32, request.value)
+        dla.set_register(request.offset, 0, 32, request.value, preserve_register=False)
     else:
         # TODO: implement bank writing
         dla.handle_bank_write(request)
@@ -909,10 +933,14 @@ def write(request, dla):
 def read(request, dla):
     self.NoisyLog("Reading request: %s at 0x%x, value 0x%x" % (str(request.type), request.absolute, request.value))
     print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
+
     if int(request.absolute) >= DLA_ADDR:
         request.value = dla.get_register(request.offset, 0, 32)
     else:
-        request.value = 0 # TODO: Add bank reading here
+        # TODO: Fix bank reading here
+        tmp = dla.handle_bank_read(request)
+        print(tmp)
+        request.value = tmp
 
 
 if __name__ == "__main__":
@@ -975,8 +1003,6 @@ if __name__ == "__main__":
     # Input data is ready
     dla.set_register(BUF_CTRL, READ_A_VALID_OFFSET, 1, 0x1) # All weight data ready
     dla.set_register(BUF_CTRL, READ_B_VALID_OFFSET, 1, 0x1) # All input data ready
-
-
 
     dla.process()
 

@@ -71,17 +71,17 @@ pub(crate) const DLA_CTRL_VLD_BITMASK_UNUSED: usize = 0b10000000000;
 pub(crate) const DLA_PP_CLIP_BITMASK: usize = 0b111110000000000000000;
 
 pub(crate) const DLA_BUF_INPUT: usize = 0x14;
-pub(crate) const DLA_BUF_INPUT_WIDTH_OFFSET: usize = 0x0;
-pub(crate) const DLA_BUF_INPUT_HEIGHT_OFFSET: usize = 0x9;
-pub(crate) const DLA_BUF_INPUT_CHANNELS_OFFSET: usize = 0x18;
+pub(crate) const DLA_BUF_INPUT_WIDTH_OFFSET: usize = 0;
+pub(crate) const DLA_BUF_INPUT_HEIGHT_OFFSET: usize = 9;
+pub(crate) const DLA_BUF_INPUT_CHANNELS_OFFSET: usize = 18;
 pub(crate) const DLA_BUF_INPUT_WIDTH_BITMASK: usize = 0b111111111;
 pub(crate) const DLA_BUF_INPUT_HEIGHT_BITMASK: usize = 0b111111111000000000;
 pub(crate) const DLA_BUF_INPUT_CHANNELS_BITMASK: usize = 0b111111111111000000000000000000;
 
 pub(crate) const DLA_BUF_KERNEL_0: usize = 0x18;
-pub(crate) const DLA_BUF_KERNEL_0_WIDTH_OFFSET: usize = 0x0;
-pub(crate) const DLA_BUF_KERNEL_0_HEIGHT_OFFSET: usize = 0x4;
-pub(crate) const DLA_BUF_KERNEL_0_S_CHANNELS_OFFSET: usize = 0x8;
+pub(crate) const DLA_BUF_KERNEL_0_WIDTH_OFFSET: usize = 0;
+pub(crate) const DLA_BUF_KERNEL_0_HEIGHT_OFFSET: usize = 4;
+pub(crate) const DLA_BUF_KERNEL_0_S_CHANNELS_OFFSET: usize = 8;
 pub(crate) const DLA_BUF_KERNEL_0_WIDTH_BITMASK: usize = 0b1111;
 pub(crate) const DLA_BUF_KERNEL_0_HEIGHT_BITMASK: usize = 0b11110000;
 pub(crate) const DLA_BUF_KERNEL_0_S_CHANNELS_BITMASK: usize = 0b11111111111100000000;

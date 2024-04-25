@@ -3,7 +3,7 @@
 mod mmap;
 
 use core::ptr;
-use headsail_bsp::sprint;
+use headsail_bsp::{sprint, sprintln};
 use mmap::*;
 
 pub enum SimdBitMode {
@@ -16,6 +16,12 @@ macro_rules! set_bits {
     ($offset:expr, $mask:expr, $reg:expr, $value:expr) => {
         (($reg & !($mask as u32)) | ($value << $offset) as u32) as u32
     };
+}
+
+macro_rules! get_bits {
+    ($mask:expr, $reg:expr) => {
+        ($reg & ($mask as u32)) as u32
+    }
 }
 
 pub fn dla_write_str(s: &str) {
@@ -42,10 +48,35 @@ pub fn dla_read(buf: &mut [u8], len: usize, offset: usize) {
 }
 
 pub fn dla_write_data_bank(offset: usize, buf: &mut [u8]) {
-    sprint!("\nWrite to bank {:#x}, data: {:?}", offset, buf);
+    //sprintln!("\nWrite to bank {:#x}, data: {:?}", offset, buf);
     for (i, b) in buf.iter().enumerate() {
         unsafe { ptr::write_volatile((MEMORY_BANK_BASE_ADDR + offset + i) as *mut u8, *b) };
     }
+}
+
+pub fn dla_read_data_bank(offset: usize, buf: &mut [u8], len: usize) {
+    for i in 0..len {
+        unsafe { buf[i] = ptr::read_volatile((MEMORY_BANK_BASE_ADDR + offset + i) as *mut u8) }
+    }
+}
+
+pub fn dla_read_input_bank(buf: &mut [u8], len: usize) {
+    dla_read_data_bank(MEMORY_BANK_0_OFFSET, buf, len)
+}
+
+pub fn dla_read_weight_bank(buf: &mut [u8], len: usize) {
+    dla_read_data_bank(MEMORY_BANK_8_OFFSET, buf, len)
+}
+
+
+pub fn dla_write_input(input: &mut [u8]) {
+    // TODO optimize memory bank logic
+    dla_write_data_bank(MEMORY_BANK_0_OFFSET, input)
+}
+
+pub fn dla_write_kernel(kernel: &mut [u8]) {
+    // TODO optimize memory bank logic
+    dla_write_data_bank(MEMORY_BANK_8_OFFSET, kernel)
 }
 
 pub fn dla_set_input_data_bank(bank: usize) {
@@ -261,6 +292,11 @@ pub fn dla_set_pp_rounding(enable: bool) {
     dla_write_reg(DLA_PP_CTRL, reg);
 }
 
+pub fn dla_is_ready() -> bool {
+    let mut status = dla_read_reg(DLA_STATUS_ADDR);
+    return !get_bits!(DLA_BUF_DONE_BITMASK, status) != 0;
+}
+
 pub fn dla_set_bias_addr(addr: u32) {
     dla_write_reg(DLA_PP_AXI_READ, addr);
 }
@@ -287,8 +323,9 @@ pub fn dla_init() {
     );
     dla_write_reg(DLA_HANDSHAKE, reg);
 
-    dla_set_kernel_size(1, 3, 3);
-    dla_set_input_size(1, 5, 5);
+    // This should not be done in allcases
+    // dla_set_kernel_size(1, 3, 3);
+    // dla_set_input_size(1, 5, 5);
 
     dla_set_input_data_bank(0);
     dla_set_kernel_data_bank(8);
@@ -296,13 +333,13 @@ pub fn dla_init() {
     dla_enable_relu(true);
     dla_enable_bias(true);
 
-    let mut A = [
-        1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5,
-    ];
-    let mut B = [0, 1, 0, 1, 1, 1, 0, 1, 0];
-    dla_write_data_bank(MEMORY_BANK_0_OFFSET, &mut A);
-    dla_write_data_bank(MEMORY_BANK_8_OFFSET, &mut B);
+    // let mut A = [
+    //     1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 4, 4, 4, 4, 4, 5, 5, 5, 5, 5,
+    // ];
+    // let mut B = [0, 1, 0, 1, 1, 1, 0, 1, 0];
+    // dla_write_data_bank(MEMORY_BANK_0_OFFSET, &mut A);
+    // dla_write_data_bank(MEMORY_BANK_8_OFFSET, &mut B);
 
-    dla_kernel_data_ready(true);
-    dla_input_data_ready(true);
+    // dla_kernel_data_ready(true);
+    // dla_input_data_ready(true);
 }
