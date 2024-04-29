@@ -330,7 +330,12 @@ class MemoryBank:
         return self.mem[0:self.idx] # Read until write pointer, rest is padded
 
     def read_offset(self, offset):
-        return self.mem[offset]
+        # Get 16 bytes as 128-bit aligment requires
+        mem_128 = 0;
+        for i in range(0,16):
+            mem_128 = mem_128 + (self.mem[offset + i] << (i * 8))
+        print(hex(mem_128))
+        return mem_128
 
     def available_memory(self):
         """Get the amount of free space left in the bank.
@@ -463,7 +468,7 @@ class Dla:
     def handle_bank_read(self, request):
         target_bank = (request.absolute - MEMORY_BANK_ADDR) // MEMORY_BANK_SIZE
         offset = request.absolute - MEMORY_BANK_ADDR - memory_bank_to_offset(target_bank)
-        print("read bank:", target_bank, "offset:", offset , "value:", self.banks[target_bank].read_offset(offset))
+        print("read bank:", target_bank, "offset:", offset , "value:", hex(self.banks[target_bank].read_offset(offset)))
         return self.banks[target_bank].read_offset(offset)
 
     def set_weight_data(self, data):
@@ -937,7 +942,7 @@ def read(request, dla):
     if int(request.absolute) >= DLA_ADDR:
         request.value = dla.get_register(request.offset, 0, 32)
     else:
-        # TODO: Fix bank reading here
+        # TODO: Fix bank reading here to enforce 128-bit aligment
         tmp = dla.handle_bank_read(request)
         print(tmp)
         request.value = tmp
