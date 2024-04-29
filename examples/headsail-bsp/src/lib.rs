@@ -65,7 +65,6 @@ fn setup_interrupt_vector() {
 #[cfg(feature = "alloc")]
 pub fn init_alloc() {
     unsafe { alloc::init_heap() };
-}
 
 // The vector table
 //
