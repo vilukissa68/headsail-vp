@@ -56,9 +56,15 @@ plic: IRQControllers.PlatformLevelInterruptController @ sysbus 0x80000
  * [IP](https://github.com/pulp-platform/apb_timer)
  *
  * Interrupts are controlled by PLIC.
-timer: Timers.PULP_Timer @ sysbus 0x50000
+ */
+timer: Timers.PULP_Timer @ sysbus <0x50000, +0x1000>
+    /* Renode currently hardcodes the number of timers to 2, while Headsail specifies 4
+     * See also: https://github.com/renode/renode-infrastructure/blob/579687e750c3da24a362e899d312f4e738209ae7/src/Emulator/Peripherals/Peripherals/Timers/PULP_Timer.cs#L146
     // [ovf, cmp, ovf, cmp, ...]
     [0, 1, 2, 3, 4, 5, 6, 7] -> plic@[1, 2, 3, 4, 5, 6, 7, 8]
+    */
+    // [ovf, cmp]
+    [0, 1] -> plic@[1, 2]
     frequency: 100000 // we guess board reference frequency
 
 sysbus:
