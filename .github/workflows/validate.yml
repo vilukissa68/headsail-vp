@@ -16,7 +16,6 @@ env:
 
 jobs:
   build-dla-example:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -57,3 +56,17 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         path: snapshots/
+
+  build-ffi:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install requirements
+      run: rustup target add riscv64imac-unknown-none-elf
+    - name: Build FFI without RT on SysCtrl
+      working-directory: ./examples/headsail-bsp-ffi
+      run: cargo build --target=riscv64imc-unknown-none-elf -Fpanic-uart
+    - name: Build FFI without RT on HPC
+      working-directory: ./examples/headsail-bsp-ffi
+      run: cargo build --target=riscv64imac-unknown-none-elf -Fpanic-uart
