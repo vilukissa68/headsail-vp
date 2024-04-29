@@ -7,7 +7,7 @@ mod mmap;
 use core::ptr;
 use headsail_bsp::{sprint, sprintln};
 use mmap::*;
-use alloc::vec::Vec;
+use alloc::vec::*;
 
 pub enum SimdBitMode {
     EightBits = 0,
@@ -62,7 +62,7 @@ pub fn dla_read_data_bank_offset(offset: usize) -> u128 {
     unsafe { ptr::read_volatile((MEMORY_BANK_BASE_ADDR + (offset & !0xF)) as *mut u128) }
 }
 
-pub fn dla_read_data_bank(offset: usize, buf: &mut [u8], len: usize) -> Vec<u8>{
+pub fn dla_read_data_bank(offset: usize, len: usize) -> Vec<u8>{
     let mut res: Vec<u8> = Vec::new();
 
     let mut next_bank_offset = offset;
@@ -71,6 +71,7 @@ pub fn dla_read_data_bank(offset: usize, buf: &mut [u8], len: usize) -> Vec<u8>{
         let bytes_remaining = len - res.len();
         let bytes_to_copy = core::cmp::min(16, bytes_remaining);
 
+        // Copy everything from one 128-bit address
         for i in 0..bytes_to_copy {
             let byte = ((data >> (i * 8)) & 0xFF) as u8;
             res.push(byte)
@@ -80,12 +81,12 @@ pub fn dla_read_data_bank(offset: usize, buf: &mut [u8], len: usize) -> Vec<u8>{
     res
 }
 
-pub fn dla_read_input_bank(buf: &mut [u8], len: usize) -> Vec<u8> {
-    dla_read_data_bank(MEMORY_BANK_0_OFFSET, buf, len)
+pub fn dla_read_input_bank(len: usize) -> Vec<u8> {
+    dla_read_data_bank(MEMORY_BANK_0_OFFSET, len)
 }
 
-pub fn dla_read_weight_bank(buf: &mut [u8], len: usize) -> Vec<u8> {
-    dla_read_data_bank(MEMORY_BANK_8_OFFSET, buf, len)
+pub fn dla_read_weight_bank(len: usize) -> Vec<u8> {
+    dla_read_data_bank(MEMORY_BANK_8_OFFSET, len)
 }
 
 pub fn dla_write_input(input: &mut [u8]) {

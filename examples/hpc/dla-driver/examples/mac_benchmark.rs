@@ -88,7 +88,7 @@ fn main() -> ! {
     }
     sprintln!("Calculation ready");
 
-    dla_read_input_bank(&mut output, H_OUT * W_OUT);
+    output =  dla_read_input_bank(H_OUT * W_OUT);
     for b in output.iter() {
         sprint!("{:?} ", b)
     }
