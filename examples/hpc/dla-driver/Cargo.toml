@@ -10,3 +10,6 @@ panic-halt = "0.2.0"
 headsail-bsp = { version = "0.1.0", path = "../../headsail-bsp", features = [
     "hpc-rt",
 ] }
+
+
+rand = { version = "0.8.3", features = ["small_rng"], default-features = false }
