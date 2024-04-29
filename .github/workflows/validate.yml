@@ -63,7 +63,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Install requirements
-      run: rustup target add riscv64imac-unknown-none-elf
+      run: rustup target add riscv64imac-unknown-none-elf riscv32imc-unknown-none-elf
     - name: Build FFI without RT on SysCtrl
       working-directory: ./examples/headsail-bsp-ffi
       run: cargo build --target=riscv64imc-unknown-none-elf -Fpanic-uart
