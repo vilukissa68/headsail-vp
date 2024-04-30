@@ -1,13 +1,17 @@
 #![no_std]
 #![no_main]
 
-use headsail_bsp::{rt::entry, sprint, sprintln};
+extern crate alloc;
+
+use headsail_bsp::{rt::entry, sprint, sprintln, init_allocator};
 use dla_driver::*;
 use panic_halt as _;
 
 use rand::{Rng, SeedableRng};
 use rand::rngs::SmallRng;
 use rand::RngCore;
+
+use alloc::vec::*;
 
 macro_rules! conv2d_out_parameters_height {
     (($input_h:expr, $kernel_h:expr, $padding_h:expr, $dilation_h:expr, $stride_h:expr)) => {
@@ -34,6 +38,7 @@ fn generate_random_array(buffer: &mut [u8], size: usize) {
 
 #[entry]
 fn main() -> ! {
+    init_allocator();
     sprintln!("Starting benchmark..");
 
     dla_init();
@@ -65,8 +70,6 @@ fn main() -> ! {
     // Generate a random kernel matrix
     let mut kernel: [u8; KERNEL_WIDTH * KERNEL_HEIGHT] = [0; KERNEL_WIDTH * KERNEL_HEIGHT];
 
-    let mut output: [u8; H_OUT * W_OUT] = [0; H_OUT * W_OUT];
-
     generate_random_array(&mut input, INPUT_WIDTH * INPUT_HEIGHT);
     generate_random_array(&mut kernel, KERNEL_WIDTH * KERNEL_HEIGHT);
 
@@ -88,7 +91,7 @@ fn main() -> ! {
     }
     sprintln!("Calculation ready");
 
-    output =  dla_read_input_bank(H_OUT * W_OUT);
+    let output: Vec<u8> =  dla_read_input_bank(H_OUT * W_OUT);
     for b in output.iter() {
         sprint!("{:?} ", b)
     }
