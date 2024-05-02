@@ -3,7 +3,7 @@
 
 extern crate alloc;
 
-use headsail_bsp::{rt::entry, sprint, sprintln, init_allocator};
+use headsail_bsp::{rt::entry, sprint, sprintln, init_alloc};
 use dla_driver::*;
 use panic_halt as _;
 
@@ -29,6 +29,14 @@ macro_rules! conv2d_out_parameters_width {
     };
 }
 
+fn conv2d_output_parameters(input: (usize, usize), kernel: (usize, usize), padding: (usize, usize),
+                            dilation: (usize, usize), stride: (usize, usize)) -> (usize, usize) {
+    let w_out = (input.0 + 2 * padding.0 - dilation.0 * (kernel.0 - 1) - 1) / stride.0 + 1;
+    let h_out = (input.1 + 2 * padding.1 - dilation.1 * (kernel.1 - 1) - 1) / stride.1 + 1;
+    (w_out, h_out)
+
+}
+
 fn generate_random_array(buffer: &mut [u8], size: usize) {
     let mut rng = SmallRng::seed_from_u64(1234567890);
     for i in 0..size {
@@ -36,9 +44,46 @@ fn generate_random_array(buffer: &mut [u8], size: usize) {
     }
 }
 
+fn generate_random_matrix(height: usize, width: usize) -> Vec<u8> {
+    let mut res: Vec<u8> = Vec::new();
+    let mut rng = SmallRng::seed_from_u64(1234567890);
+    for i in 0..(height*width) {
+        res.push((rng.next_u64() & 0xFF) as u8);
+    }
+    res
+}
+
+fn run_random_layer(in_w: usize, in_h: usize, k_w: usize, k_h: usize) -> Vec<u8> {
+    // Generate input and kernel
+    let mut input = generate_random_matrix(in_w, in_h);
+    let mut kernel = generate_random_matrix(k_w, k_h);
+
+    dla_set_kernel_size(1, k_w, k_h);
+    dla_set_input_size(1, in_w, in_h);
+
+    dla_write_input(&mut input);
+    dla_write_kernel(&mut kernel);
+
+    // Calculate output size
+    let (w_out, h_out) = conv2d_output_parameters((in_w, in_h), (k_w, k_h), (0,0), (1,1), (1,1));
+
+    dla_kernel_data_ready(true);
+    dla_input_data_ready(true);
+
+    // Print the matrix
+    sprintln!("Waiting for calculation");
+    while !dla_is_ready() {
+    }
+    sprintln!("Calculation ready");
+
+    let output: Vec<u8> =  dla_read_input_bank(w_out * h_out);
+    output
+
+}
+
 #[entry]
 fn main() -> ! {
-    init_allocator();
+    init_alloc();
     sprintln!("Starting benchmark..");
 
     dla_init();
@@ -65,13 +110,9 @@ fn main() -> ! {
         (INPUT_WIDTH, KERNEL_WIDTH, PADDING_WIDTH, DILATION_WIDTH, STRIDE_WIDTH)
     );
 
-    // Generate a random input matrix
-    let mut input: [u8; INPUT_WIDTH * INPUT_HEIGHT] = [0; INPUT_WIDTH * INPUT_HEIGHT];
-    // Generate a random kernel matrix
-    let mut kernel: [u8; KERNEL_WIDTH * KERNEL_HEIGHT] = [0; KERNEL_WIDTH * KERNEL_HEIGHT];
-
-    generate_random_array(&mut input, INPUT_WIDTH * INPUT_HEIGHT);
-    generate_random_array(&mut kernel, KERNEL_WIDTH * KERNEL_HEIGHT);
+    // Generate input and kernel
+    let mut input = generate_random_matrix(INPUT_WIDTH, INPUT_HEIGHT);
+    let mut kernel = generate_random_matrix(KERNEL_WIDTH, KERNEL_HEIGHT);
 
     dla_set_kernel_size(1, KERNEL_WIDTH, KERNEL_HEIGHT);
     dla_set_input_size(1, INPUT_WIDTH, INPUT_HEIGHT);
@@ -92,10 +133,9 @@ fn main() -> ! {
     sprintln!("Calculation ready");
 
     let output: Vec<u8> =  dla_read_input_bank(H_OUT * W_OUT);
-    for b in output.iter() {
-        sprint!("{:?} ", b)
+    for x in output.iter() {
+        sprint!(" {}", x);
     }
-    sprint!("\n");
     sprintln!("Result read");
     loop {}
 }

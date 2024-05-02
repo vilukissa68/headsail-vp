@@ -4,10 +4,10 @@ extern crate alloc;
 
 mod mmap;
 
+use alloc::vec::*;
 use core::ptr;
 use headsail_bsp::{sprint, sprintln};
 use mmap::*;
-use alloc::vec::*;
 
 pub enum SimdBitMode {
     EightBits = 0,
@@ -24,7 +24,7 @@ macro_rules! set_bits {
 macro_rules! get_bits {
     ($mask:expr, $reg:expr) => {
         ($reg & ($mask as u32)) as u32
-    }
+    };
 }
 
 pub fn dla_write_str(s: &str) {
@@ -59,10 +59,18 @@ pub fn dla_write_data_bank(offset: usize, buf: &mut [u8]) {
 
 pub fn dla_read_data_bank_offset(offset: usize) -> u128 {
     // NOTE: this function enforces the 128-bit addressing
-    unsafe { ptr::read_volatile((MEMORY_BANK_BASE_ADDR + (offset & !0xF)) as *mut u128) }
+    if cfg!(feature = "vp") {
+        let mut result: u128 = 0;
+        for i in 0..4 {
+            result |= (unsafe {ptr::read_volatile((MEMORY_BANK_BASE_ADDR + offset + (i * 4)) as *mut u32)} as u128) << (32 * i)
+        }
+        result
+    } else {
+        unsafe { ptr::read_volatile((MEMORY_BANK_BASE_ADDR + (offset & !0xF)) as *mut u128) }
+    }
 }
 
-pub fn dla_read_data_bank(offset: usize, len: usize) -> Vec<u8>{
+pub fn dla_read_data_bank(offset: usize, len: usize) -> Vec<u8> {
     let mut res: Vec<u8> = Vec::new();
 
     let mut next_bank_offset = offset;
