@@ -1,5 +1,3 @@
-import os
-import re
 import math
 import random
 
@@ -212,6 +210,9 @@ def separate_channels(data):
         channel_matrices.append(channel_matrix)
     return channel_matrices
 
+def bit_not(n, numbits=32):
+    return (1 << numbits) - 1 - n
+
 def print_matrix(A, name=""):
     """Print matrix"""
     print(name)
@@ -367,7 +368,7 @@ class Dla:
             full_reg = full_reg[0] +  (full_reg[1] << 8)  + (full_reg[2] << 16) + (full_reg[3] << 24)
         else:
             full_reg = 0
-        zeroing_mask = ~(((width*width)-1) << offset)
+        zeroing_mask = bit_not((pow(2,width)-1) << offset)
 
         full_reg = full_reg & zeroing_mask # Zero region to be written
         full_reg = full_reg | (value << offset)
@@ -590,15 +591,23 @@ class Dla:
 
     def handle_handshake(self):
         """Resets handshake registers correctly after succesful calculation"""
-        if self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1) == 1 and self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1) == 0 :
-           self.set_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1, 0)
-           self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 0)
-        if self.get_register(HANDSHAKE, HANDSHAKE_MAC_VALID_OFFSET, 1) == 1 and self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1) == 0 :
-           self.set_register(HANDSHAKE, HANDSHAKE_MAC_VALID_OFFSET, 1, 0)
-           self.set_register(STATUS_ADDR, MAC_DONE_OFFSET, 1, 0)
-        if self.get_register(HANDSHAKE, HANDSHAKE_ACTIVE_VALID_OFFSET, 1) == 1 and self.get_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1) == 0 :
-           self.set_register(HANDSHAKE, HANDSHAKE_ACTIVE_VALID_OFFSET, 1, 0)
-           self.set_register(STATUS_ADDR, PP_DONE_OFFSET, 1, 0)
+        # Buffer
+        if self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1) == 0:
+            if self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1) == 1:
+                self.set_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1, 0)
+                self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 0x0)
+
+        # Mac
+        if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1) == 0:
+            if self.get_register(HANDSHAKE, HANDSHAKE_MAC_VALID_OFFSET, 1) == 1:
+                self.set_register(HANDSHAKE, HANDSHAKE_MAC_VALID_OFFSET, 1, 0)
+                self.set_register(STATUS_ADDR, MAC_DONE_OFFSET, 1, 0x0)
+
+        # Post Processor
+        if self.get_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1) == 0:
+            if self.get_register(HANDSHAKE, HANDSHAKE_ACTIVE_VALID_OFFSET, 1) == 1:
+                self.set_register(HANDSHAKE, HANDSHAKE_ACTIVE_VALID_OFFSET, 1, 0)
+                self.set_register(STATUS_ADDR, PP_DONE_OFFSET, 1, 0x0)
 
     def round(self, values):
         """Round values if register is set"""
@@ -626,6 +635,18 @@ class Dla:
         # After completion handle handshakes
         self.handle_handshake()
 
+        # Don't move if done hasn't been acknowledged VP only
+        if self.get_register(STATUS_ADDR, BUF_DONE_OFFSET, 1) or \
+                self.get_register(STATUS_ADDR, MAC_DONE_OFFSET, 1) or \
+                self.get_register(STATUS_ADDR, PP_DONE_OFFSET, 1):
+            print("Status not cleared")
+            return
+
+        # Check if buffer is enabled
+        if not self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1):
+            print("Buffer not enabled")
+            return
+
         # Check if data is ready
         if not self.get_register(BUF_CTRL, READ_A_VALID_OFFSET, 1) or not self.get_register(BUF_CTRL, READ_B_VALID_OFFSET, 1):
             return
@@ -640,17 +661,18 @@ class Dla:
         # Convonlution
         padding, dilation, stride = self.get_conv_params()
 
-        # TODO: This might be not correct, make sure S_CHANNELS work like this
-        res = []
-        for channel in range(input_ch):
-            for k_channel in range(kernel_ch):
-                res.append(self.mac.conv2d_native(input_data[channel], kernel_data[k_channel], padding, dilation, stride))
+        if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1):
+            print("Mac not enabled")
+            # TODO: This might be not correct, make sure S_CHANNELS work like this
+            res = []
+            for channel in range(input_ch):
+                for k_channel in range(kernel_ch):
+                    res.append(self.mac.conv2d_native(input_data[channel], kernel_data[k_channel], padding, dilation, stride))
 
-        # Clip results
-        res = dla.mac_clip(res)
-
-        for i, r in enumerate(res):
-            print_matrix(r, "{} MAC:".format(i))
+            # Clip results
+            res = dla.mac_clip(res)
+            for i, r in enumerate(res):
+                print_matrix(r, "{} MAC:".format(i))
 
         # TODO: Post process
         if self.get_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1):
@@ -673,20 +695,13 @@ class Dla:
         self.write_bank(12, flatten_tensor(res))
 
         # Set Done status
-        self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 0x1)
-        self.set_register(STATUS_ADDR, MAC_DONE_OFFSET, 1, 0x1)
-        self.set_register(STATUS_ADDR, PP_DONE_OFFSET, 1, 0x1)
+        self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 1)
+        self.set_register(STATUS_ADDR, MAC_DONE_OFFSET, 1, 1)
+        self.set_register(STATUS_ADDR, PP_DONE_OFFSET, 1, 1)
 
         # Set data not ready
         self.set_register(BUF_CTRL, READ_A_VALID_OFFSET, 1, 0x0)
         self.set_register(BUF_CTRL, READ_B_VALID_OFFSET, 1, 0x0)
-
-        # TODO: Wait for validation
-
-        # After validation set done bits to 0
-        # self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 0x0)
-        # self.set_register(STATUS_ADDR, MAC_DONE_OFFSET, 1, 0x0)
-        # self.set_register(STATUS_ADDR, PP_DONE_OFFSET, 1, 0x0)
 
 
 class DlaMac:

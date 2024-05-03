@@ -36,7 +36,6 @@ fn u4_to_u8(value: u8) -> u8 {
 }
 
 
-
 pub fn dla_write_str(s: &str) {
     for b in s.as_bytes() {
         unsafe { ptr::write_volatile(DLA0_ADDR as *mut u8, *b) };
@@ -372,7 +371,15 @@ pub fn dla_set_bias_addr(addr: u32) {
     dla_write_reg(DLA_PP_AXI_READ, addr);
 }
 
-pub fn dla_handle_handshake() {
+pub fn dla_is_enabled() -> bool {
+    let handshake_reg = dla_read_reg(DLA_HANDSHAKE);
+    let buf_enabled = get_bits!(DLA_HANDSHAKE_BUFFER_ENABLE_BITMASK, handshake_reg) != 0;
+    let mac_enabled = get_bits!(DLA_HANDSHAKE_MAC_ENABLE_BITMASK, handshake_reg) != 0;
+    let active_enabled = get_bits!(DLA_HANDSHAKE_ACTIVE_ENABLE_BITMASK, handshake_reg) != 0;
+    buf_enabled & mac_enabled & active_enabled
+}
+
+fn dla_handshake_disable_hw() {
     let mut handshake_reg = dla_read_reg(DLA_HANDSHAKE);
     handshake_reg = set_bits!(
         DLA_HANDSHAKE_BUFFER_ENABLE_OFFSET,
@@ -393,6 +400,34 @@ pub fn dla_handle_handshake() {
         0
     );
     handshake_reg = set_bits!(
+        DLA_HANDSHAKE_BIAS_ENABLE_OFFSET,
+        DLA_HANDSHAKE_BIAS_ENABLE_BITMASK,
+        handshake_reg,
+        0
+    );
+    handshake_reg = set_bits!(
+        DLA_HANDSHAKE_BYPASS_ENABLE_OFFSET,
+        DLA_HANDSHAKE_BYPASS_ENABLE_BITMASK,
+        handshake_reg,
+        0
+    );
+
+    dla_write_reg(DLA_HANDSHAKE, handshake_reg);
+}
+
+pub fn dla_handle_handshake() -> bool {
+    // Handshake only if dla status is done
+    if !dla_is_ready() {
+        return false
+    }
+
+    if dla_is_enabled() {
+        dla_handshake_disable_hw();
+        return false
+    }
+
+    let mut handshake_reg = dla_read_reg(DLA_HANDSHAKE);
+    handshake_reg = set_bits!(
         DLA_HANDSHAKE_BUFFER_VALID_OFFSET,
         DLA_HANDSHAKE_BUFFER_VALID_BITMASK,
         handshake_reg,
@@ -410,7 +445,9 @@ pub fn dla_handle_handshake() {
         handshake_reg,
         1
     );
+
     dla_write_reg(DLA_HANDSHAKE, handshake_reg);
+    return true
 }
 
 pub fn dla_init() {
