@@ -285,21 +285,12 @@ class MemoryBank:
     def __init__(self, size):
         self.size = size
         self.clear_bank()
-        self.idx = 0 # Data pointer
 
     def clear_bank(self):
         """Reset all values in the bank to 0."""
         self.mem = [0 for x in range(self.size)] # Initialize bank
 
-    def is_bank_full(self):
-        """Check if bank is full
-
-        Returns:
-        is_full -- Bool True if full. False if not full.
-        """
-        return self.size == self.idx
-
-    def write(self, data, overwrite=False):
+    def write_buffer(self, offset, data):
         """Write data to bank. Starting from first free address.
 
         Params:
@@ -308,44 +299,27 @@ class MemoryBank:
         Returns:
         unwritten -- [Int] data that didn't fit to bank
         """
-        if overwrite:
-            for i in range(len(data)):
-                self.mem[i] = data[i]
-            return
         for i in range(len(data)):
-            if self.is_bank_full():
-                # Memory has been filled
+            if offset + i > self.size:
                 return data[i:]
-            byte = data[i]
-            self.mem[self.idx] = byte
-            self.idx = self.idx + 1 # Increment for pointer
-        return [] # All the data fitted to the bank
+            self.mem[offset + i] = data[i] & 0xFF # Enforce 8bit width
+        return []
 
-    def read(self):
-        """Read all the values written to the bank. Stop at first free address.
+    def write(self, offset, data):
+        """Write data to bank. Starting from first free address.
 
-        Return:
-        data -- [Int] all data in the bank
+        Params:
+        data -- [Int] data to write to bank
+
+        Returns:
+        unwritten -- [Int] data that didn't fit to bank
         """
-        return self.mem[0:self.idx] # Read until write pointer, rest is padded
+        assert(offset < self.size)
+        self.mem[offset] = data & 0xFF # Enforce 8bit width
 
-    def read_offset(self, offset):
-        # NOTE: Renode can't handle reads over 32-bits
-        # Get 16 bytes as 128-bit aligment requires
-        mem_32 = 0;
-        for i in range(0,4):
-            mem_32 = mem_32 + (self.mem[offset + i] << (i * 8))
-        print(hex(mem_32))
-        return mem_32
 
-    def available_memory(self):
-        """Get the amount of free space left in the bank.
-
-        Return:
-        free -- Int Free space in bank
-        """
-        return self.size - self.idx
-
+    def read(self, offset):
+        return self.mem[offset]
 
 class Dla:
     """Implements control flow and MMIO registers of DLA. This should be the top level component."""
@@ -440,6 +414,17 @@ class Dla:
                                                               self.mem[register + 1],
                                                               self.mem[register]))
 
+    def get_simd_mask(self):
+        simd = self.get_register(MAC_CTRL, SIMD_SELECT_OFFSET, 2)
+        if simd == 0:
+            return 0xFF
+        elif simd == 1:
+            return 0xF
+        elif simd == 2:
+            return 0x3
+        else:
+            return 0xFF
+
     def print_registers(self):
         """Print all registers"""
         for x in range(0,HANDSHAKE+4, 4):
@@ -461,78 +446,66 @@ class Dla:
         request -- Renode request object
         """
         target_bank = (request.absolute - MEMORY_BANK_ADDR) // MEMORY_BANK_SIZE
-        self.banks[target_bank].write([request.value])
+        offset = request.offset - memory_bank_to_offset(target_bank)
+        for byte in range(request.length):
+            value = (request.value >> (byte * 8)) & 0xFF
+            self.banks[target_bank].write(offset + byte, value)
 
     def write_bank(self, bank, data):
-        self.banks[bank].write(data, overwrite=True)
+        self.banks[bank].write_buffer(0, data)
 
     def handle_bank_read(self, request):
         # NOTE: Renode can't handle over 32bit reads so 128-bit alignment isn't strictly enforced
         target_bank = (request.absolute - MEMORY_BANK_ADDR) // MEMORY_BANK_SIZE
         offset = request.absolute - MEMORY_BANK_ADDR - memory_bank_to_offset(target_bank)
-        print("read bank:", target_bank, "offset:", offset , "value:", hex(self.banks[target_bank].read_offset(offset)))
-        return self.banks[target_bank].read_offset(offset) & 0xFFFFFFFF # Clip to 32bits
+        value = 0
+        for i in range(0,4):
+            value += (self.banks[target_bank].read(offset + i)) << (i * 8)
+        return value & 0xFFFFFFFF # Clip to 32-bits
 
     def set_weight_data(self, data):
         """Sets weight data to memory banks
 
         Params:
         data -- [Int] Weight data in CHW format
-
-        Returns:
-        unwritten -- [Int] All the data that didn't fit into memory banks. Empty if all fitted.
         """
 
         bank_idx = self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_A_OFFSET, 4)
-        i = 0
-        while i < len(data):
-            bank = self.banks[bank_idx]
-            if bank.is_bank_full(): # Move to next bank
+        bank = self.banks[bank_idx]
+
+        bytes_written = 0
+        offset = 0
+        while bytes_written < len(data):
+            if offset > bank.size:
                 bank_idx = bank_idx + 1
-                # Check that next bank isn't for input data
-                if bank_idx == self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_B_OFFSET, 4) or bank_idx > MEMORY_BANK_SIZE:
-                    break;
-            else:
-                if i+bank.available_memory() > len(data):
-                    slice = data[i:]
-                    i = len(data)
-                else:
-                    slice = data[i:i+bank.available_memory()]
-                    i = i + bank.available_memory()
-                bank.write(slice)
-        if i != len(data):
-            return data[i:]
-        return []
+                assert(bank_idx < len(self.banks))
+                bank = self.banks[bank_idx]
+                offset = 0
+            bank.write(offset, data[bytes_written])
+            bytes_written += 1
+            offset += 1
+
 
     def set_input_data(self, data):
         """Sets input data to memory banks
 
         Params:
         data -- [Int] Input data in CHW format
-
-        Returns:
-        unwritten -- [Int] All the data that didn't fit into memory banks. Empty if all fitted.
         """
         bank_idx = self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_B_OFFSET, 4)
-        i = 0
-        while i < len(data):
-            bank = self.banks[bank_idx]
-            if bank.is_bank_full(): # Move to next bank
+        bank = self.banks[bank_idx]
+
+        bytes_written = 0
+        offset = 0
+        while bytes_written < len(data):
+            if offset > bank.size:
                 bank_idx = bank_idx + 1
-                # Check that next bank isn't for weight data
-                if bank_idx == self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_A_OFFSET, 4) or bank_idx > MEMORY_BANK_SIZE:
-                    break;
-            else:
-                if i+bank.available_memory() > len(data):
-                    slice = data[i:]
-                    i = len(data)
-                else:
-                    slice = data[i:i+bank.available_memory()]
-                    i = i + bank.available_memory()
-                bank.write(slice)
-        if i != len(data):
-            return data[i:]
-        return []
+                assert(bank_idx < len(self.banks))
+                bank = self.banks[bank_idx]
+                offset = 0
+            bank.write(offset, data[bytes_written])
+            bytes_written += 1
+            offset += 1
 
     def get_weight_data(self):
        """Get all kernel/weight data from memory banks in CWH format
@@ -549,22 +522,20 @@ class Dla:
        bank_idx = self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_A_OFFSET, 4)
        bank = self.banks[bank_idx]
 
-       # Check if multiples banks are occupied
-       data = bank.read()
-       while bank.is_bank_full():
-           bank_idx = bank_idx + 1
-           bank = self.banks[bank_idx]
-
-           # Check that next bank isn't for input data
-           if bank_idx == self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_B_OFFSET, 4) or bank_idx > MEMORY_BANK_SIZE:
-               break;
-
-           # If new bank is valid, read
-           data = data + bank.read()
-
+       data = []
+       offset = 0;
+       while len(data) < (channels * width * height):
+           # Move to next bank
+           if offset > bank.size:
+               bank_idx = bank_idx + 1
+               bank = self.banks[bank_idx]
+               offset = 0
+           data.append(bank.read(offset))
+           offset += 1
        return channels, width, height, data
 
     def get_input_data(self):
+        # TODO: Only read as much data as is needed to fill input layer (C* W * H)
         """Get all input data from memory banks in CWH format
 
         Returns:
@@ -579,24 +550,23 @@ class Dla:
         bank_idx = self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_B_OFFSET, 4)
         bank = self.banks[bank_idx]
 
-        # Check if multiple banks are occupied
-        data = bank.read()
-        while bank.is_bank_full():
-            bank_idx = bank_idx + 1
-            bank = self.banks[bank_idx]
-
-            # check that next bank isn't for weight data
-            if bank_idx == self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_A_OFFSET, 4) or bank_idx > MEMORY_BANK_SIZE:
-                break;
-
-            # If new bank is valid, read
-            data = data + bank.read()
-
+        data = []
+        offset = 0;
+        while len(data) < (channels * width * height):
+            # Move to next bank
+            if offset > bank.size:
+                bank_idx = bank_idx + 1
+                bank = self.banks[bank_idx]
+                offset = 0
+            data.append(bank.read(offset))
+            offset += 1
         return channels, width, height, data
 
     # TODO: Finish this when external memory is figured out
     def get_bias(self):
        """Get bias values from external memory"""
+       # TODO: Implement this
+       return 1
        bias_address = self.get_register(PP_AXI_READ, PP_AXI_READ_ADDRESS_OFFSET, 32)
        #data = self.external[bias_address]
        return 0
@@ -652,6 +622,10 @@ class Dla:
 
     def process(self):
         """Runs next tick of the DLA state"""
+
+        # After completion handle handshakes
+        self.handle_handshake()
+
         # Check if data is ready
         if not self.get_register(BUF_CTRL, READ_A_VALID_OFFSET, 1) or not self.get_register(BUF_CTRL, READ_B_VALID_OFFSET, 1):
             return
@@ -664,10 +638,8 @@ class Dla:
         kernel_data = flat_to_CWH(kernel_data, kernel_ch, kernel_w, kernel_h)
 
         # Convonlution
-        # Read convolution paramters
         padding, dilation, stride = self.get_conv_params()
-        # Execute op in MAC array
-        # Once for each channel
+
         # TODO: This might be not correct, make sure S_CHANNELS work like this
         res = []
         for channel in range(input_ch):
@@ -681,34 +653,33 @@ class Dla:
             print_matrix(r, "{} MAC:".format(i))
 
         # TODO: Post process
-        # Check if PP is used
-        if self.get_register(PP_CTRL, PP_SELECT_OFFSET, 1):
+        if self.get_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1):
             # TODO: Bias
-            if True:
-                #bias_amount = self.get_bias()
-                bias_amount = 1
+            if self.get_register(HANDSHAKE, HANDSHAKE_BIAS_ENABLE_OFFSET, 1):
+                bias_amount = self.get_bias()
                 res = execute_for_all_elements(self.mac.bias_native, res, bias_amount)
                 for (i, r) in enumerate(res):
                     print_matrix(r, "{} BIAS:".format(i))
 
             # ReLU (active low)
-            if self.get_register(PP_CTRL, ACTIVE_MODE_OFFSET, 2) == 0:
+            if self.get_register(HANDSHAKE, HANDSHAKE_ACTIVE_ENABLE_OFFSET, 1):
                 res = execute_for_all_elements(self.mac.relu_native, res)
                 res = dla.pp_clip(res)
                 res = dla.round(res)
                 for (i, r) in enumerate(res):
                     print_matrix(r, "{} ReLU:".format(i))
 
-            # TODO: Pool
-
         # After calculating one layer the device needs new configuration
-        # TODO: Write result somewhere
-        self.write_bank(0, flatten_tensor(res))
+        self.write_bank(12, flatten_tensor(res))
 
         # Set Done status
         self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 0x1)
         self.set_register(STATUS_ADDR, MAC_DONE_OFFSET, 1, 0x1)
         self.set_register(STATUS_ADDR, PP_DONE_OFFSET, 1, 0x1)
+
+        # Set data not ready
+        self.set_register(BUF_CTRL, READ_A_VALID_OFFSET, 1, 0x0)
+        self.set_register(BUF_CTRL, READ_B_VALID_OFFSET, 1, 0x0)
 
         # TODO: Wait for validation
 
@@ -933,7 +904,6 @@ def write(request, dla):
     if int(request.absolute) >= DLA_ADDR:
         dla.set_register(request.offset, 0, 32, request.value, preserve_register=False)
     else:
-        # TODO: implement bank writing
         dla.handle_bank_write(request)
     dla.process()
 
@@ -944,7 +914,6 @@ def read(request, dla):
     if int(request.absolute) >= DLA_ADDR:
         request.value = dla.get_register(request.offset, 0, 32)
     else:
-        # TODO: Fix bank reading here to enforce 128-bit aligment
         tmp = dla.handle_bank_read(request)
         print(tmp)
         request.value = tmp

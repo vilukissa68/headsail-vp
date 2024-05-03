@@ -27,6 +27,16 @@ macro_rules! get_bits {
     };
 }
 
+fn u2_to_u8(value: u8) -> u8 {
+    return value & 0x3
+}
+
+fn u4_to_u8(value: u8) -> u8 {
+    return value & 0xF
+}
+
+
+
 pub fn dla_write_str(s: &str) {
     for b in s.as_bytes() {
         unsafe { ptr::write_volatile(DLA0_ADDR as *mut u8, *b) };
@@ -62,7 +72,10 @@ pub fn dla_read_data_bank_offset(offset: usize) -> u128 {
     if cfg!(feature = "vp") {
         let mut result: u128 = 0;
         for i in 0..4 {
-            result |= (unsafe {ptr::read_volatile((MEMORY_BANK_BASE_ADDR + offset + (i * 4)) as *mut u32)} as u128) << (32 * i)
+            result |= (unsafe {
+                ptr::read_volatile((MEMORY_BANK_BASE_ADDR + offset + (i * 4)) as *mut u32)
+            } as u128)
+                << (32 * i)
         }
         result
     } else {
@@ -87,6 +100,14 @@ pub fn dla_read_data_bank(offset: usize, len: usize) -> Vec<u8> {
         next_bank_offset = offset + 0x10;
     }
     res
+}
+
+pub fn dla_read_result(len: usize) -> Vec<u8> {
+    // On VP we default for results to be located in Bank 12 onwards
+    if cfg!(feature = "vp") {
+        return dla_read_data_bank(MEMORY_BANK_12_OFFSET, len);
+    }
+    dla_read_data_bank(MEMORY_BANK_0_OFFSET, len)
 }
 
 pub fn dla_read_input_bank(len: usize) -> Vec<u8> {
@@ -197,27 +218,38 @@ pub fn dla_kernel_data_ready(ready: bool) {
     dla_write_reg(DLA_BUF_CTRL, reg);
 }
 
-pub fn dla_enable_relu(enable: bool) {
-    let mut reg = dla_read_reg(DLA_PP_CTRL);
-    // Relu is active low
+pub fn dla_enable_pp(enable: bool) {
+    let mut reg = dla_read_reg(DLA_HANDSHAKE);
     reg = set_bits!(
-        DLA_ACTIVE_MODE_OFFSET,
-        DLA_ACTIVE_MODE_BITMASK,
-        reg,
-        (!enable) as usize
-    );
-    dla_write_reg(DLA_PP_CTRL, reg);
-}
-
-pub fn dla_enable_bias(enable: bool) {
-    let mut reg = dla_read_reg(DLA_PP_CTRL);
-    reg = set_bits!(
-        DLA_PP_SELECT_OFFSET,
-        DLA_PP_SELECT_BITMASK,
+        DLA_HANDSHAKE_BYPASS_ENABLE_OFFSET,
+        DLA_HANDSHAKE_BYPASS_ENABLE_BITMASK,
         reg,
         enable as usize
     );
-    dla_write_reg(DLA_PP_CTRL, reg);
+    sprintln!("reg: {}", reg);
+    dla_write_reg(DLA_HANDSHAKE, reg);
+}
+
+pub fn dla_enable_relu(enable: bool) {
+    let mut reg = dla_read_reg(DLA_HANDSHAKE);
+    reg = set_bits!(
+        DLA_HANDSHAKE_ACTIVE_ENABLE_OFFSET,
+        DLA_HANDSHAKE_ACTIVE_ENABLE_BITMASK,
+        reg,
+        enable as usize
+    );
+    dla_write_reg(DLA_HANDSHAKE, reg);
+}
+
+pub fn dla_enable_bias(enable: bool) {
+    let mut reg = dla_read_reg(DLA_HANDSHAKE);
+    reg = set_bits!(
+        DLA_HANDSHAKE_BIAS_ENABLE_OFFSET,
+        DLA_HANDSHAKE_BIAS_ENABLE_BITMASK,
+        reg,
+        enable as usize
+    );
+    dla_write_reg(DLA_HANDSHAKE, reg);
 }
 
 pub fn dla_set_input_padding(top: usize, right: usize, bottom: usize, left: usize, value: usize) {
@@ -287,6 +319,17 @@ pub fn dla_set_simd_select(mode: SimdBitMode) {
     dla_write_reg(DLA_MAC_CTRL, reg)
 }
 
+pub fn dla_get_simd_format() -> SimdBitMode {
+    let mut reg = dla_read_reg(DLA_MAC_CTRL);
+    reg = get_bits!(DLA_SIMD_SELECT_BITMASK, reg);
+    match reg {
+        0 => SimdBitMode::EightBits,
+        1 => SimdBitMode::FourBits,
+        2 => SimdBitMode::TwoBits,
+        _ => SimdBitMode::EightBits,
+    }
+}
+
 pub fn dla_set_mac_clip(clip_amount: usize) {
     let mut reg = dla_read_reg(DLA_MAC_CTRL);
     // Cap clipping amount
@@ -321,12 +364,53 @@ pub fn dla_set_pp_rounding(enable: bool) {
 }
 
 pub fn dla_is_ready() -> bool {
-    let mut status = dla_read_reg(DLA_STATUS_ADDR);
+    let status = dla_read_reg(DLA_STATUS_ADDR);
     return !get_bits!(DLA_BUF_DONE_BITMASK, status) != 0;
 }
 
 pub fn dla_set_bias_addr(addr: u32) {
     dla_write_reg(DLA_PP_AXI_READ, addr);
+}
+
+pub fn dla_handle_handshake() {
+    let mut handshake_reg = dla_read_reg(DLA_HANDSHAKE);
+    handshake_reg = set_bits!(
+        DLA_HANDSHAKE_BUFFER_ENABLE_OFFSET,
+        DLA_HANDSHAKE_BUFFER_ENABLE_BITMASK,
+        handshake_reg,
+        0
+    );
+    handshake_reg = set_bits!(
+        DLA_HANDSHAKE_MAC_ENABLE_OFFSET,
+        DLA_HANDSHAKE_MAC_ENABLE_BITMASK,
+        handshake_reg,
+        0
+    );
+    handshake_reg = set_bits!(
+        DLA_HANDSHAKE_ACTIVE_ENABLE_OFFSET,
+        DLA_HANDSHAKE_ACTIVE_ENABLE_BITMASK,
+        handshake_reg,
+        0
+    );
+    handshake_reg = set_bits!(
+        DLA_HANDSHAKE_BUFFER_VALID_OFFSET,
+        DLA_HANDSHAKE_BUFFER_VALID_BITMASK,
+        handshake_reg,
+        1
+    );
+    handshake_reg = set_bits!(
+        DLA_HANDSHAKE_MAC_VALID_OFFSET,
+        DLA_HANDSHAKE_MAC_VALID_BITMASK,
+        handshake_reg,
+        1
+    );
+    handshake_reg = set_bits!(
+        DLA_HANDSHAKE_ACTIVE_VALID_OFFSET,
+        DLA_HANDSHAKE_ACTIVE_VALID_BITMASK,
+        handshake_reg,
+        1
+    );
+    dla_write_reg(DLA_HANDSHAKE, handshake_reg);
 }
 
 pub fn dla_init() {
@@ -358,6 +442,7 @@ pub fn dla_init() {
     dla_set_input_data_bank(0);
     dla_set_kernel_data_bank(8);
 
+    dla_enable_pp(true);
     dla_enable_relu(true);
     dla_enable_bias(true);
 

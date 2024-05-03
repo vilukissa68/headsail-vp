@@ -76,7 +76,7 @@ fn run_random_layer(in_w: usize, in_h: usize, k_w: usize, k_h: usize) -> Vec<u8>
     }
     sprintln!("Calculation ready");
 
-    let output: Vec<u8> =  dla_read_input_bank(w_out * h_out);
+    let output: Vec<u8> =  dla_read_result(w_out * h_out);
     output
 
 }
@@ -88,54 +88,16 @@ fn main() -> ! {
 
     dla_init();
 
-    const INPUT_WIDTH: usize = 10;
-    const INPUT_HEIGHT: usize = 10;
-
-    const KERNEL_WIDTH: usize = 3;
-    const KERNEL_HEIGHT: usize = 3;
-
-    const PADDING_HEIGHT: usize = 0;
-    const PADDING_WIDTH: usize = 0;
-    const DILATION_HEIGHT: usize = 1;
-    const DILATION_WIDTH: usize = 1;
-    const STRIDE_HEIGHT: usize = 1;
-    const STRIDE_WIDTH: usize = 1;
-
-    // Calculate output size
-    const H_OUT: usize = conv2d_out_parameters_height!(
-        (INPUT_HEIGHT, KERNEL_HEIGHT, PADDING_HEIGHT, DILATION_HEIGHT, STRIDE_HEIGHT)
-    );
-
-    const W_OUT: usize = conv2d_out_parameters_width!(
-        (INPUT_WIDTH, KERNEL_WIDTH, PADDING_WIDTH, DILATION_WIDTH, STRIDE_WIDTH)
-    );
-
-    // Generate input and kernel
-    let mut input = generate_random_matrix(INPUT_WIDTH, INPUT_HEIGHT);
-    let mut kernel = generate_random_matrix(KERNEL_WIDTH, KERNEL_HEIGHT);
-
-    dla_set_kernel_size(1, KERNEL_WIDTH, KERNEL_HEIGHT);
-    dla_set_input_size(1, INPUT_WIDTH, INPUT_HEIGHT);
-
-    dla_write_input(&mut input);
-    dla_write_kernel(&mut kernel);
-
     dla_set_mac_clip(8);
     dla_set_pp_clip(8);
 
-    dla_kernel_data_ready(true);
-    dla_input_data_ready(true);
-
-    // Print the matrix
-    sprintln!("Waiting for calculation");
-    while !dla_is_ready() {
+    for x in 0..1 {
+        let res = run_random_layer(8,8,2,2);
+        sprint!("Res:");
+        for entry in res {
+            sprint!("{} ", entry);
+        }
     }
-    sprintln!("Calculation ready");
 
-    let output: Vec<u8> =  dla_read_input_bank(H_OUT * W_OUT);
-    for x in output.iter() {
-        sprint!(" {}", x);
-    }
-    sprintln!("Result read");
     loop {}
 }
