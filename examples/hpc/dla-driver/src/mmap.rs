@@ -168,6 +168,10 @@ pub(crate) const DLA_MAC_SAT_MIN: usize = 0x58;
 pub(crate) const DLA_MAC_SAT_MIN_OFFSET: usize = 0x0;
 pub(crate) const DLA_MAC_SAT_MIN_BITMASK: usize = 0xFFFFFFFF;
 
+pub(crate) const DLA_PP_AXI_WRITE: usize = 0x5c;
+pub(crate) const DLA_PP_AXI_WRITE_ADDRESS_OFFSET: usize = 0x00;
+pub(crate) const DLA_PP_AXI_WRITE_ADDRESS_BITMASK: usize = 0xFFFFFFFF;
+
 pub(crate) const DLA_PP_AXI_READ: usize = 0x60;
 pub(crate) const DLA_PP_AXI_READ_ADDRESS_OFFSET: usize = 0x00;
 pub(crate) const DLA_PP_AXI_READ_ADDRESS_BITMASK: usize = 0xFFFFFFFF;

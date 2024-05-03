@@ -131,6 +131,10 @@ MAC_SAT_MAX_OFFSET = 0
 MAC_SAT_MIN = 0x58
 MAC_SAT_MIN_OFFSET = 0
 
+# PP_AXI_WRITE
+PP_AXI_WRITE = 0x5C
+PP_AXI_WRITE_ADDRESS_OFFSET = 0
+
 # PP_AXI_READ
 PP_AXI_READ = 0x60
 PP_AXI_READ_ADDRESS_OFFSET = 0
@@ -632,6 +636,7 @@ class Dla:
     def process(self):
         """Runs next tick of the DLA state"""
 
+        self.print_registers()
         # After completion handle handshakes
         self.handle_handshake()
 

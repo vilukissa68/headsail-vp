@@ -149,6 +149,17 @@ pub fn dla_set_kernel_data_bank(bank: usize) {
     dla_write_reg(DLA_BUF_DATA_BANK, reg);
 }
 
+pub fn dla_set_kernel_output_addr(addr: usize) {
+    let mut reg = dla_read_reg(DLA_PP_AXI_WRITE);
+    reg = set_bits!(
+        DLA_PP_AXI_WRITE_ADDRESS_OFFSET,
+        DLA_PP_AXI_WRITE_ADDRESS_BITMASK,
+        reg,
+        addr
+    );
+    dla_write_reg(DLA_BUF_DATA_BANK, reg);
+}
+
 pub fn dla_set_input_size(channels: usize, width: usize, height: usize) {
     let mut reg = 0;
     reg = set_bits!(
