@@ -3,6 +3,13 @@
 extern crate alloc;
 
 mod mmap;
+pub use mmap::{
+    DLA0_ADDR, MEMORY_BANK_0_OFFSET, MEMORY_BANK_10_OFFSET, MEMORY_BANK_11_OFFSET,
+    MEMORY_BANK_12_OFFSET, MEMORY_BANK_13_OFFSET, MEMORY_BANK_14_OFFSET, MEMORY_BANK_15_OFFSET,
+    MEMORY_BANK_1_OFFSET, MEMORY_BANK_2_OFFSET, MEMORY_BANK_3_OFFSET, MEMORY_BANK_4_OFFSET,
+    MEMORY_BANK_5_OFFSET, MEMORY_BANK_6_OFFSET, MEMORY_BANK_7_OFFSET, MEMORY_BANK_8_OFFSET,
+    MEMORY_BANK_9_OFFSET, MEMORY_BANK_BASE_ADDR,
+};
 
 use alloc::vec::*;
 use core::ptr;
@@ -28,13 +35,12 @@ macro_rules! get_bits {
 }
 
 fn u2_to_u8(value: u8) -> u8 {
-    return value & 0x3
+    return value & 0x3;
 }
 
 fn u4_to_u8(value: u8) -> u8 {
-    return value & 0xF
+    return value & 0xF;
 }
-
 
 pub fn dla_write_str(s: &str) {
     for b in s.as_bytes() {
@@ -157,7 +163,7 @@ pub fn dla_set_kernel_output_addr(addr: usize) {
         reg,
         addr
     );
-    dla_write_reg(DLA_BUF_DATA_BANK, reg);
+    dla_write_reg(DLA_PP_AXI_WRITE, reg);
 }
 
 pub fn dla_set_input_size(channels: usize, width: usize, height: usize) {
@@ -236,7 +242,6 @@ pub fn dla_enable_pp(enable: bool) {
         reg,
         enable as usize
     );
-    sprintln!("reg: {}", reg);
     dla_write_reg(DLA_HANDSHAKE, reg);
 }
 
@@ -429,12 +434,12 @@ fn dla_handshake_disable_hw() {
 pub fn dla_handle_handshake() -> bool {
     // Handshake only if dla status is done
     if !dla_is_ready() {
-        return false
+        return false;
     }
 
     if dla_is_enabled() {
         dla_handshake_disable_hw();
-        return false
+        return false;
     }
 
     let mut handshake_reg = dla_read_reg(DLA_HANDSHAKE);
@@ -458,7 +463,7 @@ pub fn dla_handle_handshake() -> bool {
     );
 
     dla_write_reg(DLA_HANDSHAKE, handshake_reg);
-    return true
+    return true;
 }
 
 pub fn dla_init() {

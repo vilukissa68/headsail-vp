@@ -71,6 +71,8 @@ fn run_random_layer(in_w: usize, in_h: usize, k_w: usize, k_h: usize) -> Vec<u8>
     dla_set_kernel_size(1, k_w, k_h);
     dla_set_input_size(1, in_w, in_h);
 
+    dla_set_kernel_output_addr(MEMORY_BANK_12_OFFSET + MEMORY_BANK_BASE_ADDR);
+
     dla_write_input(&mut input);
     dla_write_kernel(&mut kernel);
 
@@ -98,8 +100,11 @@ fn main() -> ! {
     dla_set_mac_clip(8);
     dla_set_pp_clip(8);
 
-    for x in 0..2 {
+    for x in 0..1 {
         let res = run_random_layer(8,8,2,2);
+        for x in res {
+            sprint!("{:?} ", x);
+        }
     }
 
     loop {}

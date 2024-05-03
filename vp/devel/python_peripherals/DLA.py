@@ -490,6 +490,41 @@ class Dla:
             bytes_written += 1
             offset += 1
 
+    def get_output_addr(self):
+        """Get addr for outputting data set in PP_AXI_WRITE register
+
+        Returns:
+        addr -- Int addr for output
+        """
+        return self.get_register(PP_AXI_WRITE, PP_AXI_WRITE_ADDRESS_OFFSET, 32) & 0xFFFFFFFF
+
+    def write_output(self, data):
+        """Writes output to arbitrary memory address
+
+        Params:
+        data -- [Int] data to write
+        """
+        addr = self.get_output_addr()
+        print("addr:", addr)
+        # If addr is bank
+        if MEMORY_BANK_ADDR <= addr and addr < MEMORY_BANK_ADDR + (NO_MEMORY_BANKS * MEMORY_BANK_SIZE):
+            bank_idx = (addr - MEMORY_BANK_ADDR) // MEMORY_BANK_SIZE
+            bank = self.banks[bank_idx]
+
+            bytes_written = 0
+            offset = 0
+            while bytes_written < len(data):
+                if offset > bank.size:
+                    bank_idx = bank_idx + 1
+                    assert(bank_idx < len(self.banks))
+                    bank = self.banks[bank_idx]
+                    offset = 0
+                bank.write(offset, data[bytes_written])
+                bytes_written += 1
+                offset += 1
+            else:
+                print("Output written outside memory region")
+
 
     def set_input_data(self, data):
         """Sets input data to memory banks
@@ -636,7 +671,6 @@ class Dla:
     def process(self):
         """Runs next tick of the DLA state"""
 
-        self.print_registers()
         # After completion handle handshakes
         self.handle_handshake()
 
@@ -697,7 +731,7 @@ class Dla:
                     print_matrix(r, "{} ReLU:".format(i))
 
         # After calculating one layer the device needs new configuration
-        self.write_bank(12, flatten_tensor(res))
+        self.write_output(flatten_tensor(res))
 
         # Set Done status
         self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 1)
