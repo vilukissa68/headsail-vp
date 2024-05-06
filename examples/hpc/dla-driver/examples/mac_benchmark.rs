@@ -44,30 +44,30 @@ fn generate_random_array(buffer: &mut [u8], size: usize) {
     }
 }
 
-fn generate_random_matrix(height: usize, width: usize) -> Vec<u8> {
+fn generate_random_matrix(height: usize, width: usize, seed: u64) -> Vec<u8> {
     let mut res: Vec<u8> = Vec::new();
-    let mut rng = SmallRng::seed_from_u64(1234567890);
+    let mut rng = SmallRng::seed_from_u64(seed);
     for i in 0..(height*width) {
         res.push((rng.next_u64() & 0xFF) as u8);
     }
     res
 }
 
-fn generate_random_matrix_small(height: usize, width: usize) -> Vec<u8> {
+fn generate_random_matrix_small(height: usize, width: usize, seed: u64) -> Vec<u8> {
     let mut res: Vec<u8> = Vec::new();
-    let mut rng = SmallRng::seed_from_u64(1234567890);
+    let mut rng = SmallRng::seed_from_u64(seed);
     for i in 0..(height*width) {
         res.push((rng.next_u64() & 0x1) as u8);
     }
     res
 }
 
-fn run_random_layer(dla: &mut Dla, in_w: usize, in_h: usize, k_w: usize, k_h: usize) -> Vec<u8> {
+fn run_random_layer(dla: &mut Dla, in_w: usize, in_h: usize, k_w: usize, k_h: usize, seed: u64) -> Vec<u8> {
     // Generate input and kernel
     dla.init_layer();
 
-    let mut input = generate_random_matrix(in_w, in_h);
-    let mut kernel = generate_random_matrix_small(k_w, k_h);
+    let mut input = generate_random_matrix(in_w, in_h, seed);
+    let mut kernel = generate_random_matrix_small(k_w, k_h, seed*2);
 
     dla.set_kernel_size(1, k_w, k_h);
     dla.set_input_size(1, in_w, in_h);
@@ -102,11 +102,11 @@ fn main() -> ! {
     dla.set_pp_clip(8);
 
     for x in 0..2 {
-        let res = run_random_layer(&mut dla, 8,8,2,2);
+        let res = run_random_layer(&mut dla, 8,8,2,2, x*x);
         for x in res {
             sprint!("{:?} ", x);
         }
+        sprint!("\n\n");
     }
-
     loop {}
 }

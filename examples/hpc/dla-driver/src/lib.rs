@@ -121,7 +121,7 @@ impl Dla {
             simd_mode: SimdBitMode::EightBits,
             input_bank: MemoryBank::BANK0,
             kernel_bank: MemoryBank::BANK8,
-            output_addr: MEMORY_BANK_12_OFFSET,
+            output_addr: MEMORY_BANK_12_OFFSET + MEMORY_BANK_BASE_ADDR,
         };
     }
     pub fn write_str(&self, s: &str) {
@@ -190,9 +190,9 @@ impl Dla {
     }
 
     pub fn read_output(&self, len: usize) -> Vec<u8> {
-        // On VP we default for results to be located in Bank 12 onwards
+        // VP only support reading from banks
         if cfg!(feature = "vp") {
-            return self.read_data_bank(self.output_addr, len);
+            return self.read_data_bank(self.output_addr - MEMORY_BANK_BASE_ADDR, len);
         }
         self.read_data_bank(MEMORY_BANK_0_OFFSET, len)
     }
@@ -583,7 +583,7 @@ impl Dla {
 
         self.set_input_data_bank(MemoryBank::BANK0);
         self.set_kernel_data_bank(MemoryBank::BANK8);
-        self.set_kernel_output_addr(self.output_addr);
+        self.set_kernel_output_addr(MEMORY_BANK_12_OFFSET + MEMORY_BANK_BASE_ADDR);
         self.set_simd_select(SimdBitMode::EightBits);
 
         self.enable_pp(true);
