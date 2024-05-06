@@ -1,5 +1,3 @@
-import os
-import re
 import math
 import random
 
@@ -133,6 +131,10 @@ MAC_SAT_MAX_OFFSET = 0
 MAC_SAT_MIN = 0x58
 MAC_SAT_MIN_OFFSET = 0
 
+# PP_AXI_WRITE
+PP_AXI_WRITE = 0x5C
+PP_AXI_WRITE_ADDRESS_OFFSET = 0
+
 # PP_AXI_READ
 PP_AXI_READ = 0x60
 PP_AXI_READ_ADDRESS_OFFSET = 0
@@ -181,7 +183,6 @@ def flatten_tensor(data):
 
 def flat_to_CWH(data, channels, width, height):
     """Takes in 1d array of length C*W*H and reshapes it to tensor of format CWH"""
-    print(len(data), channels, width, height)
     assert channels * width * height == len(data)
     output = [[[0 for _ in range(height)] for _ in range(width)] for _ in range(channels)]
     i = 0
@@ -213,6 +214,9 @@ def separate_channels(data):
         channel_matrices.append(channel_matrix)
     return channel_matrices
 
+def bit_not(n, numbits=32):
+    return (1 << numbits) - 1 - n
+
 def print_matrix(A, name=""):
     """Print matrix"""
     print(name)
@@ -221,6 +225,9 @@ def print_matrix(A, name=""):
         for y in range(len(A[0])):
             row = row + str(A[x][y]) + " "
         print(row)
+
+def memory_bank_to_offset(bank):
+    return bank * MEMORY_BANK_SIZE
 
 def execute_for_all_elements(f, tensor, *args):
     """Execute function that takes a single matrix element for all element in a matrix.
@@ -238,7 +245,7 @@ def execute_for_all_elements(f, tensor, *args):
     else:  # Base case: tensor is not a list, apply f
         return f(tensor, *args)
 
-def clip(value, clip, no_overflow=False):
+def clip(value, clip, no_overflow=False, unsigned=False):
     """Value to possibly clip is clipped to max of bit length set by clip
     params:
     value = value to clip
@@ -248,15 +255,22 @@ def clip(value, clip, no_overflow=False):
     a = value resulting from the clipping
     b = amount of owerflow due to clipping, 0 if no clipping
     """
-    mask = sum(range(0,clip + 1))
-    if value > mask:
-        if no_overflow:
-            return mask
-        return (mask, value - mask)
+    mask = pow(2, clip)-1 if unsigned else pow(2, clip) // 2 # 256 if unsigned, 128 if signed
+
+    if unsigned:
+        if value > mask:
+            return mask if no_overflow else (mask, value - mask)
+        elif value < 0:
+            return 0 if no_overflow else (0, value)
+
     else:
-        if no_overflow:
-            value
-        return (value, 0)
+        if value > mask:
+                return mask-1 if no_overflow else (mask-1, value - mask)
+        elif value < -mask:
+                return -mask if no_overflow else (-mask, value + mask)
+
+    return value if no_overflow else (value, 0)
+
 
 def rounding(value):
     """Round given value
@@ -276,21 +290,12 @@ class MemoryBank:
     def __init__(self, size):
         self.size = size
         self.clear_bank()
-        self.idx = 0 # Data pointer
 
     def clear_bank(self):
         """Reset all values in the bank to 0."""
         self.mem = [0 for x in range(self.size)] # Initialize bank
 
-    def is_bank_full(self):
-        """Check if bank is full
-
-        Returns:
-        is_full -- Bool True if full. False if not full.
-        """
-        return self.size == self.idx
-
-    def write(self, data):
+    def write_buffer(self, offset, data):
         """Write data to bank. Starting from first free address.
 
         Params:
@@ -300,30 +305,26 @@ class MemoryBank:
         unwritten -- [Int] data that didn't fit to bank
         """
         for i in range(len(data)):
-            if self.is_bank_full():
-                # Memory has been filled
+            if offset + i > self.size:
                 return data[i:]
-            byte = data[i]
-            self.mem[self.idx] = byte
-            self.idx = self.idx + 1 # Increment for pointer
-        return [] # All the data fitted to the bank
+            self.mem[offset + i] = data[i] & 0xFF # Enforce 8bit width
+        return []
 
-    def read(self):
-        """Read all the values written to the bank. Stop at first free address.
+    def write(self, offset, data):
+        """Write data to bank. Starting from first free address.
 
-        Return:
-        data -- [Int] all data in the bank
+        Params:
+        data -- [Int] data to write to bank
+
+        Returns:
+        unwritten -- [Int] data that didn't fit to bank
         """
-        return self.mem[0:self.idx] # Read until write pointer, rest is padded
+        assert(offset < self.size)
+        self.mem[offset] = data & 0xFF # Enforce 8bit width
 
-    def available_memory(self):
-        """Get the amount of free space left in the bank.
 
-        Return:
-        free -- Int Free space in bank
-        """
-        return self.size - self.idx
-
+    def read(self, offset):
+        return self.mem[offset]
 
 class Dla:
     """Implements control flow and MMIO registers of DLA. This should be the top level component."""
@@ -357,7 +358,7 @@ class Dla:
         """
         return self.mem[offset]
 
-    def set_register(self, register, offset, width, value):
+    def set_register(self, register, offset, width, value, preserve_register=True):
         """Set value of specific registers offset
 
         Params:
@@ -366,11 +367,12 @@ class Dla:
         width -- width of the area in memory modified starting from offset
         value -- value to be written to register
         """
-
-        start_reg = register - (register % 4)
-        full_reg = self.mem[register:register+4]
-        full_reg = full_reg[0] +  (full_reg[1] << 8)  + (full_reg[2] << 16) + (full_reg[3] << 24)
-        zeroing_mask = ~(((width*width)-1) << offset)
+        if preserve_register:
+            full_reg = self.mem[register:register+4]
+            full_reg = full_reg[0] +  (full_reg[1] << 8)  + (full_reg[2] << 16) + (full_reg[3] << 24)
+        else:
+            full_reg = 0
+        zeroing_mask = bit_not((pow(2,width)-1) << offset)
 
         full_reg = full_reg & zeroing_mask # Zero region to be written
         full_reg = full_reg | (value << offset)
@@ -394,7 +396,7 @@ class Dla:
         full_reg = self.mem[register:register+4]
         full_reg = full_reg[0] +  (full_reg[1] << 8)  + (full_reg[2] << 16) + (full_reg[3] << 24)
         value = full_reg >> offset
-        mask = sum(range(0,width+1))
+        mask = pow(2,width) - 1
         return value & mask
 
     def get_registers(self):
@@ -411,13 +413,27 @@ class Dla:
         Params:
         register: integer representing register to print
         """
-        print("{0:x}: {1}".format(register, bin(self.mem[register])))
+        print("{0:x}: {1:08b}|{2:08b}|{3:08b}|{4:08b}".format(register,
+                                                              self.mem[register + 3],
+                                                              self.mem[register + 2],
+                                                              self.mem[register + 1],
+                                                              self.mem[register]))
+
+    def get_simd_mask(self):
+        simd = self.get_register(MAC_CTRL, SIMD_SELECT_OFFSET, 2)
+        if simd == 0:
+            return 0xFF
+        elif simd == 1:
+            return 0xF
+        elif simd == 2:
+            return 0x3
+        else:
+            return 0xFF
 
     def print_registers(self):
         """Print all registers"""
-        for (i, reg) in enumerate(self.get_registers()):
-            #print("{:x}: {:b}".format(i, reg))
-            print("{}: {}".format(hex(i), hex(reg)))
+        for x in range(0,HANDSHAKE+4, 4):
+            self.print_register(x)
         return
 
     def get_memory_banks(self):
@@ -435,68 +451,101 @@ class Dla:
         request -- Renode request object
         """
         target_bank = (request.absolute - MEMORY_BANK_ADDR) // MEMORY_BANK_SIZE
-        self.banks[target_bank].write([request.value])
+        offset = request.offset - memory_bank_to_offset(target_bank)
+        for byte in range(request.length):
+            value = (request.value >> (byte * 8)) & 0xFF
+            self.banks[target_bank].write(offset + byte, value)
+
+    def write_bank(self, bank, data):
+        self.banks[bank].write_buffer(0, data)
+
+    def handle_bank_read(self, request):
+        # NOTE: Renode can't handle over 32bit reads so 128-bit alignment isn't strictly enforced
+        target_bank = (request.absolute - MEMORY_BANK_ADDR) // MEMORY_BANK_SIZE
+        offset = request.absolute - MEMORY_BANK_ADDR - memory_bank_to_offset(target_bank)
+        value = 0
+        for i in range(0,4):
+            value += (self.banks[target_bank].read(offset + i)) << (i * 8)
+        return value & 0xFFFFFFFF # Clip to 32-bits
 
     def set_weight_data(self, data):
         """Sets weight data to memory banks
 
         Params:
         data -- [Int] Weight data in CHW format
-
-        Returns:
-        unwritten -- [Int] All the data that didn't fit into memory banks. Empty if all fitted.
         """
 
         bank_idx = self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_A_OFFSET, 4)
-        i = 0
-        while i < len(data):
-            bank = self.banks[bank_idx]
-            if bank.is_bank_full(): # Move to next bank
+        bank = self.banks[bank_idx]
+
+        bytes_written = 0
+        offset = 0
+        while bytes_written < len(data):
+            if offset > bank.size:
                 bank_idx = bank_idx + 1
-                # Check that next bank isn't for input data
-                if bank_idx == self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_B_OFFSET, 4) or bank_idx > MEMORY_BANK_SIZE:
-                    break;
+                assert(bank_idx < len(self.banks))
+                bank = self.banks[bank_idx]
+                offset = 0
+            bank.write(offset, data[bytes_written])
+            bytes_written += 1
+            offset += 1
+
+    def get_output_addr(self):
+        """Get addr for outputting data set in PP_AXI_WRITE register
+
+        Returns:
+        addr -- Int addr for output
+        """
+        return self.get_register(PP_AXI_WRITE, PP_AXI_WRITE_ADDRESS_OFFSET, 32) & 0xFFFFFFFF
+
+    def write_output(self, data):
+        """Writes output to arbitrary memory address
+
+        Params:
+        data -- [Int] data to write
+        """
+        addr = self.get_output_addr()
+        print("addr:", addr)
+        # If addr is bank
+        if MEMORY_BANK_ADDR <= addr and addr < MEMORY_BANK_ADDR + (NO_MEMORY_BANKS * MEMORY_BANK_SIZE):
+            bank_idx = (addr - MEMORY_BANK_ADDR) // MEMORY_BANK_SIZE
+            bank = self.banks[bank_idx]
+
+            bytes_written = 0
+            offset = 0
+            while bytes_written < len(data):
+                if offset > bank.size:
+                    bank_idx = bank_idx + 1
+                    assert(bank_idx < len(self.banks))
+                    bank = self.banks[bank_idx]
+                    offset = 0
+                bank.write(offset, data[bytes_written])
+                bytes_written += 1
+                offset += 1
             else:
-                if i+bank.available_memory() > len(data):
-                    slice = data[i:]
-                    i = len(data)
-                else:
-                    slice = data[i:i+bank.available_memory()]
-                    i = i + bank.available_memory()
-                bank.write(slice)
-        if i != len(data):
-            return data[i:]
-        return []
+                print("Output written outside memory region")
+
 
     def set_input_data(self, data):
         """Sets input data to memory banks
 
         Params:
         data -- [Int] Input data in CHW format
-
-        Returns:
-        unwritten -- [Int] All the data that didn't fit into memory banks. Empty if all fitted.
         """
         bank_idx = self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_B_OFFSET, 4)
-        i = 0
-        while i < len(data):
-            bank = self.banks[bank_idx]
-            if bank.is_bank_full(): # Move to next bank
+        bank = self.banks[bank_idx]
+
+        bytes_written = 0
+        offset = 0
+        while bytes_written < len(data):
+            if offset > bank.size:
                 bank_idx = bank_idx + 1
-                # Check that next bank isn't for weight data
-                if bank_idx == self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_A_OFFSET, 4) or bank_idx > MEMORY_BANK_SIZE:
-                    break;
-            else:
-                if i+bank.available_memory() > len(data):
-                    slice = data[i:]
-                    i = len(data)
-                else:
-                    slice = data[i:i+bank.available_memory()]
-                    i = i + bank.available_memory()
-                bank.write(slice)
-        if i != len(data):
-            return data[i:]
-        return []
+                assert(bank_idx < len(self.banks))
+                bank = self.banks[bank_idx]
+                offset = 0
+            bank.write(offset, data[bytes_written])
+            bytes_written += 1
+            offset += 1
 
     def get_weight_data(self):
        """Get all kernel/weight data from memory banks in CWH format
@@ -513,22 +562,20 @@ class Dla:
        bank_idx = self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_A_OFFSET, 4)
        bank = self.banks[bank_idx]
 
-       # Check if multiples banks are occupied
-       data = bank.read()
-       while bank.is_bank_full():
-           bank_idx = bank_idx + 1
-           bank = self.banks[bank_idx]
-
-           # Check that next bank isn't for input data
-           if bank_idx == self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_B_OFFSET, 4) or bank_idx > MEMORY_BANK_SIZE:
-               break;
-
-           # If new bank is valid, read
-           data = data + bank.read()
-
+       data = []
+       offset = 0;
+       while len(data) < (channels * width * height):
+           # Move to next bank
+           if offset > bank.size:
+               bank_idx = bank_idx + 1
+               bank = self.banks[bank_idx]
+               offset = 0
+           data.append(bank.read(offset))
+           offset += 1
        return channels, width, height, data
 
     def get_input_data(self):
+        # TODO: Only read as much data as is needed to fill input layer (C* W * H)
         """Get all input data from memory banks in CWH format
 
         Returns:
@@ -543,24 +590,23 @@ class Dla:
         bank_idx = self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_B_OFFSET, 4)
         bank = self.banks[bank_idx]
 
-        # Check if multiple banks are occupied
-        data = bank.read()
-        while bank.is_bank_full():
-            bank_idx = bank_idx + 1
-            bank = self.banks[bank_idx]
-
-            # check that next bank isn't for weight data
-            if bank_idx == self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_A_OFFSET, 4) or bank_idx > MEMORY_BANK_SIZE:
-                break;
-
-            # If new bank is valid, read
-            data = data + bank.read()
-
+        data = []
+        offset = 0;
+        while len(data) < (channels * width * height):
+            # Move to next bank
+            if offset > bank.size:
+                bank_idx = bank_idx + 1
+                bank = self.banks[bank_idx]
+                offset = 0
+            data.append(bank.read(offset))
+            offset += 1
         return channels, width, height, data
 
     # TODO: Finish this when external memory is figured out
     def get_bias(self):
        """Get bias values from external memory"""
+       # TODO: Implement this
+       return 1
        bias_address = self.get_register(PP_AXI_READ, PP_AXI_READ_ADDRESS_OFFSET, 32)
        #data = self.external[bias_address]
        return 0
@@ -584,15 +630,23 @@ class Dla:
 
     def handle_handshake(self):
         """Resets handshake registers correctly after succesful calculation"""
-        if self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1) == 1 and self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1) == 0 :
-           self.set_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1, 0)
-           self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 0)
-        if self.get_register(HANDSHAKE, HANDSHAKE_MAC_VALID_OFFSET, 1) == 1 and self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1) == 0 :
-           self.set_register(HANDSHAKE, HANDSHAKE_MAC_VALID_OFFSET, 1, 0)
-           self.set_register(STATUS_ADDR, MAC_DONE_OFFSET, 1, 0)
-        if self.get_register(HANDSHAKE, HANDSHAKE_ACTIVE_VALID_OFFSET, 1) == 1 and self.get_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1) == 0 :
-           self.set_register(HANDSHAKE, HANDSHAKE_ACTIVE_VALID_OFFSET, 1, 0)
-           self.set_register(STATUS_ADDR, PP_DONE_OFFSET, 1, 0)
+        # Buffer
+        if self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1) == 0:
+            if self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1) == 1:
+                self.set_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1, 0)
+                self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 0x0)
+
+        # Mac
+        if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1) == 0:
+            if self.get_register(HANDSHAKE, HANDSHAKE_MAC_VALID_OFFSET, 1) == 1:
+                self.set_register(HANDSHAKE, HANDSHAKE_MAC_VALID_OFFSET, 1, 0)
+                self.set_register(STATUS_ADDR, MAC_DONE_OFFSET, 1, 0x0)
+
+        # Post Processor
+        if self.get_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1) == 0:
+            if self.get_register(HANDSHAKE, HANDSHAKE_ACTIVE_VALID_OFFSET, 1) == 1:
+                self.set_register(HANDSHAKE, HANDSHAKE_ACTIVE_VALID_OFFSET, 1, 0)
+                self.set_register(STATUS_ADDR, PP_DONE_OFFSET, 1, 0x0)
 
     def round(self, values):
         """Round values if register is set"""
@@ -604,18 +658,34 @@ class Dla:
         """Clip pp values if register is set"""
         clip_amount = self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5)
         if clip_amount > 0:
-            return execute_for_all_elements(clip, values, clip_amount, True)
+            return execute_for_all_elements(clip, values, clip_amount, True, True)
         return values
 
     def mac_clip(self, values):
         """Clip mac values if register is set"""
         clip_amount = self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5)
         if clip_amount > 0:
-            return execute_for_all_elements(clip, values, clip_amount, True)
+            return execute_for_all_elements(clip, values, clip_amount, True, True)
         return values
 
     def process(self):
         """Runs next tick of the DLA state"""
+
+        # After completion handle handshakes
+        self.handle_handshake()
+
+        # Don't move if done hasn't been acknowledged VP only
+        if self.get_register(STATUS_ADDR, BUF_DONE_OFFSET, 1) or \
+                self.get_register(STATUS_ADDR, MAC_DONE_OFFSET, 1) or \
+                self.get_register(STATUS_ADDR, PP_DONE_OFFSET, 1):
+            print("Status not cleared")
+            return
+
+        # Check if buffer is enabled
+        if not self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1):
+            print("Buffer not enabled")
+            return
+
         # Check if data is ready
         if not self.get_register(BUF_CTRL, READ_A_VALID_OFFSET, 1) or not self.get_register(BUF_CTRL, READ_B_VALID_OFFSET, 1):
             return
@@ -628,59 +698,49 @@ class Dla:
         kernel_data = flat_to_CWH(kernel_data, kernel_ch, kernel_w, kernel_h)
 
         # Convonlution
-        # Read convolution paramters
         padding, dilation, stride = self.get_conv_params()
-        # Execute op in MAC array
-        # Once for each channel
-        # TODO: This might be not correct, make sure S_CHANNELS work like this
-        res = []
-        for channel in range(input_ch):
-            for k_channel in range(kernel_ch):
-                res.append(self.mac.conv2d_native(input_data[channel], kernel_data[k_channel], padding, dilation, stride))
 
-        # Clip results
-        res = dla.mac_clip(res)
+        if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1):
+            print("Mac not enabled")
+            # TODO: This might be not correct, make sure S_CHANNELS work like this
+            res = []
+            for channel in range(input_ch):
+                for k_channel in range(kernel_ch):
+                    res.append(self.mac.conv2d_native(input_data[channel], kernel_data[k_channel], padding, dilation, stride))
 
-        print("Results:")
-        for r in res:
-            print_matrix(r)
+            # Clip results
+            res = dla.mac_clip(res)
+            for i, r in enumerate(res):
+                print_matrix(r, "{} MAC:".format(i))
 
         # TODO: Post process
-        # Check if PP is used
-        if self.get_register(PP_CTRL, PP_SELECT_OFFSET, 1):
+        if self.get_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1):
             # TODO: Bias
-            if True:
-                #bias_amount = self.get_bias()
-                bias_amount = 1
+            if self.get_register(HANDSHAKE, HANDSHAKE_BIAS_ENABLE_OFFSET, 1):
+                bias_amount = self.get_bias()
                 res = execute_for_all_elements(self.mac.bias_native, res, bias_amount)
-                print("bias:")
-                for r in res:
-                    print_matrix(r)
+                for (i, r) in enumerate(res):
+                    print_matrix(r, "{} BIAS:".format(i))
 
             # ReLU (active low)
-            if self.get_register(PP_CTRL, ACTIVE_MODE_OFFSET, 2) == 0:
+            if self.get_register(HANDSHAKE, HANDSHAKE_ACTIVE_ENABLE_OFFSET, 1):
                 res = execute_for_all_elements(self.mac.relu_native, res)
                 res = dla.pp_clip(res)
                 res = dla.round(res)
-                print("ReLU:")
-                for r in res:
-                    print_matrix(r)
+                for (i, r) in enumerate(res):
+                    print_matrix(r, "{} ReLU:".format(i))
 
-            # TODO: Pool
-
-        # TODO: Write result somewhere
+        # After calculating one layer the device needs new configuration
+        self.write_output(flatten_tensor(res))
 
         # Set Done status
-        self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 0x1)
-        self.set_register(STATUS_ADDR, MAC_DONE_OFFSET, 1, 0x1)
-        self.set_register(STATUS_ADDR, PP_DONE_OFFSET, 1, 0x1)
+        self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 1)
+        self.set_register(STATUS_ADDR, MAC_DONE_OFFSET, 1, 1)
+        self.set_register(STATUS_ADDR, PP_DONE_OFFSET, 1, 1)
 
-        # TODO: Wait for validation
-
-        # After validation set done bits to 0
-        self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 0x0)
-        self.set_register(STATUS_ADDR, MAC_DONE_OFFSET, 1, 0x0)
-        self.set_register(STATUS_ADDR, PP_DONE_OFFSET, 1, 0x0)
+        # Set data not ready
+        self.set_register(BUF_CTRL, READ_A_VALID_OFFSET, 1, 0x0)
+        self.set_register(BUF_CTRL, READ_B_VALID_OFFSET, 1, 0x0)
 
 
 class DlaMac:
@@ -896,19 +956,21 @@ def write(request, dla):
     self.NoisyLog("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
     print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
     if int(request.absolute) >= DLA_ADDR:
-        dla.set_register(request.offset, 0, 32, request.value)
+        dla.set_register(request.offset, 0, 32, request.value, preserve_register=False)
     else:
-        # TODO: implement bank writing
         dla.handle_bank_write(request)
     dla.process()
 
 def read(request, dla):
     self.NoisyLog("Reading request: %s at 0x%x, value 0x%x" % (str(request.type), request.absolute, request.value))
     print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
+
     if int(request.absolute) >= DLA_ADDR:
         request.value = dla.get_register(request.offset, 0, 32)
     else:
-        request.value = 0 # TODO: Add bank reading here
+        tmp = dla.handle_bank_read(request)
+        print(tmp)
+        request.value = tmp
 
 
 if __name__ == "__main__":
@@ -933,10 +995,13 @@ if __name__ == "__main__":
     dla.set_register(BUF_DATA_BANK, BUF_DATA_BANK_B_OFFSET, 4, 8)
 
     # Generate 256 x 256 image
-    A = [[[random.randint(-1,1) for _ in range(A_ch) ] for _ in range(A_h)] for _ in range(A_w)]
-    B = [[[random.randint(-1, 1) for _ in range(B_ch) ] for _ in range(B_h)] for _ in range(B_w)]
+    A = [[[random.randint(-127,127) for _ in range(A_ch) ] for _ in range(A_h)] for _ in range(A_w)]
+    B = [[[random.randint(-127, 127) for _ in range(B_ch) ] for _ in range(B_h)] for _ in range(B_w)]
     A = reshape_to_cwh(A) # HWC to CWH
     B = reshape_to_cwh(B)
+
+    print_matrix(A[0], "A0:")
+    print_matrix(B[0], "B0:")
 
     A = separate_channels(A) # CHW to 2D
     B = separate_channels(B)
@@ -959,6 +1024,11 @@ if __name__ == "__main__":
     # Enable PP
     dla.set_register(PP_CTRL, PP_SELECT_OFFSET, 1, 1)
     dla.set_register(PP_CTRL, ACTIVE_MODE_OFFSET, 2, 0)
+
+    ## Mac clip
+    dla.set_register(MAC_CTRL, MAC_CLIP_OFFSET, 5, 8)
+    # PP clip
+    dla.set_register(PP_CTRL, PP_CLIP_OFFSET, 5, 8)
 
     # Input data is ready
     dla.set_register(BUF_CTRL, READ_A_VALID_OFFSET, 1, 0x1) # All weight data ready
