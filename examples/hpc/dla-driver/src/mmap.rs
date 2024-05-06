@@ -1,22 +1,23 @@
 pub(crate) const UART0_ADDR: usize = 0xFFF00000;
-pub(crate) const DLA0_ADDR: usize = 0xFF700000;
-pub(crate) const MEMORY_BANK_BASE_ADDR: usize = 0x70000000;
-pub(crate) const MEMORY_BANK_0_OFFSET: usize = 0x00000;
-pub(crate) const MEMORY_BANK_1_OFFSET: usize = 0x08000;
-pub(crate) const MEMORY_BANK_2_OFFSET: usize = 0x10000;
-pub(crate) const MEMORY_BANK_3_OFFSET: usize = 0x18000;
-pub(crate) const MEMORY_BANK_4_OFFSET: usize = 0x20000;
-pub(crate) const MEMORY_BANK_5_OFFSET: usize = 0x28000;
-pub(crate) const MEMORY_BANK_6_OFFSET: usize = 0x30000;
-pub(crate) const MEMORY_BANK_7_OFFSET: usize = 0x38000;
-pub(crate) const MEMORY_BANK_8_OFFSET: usize = 0x40000;
-pub(crate) const MEMORY_BANK_9_OFFSET: usize = 0x48000;
-pub(crate) const MEMORY_BANK_10_OFFSET: usize = 0x50000;
-pub(crate) const MEMORY_BANK_11_OFFSET: usize = 0x58000;
-pub(crate) const MEMORY_BANK_12_OFFSET: usize = 0x60000;
-pub(crate) const MEMORY_BANK_13_OFFSET: usize = 0x68000;
-pub(crate) const MEMORY_BANK_14_OFFSET: usize = 0x70000;
-pub(crate) const MEMORY_BANK_15_OFFSET: usize = 0x78000;
+pub const DLA0_ADDR: usize = 0xFF700000;
+pub const MEMORY_BANK_BASE_ADDR: usize = 0x70000000;
+pub const MEMORY_BANK_SIZE: usize = 0x8000;
+pub const MEMORY_BANK_0_OFFSET: usize = 0x00000;
+pub const MEMORY_BANK_1_OFFSET: usize = 0x08000;
+pub const MEMORY_BANK_2_OFFSET: usize = 0x10000;
+pub const MEMORY_BANK_3_OFFSET: usize = 0x18000;
+pub const MEMORY_BANK_4_OFFSET: usize = 0x20000;
+pub const MEMORY_BANK_5_OFFSET: usize = 0x28000;
+pub const MEMORY_BANK_6_OFFSET: usize = 0x30000;
+pub const MEMORY_BANK_7_OFFSET: usize = 0x38000;
+pub const MEMORY_BANK_8_OFFSET: usize = 0x40000;
+pub const MEMORY_BANK_9_OFFSET: usize = 0x48000;
+pub const MEMORY_BANK_10_OFFSET: usize = 0x50000;
+pub const MEMORY_BANK_11_OFFSET: usize = 0x58000;
+pub const MEMORY_BANK_12_OFFSET: usize = 0x60000;
+pub const MEMORY_BANK_13_OFFSET: usize = 0x68000;
+pub const MEMORY_BANK_14_OFFSET: usize = 0x70000;
+pub const MEMORY_BANK_15_OFFSET: usize = 0x78000;
 
 pub(crate) const DLA_BASE_ADDR: usize = 0x1000;
 
@@ -71,17 +72,17 @@ pub(crate) const DLA_CTRL_VLD_BITMASK_UNUSED: usize = 0b10000000000;
 pub(crate) const DLA_PP_CLIP_BITMASK: usize = 0b111110000000000000000;
 
 pub(crate) const DLA_BUF_INPUT: usize = 0x14;
-pub(crate) const DLA_BUF_INPUT_WIDTH_OFFSET: usize = 0x0;
-pub(crate) const DLA_BUF_INPUT_HEIGHT_OFFSET: usize = 0x9;
-pub(crate) const DLA_BUF_INPUT_CHANNELS_OFFSET: usize = 0x18;
+pub(crate) const DLA_BUF_INPUT_WIDTH_OFFSET: usize = 0;
+pub(crate) const DLA_BUF_INPUT_HEIGHT_OFFSET: usize = 9;
+pub(crate) const DLA_BUF_INPUT_CHANNELS_OFFSET: usize = 18;
 pub(crate) const DLA_BUF_INPUT_WIDTH_BITMASK: usize = 0b111111111;
 pub(crate) const DLA_BUF_INPUT_HEIGHT_BITMASK: usize = 0b111111111000000000;
 pub(crate) const DLA_BUF_INPUT_CHANNELS_BITMASK: usize = 0b111111111111000000000000000000;
 
 pub(crate) const DLA_BUF_KERNEL_0: usize = 0x18;
-pub(crate) const DLA_BUF_KERNEL_0_WIDTH_OFFSET: usize = 0x0;
-pub(crate) const DLA_BUF_KERNEL_0_HEIGHT_OFFSET: usize = 0x4;
-pub(crate) const DLA_BUF_KERNEL_0_S_CHANNELS_OFFSET: usize = 0x8;
+pub(crate) const DLA_BUF_KERNEL_0_WIDTH_OFFSET: usize = 0;
+pub(crate) const DLA_BUF_KERNEL_0_HEIGHT_OFFSET: usize = 4;
+pub(crate) const DLA_BUF_KERNEL_0_S_CHANNELS_OFFSET: usize = 8;
 pub(crate) const DLA_BUF_KERNEL_0_WIDTH_BITMASK: usize = 0b1111;
 pub(crate) const DLA_BUF_KERNEL_0_HEIGHT_BITMASK: usize = 0b11110000;
 pub(crate) const DLA_BUF_KERNEL_0_S_CHANNELS_BITMASK: usize = 0b11111111111100000000;
@@ -116,9 +117,9 @@ pub(crate) const DLA_PP_INPUT_HEIGHT_BITMASK: usize = 0b111111111000000000000000
 
 pub(crate) const DLA_BUF_DATA_BANK: usize = 0x2C;
 pub(crate) const DLA_BUF_DATA_BANK_A_OFFSET: usize = 0x0;
-pub(crate) const DLA_BUF_DATA_BANK_B_OFFSET: usize = 0x10;
+pub(crate) const DLA_BUF_DATA_BANK_B_OFFSET: usize = 16;
 pub(crate) const DLA_BUF_DATA_BANK_A_BITMASK: usize = 0b1111;
-pub(crate) const DLA_BUF_DATA_BANK_B_BITMASK: usize = 0b11110000;
+pub(crate) const DLA_BUF_DATA_BANK_B_BITMASK: usize = 0b11110000000000000000;
 
 pub(crate) const DLA_BUF_DATA_WAIT_A: usize = 0x30;
 pub(crate) const DLA_BUF_DATA_WAIT_A_OFFSET: usize = 0x0;
@@ -167,6 +168,10 @@ pub(crate) const DLA_MAC_SAT_MAX_BITMASK: usize = 0xFFFFFFFF;
 pub(crate) const DLA_MAC_SAT_MIN: usize = 0x58;
 pub(crate) const DLA_MAC_SAT_MIN_OFFSET: usize = 0x0;
 pub(crate) const DLA_MAC_SAT_MIN_BITMASK: usize = 0xFFFFFFFF;
+
+pub(crate) const DLA_PP_AXI_WRITE: usize = 0x5c;
+pub(crate) const DLA_PP_AXI_WRITE_ADDRESS_OFFSET: usize = 0x00;
+pub(crate) const DLA_PP_AXI_WRITE_ADDRESS_BITMASK: usize = 0xFFFFFFFF;
 
 pub(crate) const DLA_PP_AXI_READ: usize = 0x60;
 pub(crate) const DLA_PP_AXI_READ_ADDRESS_OFFSET: usize = 0x00;
