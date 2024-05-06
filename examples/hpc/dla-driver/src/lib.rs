@@ -45,23 +45,23 @@ pub enum MemoryBank {
 impl MemoryBank {
     fn addr(&self) -> usize {
         match self {
-                MemoryBank::BANK0 => MEMORY_BANK_0_OFFSET,
-                MemoryBank::BANK1 => MEMORY_BANK_1_OFFSET,
-                MemoryBank::BANK2 => MEMORY_BANK_2_OFFSET,
-                MemoryBank::BANK3 => MEMORY_BANK_3_OFFSET,
-                MemoryBank::BANK4 => MEMORY_BANK_4_OFFSET,
-                MemoryBank::BANK5 => MEMORY_BANK_5_OFFSET,
-                MemoryBank::BANK6 => MEMORY_BANK_6_OFFSET,
-                MemoryBank::BANK7 => MEMORY_BANK_7_OFFSET,
-                MemoryBank::BANK8 => MEMORY_BANK_8_OFFSET,
-                MemoryBank::BANK9 => MEMORY_BANK_9_OFFSET,
-                MemoryBank::BANK10 => MEMORY_BANK_10_OFFSET,
-                MemoryBank::BANK11 => MEMORY_BANK_11_OFFSET,
-                MemoryBank::BANK12 => MEMORY_BANK_12_OFFSET,
-                MemoryBank::BANK13 => MEMORY_BANK_13_OFFSET,
-                MemoryBank::BANK14 => MEMORY_BANK_14_OFFSET,
-                MemoryBank::BANK15 => MEMORY_BANK_15_OFFSET,
-                _ => 0,
+            MemoryBank::BANK0 => MEMORY_BANK_0_OFFSET,
+            MemoryBank::BANK1 => MEMORY_BANK_1_OFFSET,
+            MemoryBank::BANK2 => MEMORY_BANK_2_OFFSET,
+            MemoryBank::BANK3 => MEMORY_BANK_3_OFFSET,
+            MemoryBank::BANK4 => MEMORY_BANK_4_OFFSET,
+            MemoryBank::BANK5 => MEMORY_BANK_5_OFFSET,
+            MemoryBank::BANK6 => MEMORY_BANK_6_OFFSET,
+            MemoryBank::BANK7 => MEMORY_BANK_7_OFFSET,
+            MemoryBank::BANK8 => MEMORY_BANK_8_OFFSET,
+            MemoryBank::BANK9 => MEMORY_BANK_9_OFFSET,
+            MemoryBank::BANK10 => MEMORY_BANK_10_OFFSET,
+            MemoryBank::BANK11 => MEMORY_BANK_11_OFFSET,
+            MemoryBank::BANK12 => MEMORY_BANK_12_OFFSET,
+            MemoryBank::BANK13 => MEMORY_BANK_13_OFFSET,
+            MemoryBank::BANK14 => MEMORY_BANK_14_OFFSET,
+            MemoryBank::BANK15 => MEMORY_BANK_15_OFFSET,
+            _ => 0,
         }
     }
     fn value(&self) -> usize {
@@ -85,7 +85,6 @@ impl MemoryBank {
             _ => 0,
         }
     }
-
 }
 
 #[derive(Copy, Clone)]
