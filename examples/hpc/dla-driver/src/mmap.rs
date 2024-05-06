@@ -1,6 +1,7 @@
 pub(crate) const UART0_ADDR: usize = 0xFFF00000;
 pub const DLA0_ADDR: usize = 0xFF700000;
 pub const MEMORY_BANK_BASE_ADDR: usize = 0x70000000;
+pub const MEMORY_BANK_SIZE: usize = 0x8000;
 pub const MEMORY_BANK_0_OFFSET: usize = 0x00000;
 pub const MEMORY_BANK_1_OFFSET: usize = 0x08000;
 pub const MEMORY_BANK_2_OFFSET: usize = 0x10000;
@@ -116,9 +117,9 @@ pub(crate) const DLA_PP_INPUT_HEIGHT_BITMASK: usize = 0b111111111000000000000000
 
 pub(crate) const DLA_BUF_DATA_BANK: usize = 0x2C;
 pub(crate) const DLA_BUF_DATA_BANK_A_OFFSET: usize = 0x0;
-pub(crate) const DLA_BUF_DATA_BANK_B_OFFSET: usize = 0x10;
+pub(crate) const DLA_BUF_DATA_BANK_B_OFFSET: usize = 16;
 pub(crate) const DLA_BUF_DATA_BANK_A_BITMASK: usize = 0b1111;
-pub(crate) const DLA_BUF_DATA_BANK_B_BITMASK: usize = 0b11110000;
+pub(crate) const DLA_BUF_DATA_BANK_B_BITMASK: usize = 0b11110000000000000000;
 
 pub(crate) const DLA_BUF_DATA_WAIT_A: usize = 0x30;
 pub(crate) const DLA_BUF_DATA_WAIT_A_OFFSET: usize = 0x0;

@@ -8,8 +8,9 @@ use panic_halt as _;
 #[entry]
 fn main() -> ! {
     sprintln!("Hello world!");
-    dla_write_str("Hello DLA");
-    dla_init();
+    let mut dla = Dla::new();
+    dla.write_str("Hello DLA");
+    dla.init();
     sprintln!("Dla initalized");
     loop {}
 }

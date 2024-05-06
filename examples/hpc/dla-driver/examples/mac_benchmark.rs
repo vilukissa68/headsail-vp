@@ -62,32 +62,31 @@ fn generate_random_matrix_small(height: usize, width: usize) -> Vec<u8> {
     res
 }
 
-fn run_random_layer(in_w: usize, in_h: usize, k_w: usize, k_h: usize) -> Vec<u8> {
+fn run_random_layer(dla: &mut Dla, in_w: usize, in_h: usize, k_w: usize, k_h: usize) -> Vec<u8> {
     // Generate input and kernel
-    dla_init();
+    dla.init_layer();
+
     let mut input = generate_random_matrix(in_w, in_h);
     let mut kernel = generate_random_matrix_small(k_w, k_h);
 
-    dla_set_kernel_size(1, k_w, k_h);
-    dla_set_input_size(1, in_w, in_h);
+    dla.set_kernel_size(1, k_w, k_h);
+    dla.set_input_size(1, in_w, in_h);
 
-    dla_set_kernel_output_addr(MEMORY_BANK_12_OFFSET + MEMORY_BANK_BASE_ADDR);
-
-    dla_write_input(&mut input);
-    dla_write_kernel(&mut kernel);
+    dla.write_input(&mut input);
+    dla.write_kernel(&mut kernel);
 
     // Calculate output size
     let (w_out, h_out) = conv2d_output_parameters((in_w, in_h), (k_w, k_h), (0,0), (1,1), (1,1));
 
-    dla_kernel_data_ready(true);
-    dla_input_data_ready(true);
+    dla.kernel_data_ready(true);
+    dla.input_data_ready(true);
 
     // Print the matrix
     sprintln!("Waiting for calculation");
-    while !dla_handle_handshake() {
+    while !dla.handle_handshake() {
     }
     sprintln!("Calculation ready");
-    let output: Vec<u8> =  dla_read_result(w_out * h_out);
+    let output: Vec<u8> =  dla.read_output(w_out * h_out);
     output
 
 }
@@ -95,13 +94,15 @@ fn run_random_layer(in_w: usize, in_h: usize, k_w: usize, k_h: usize) -> Vec<u8>
 #[entry]
 fn main() -> ! {
     init_alloc();
+
+    let mut dla = Dla::new();
     sprintln!("Starting benchmark..");
 
-    dla_set_mac_clip(8);
-    dla_set_pp_clip(8);
+    dla.set_mac_clip(8);
+    dla.set_pp_clip(8);
 
-    for x in 0..1 {
-        let res = run_random_layer(8,8,2,2);
+    for x in 0..2 {
+        let res = run_random_layer(&mut dla, 8,8,2,2);
         for x in res {
             sprint!("{:?} ", x);
         }
