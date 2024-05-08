@@ -245,7 +245,7 @@ def execute_for_all_elements(f, tensor, *args):
     else:  # Base case: tensor is not a list, apply f
         return f(tensor, *args)
 
-def clip(value, clip, no_overflow=False, unsigned=False):
+def clip_signed(value, clip, no_overflow=False):
     """Value to possibly clip is clipped to max of bit length set by clip
     params:
     value = value to clip
@@ -255,22 +255,29 @@ def clip(value, clip, no_overflow=False, unsigned=False):
     a = value resulting from the clipping
     b = amount of owerflow due to clipping, 0 if no clipping
     """
-    mask = pow(2, clip)-1 if unsigned else pow(2, clip) // 2 # 256 if unsigned, 128 if signed
-
-    if unsigned:
-        if value > mask:
-            return mask if no_overflow else (mask, value - mask)
-        elif value < 0:
-            return 0 if no_overflow else (0, value)
-
-    else:
-        if value > mask:
-                return mask-1 if no_overflow else (mask-1, value - mask)
-        elif value < -mask:
-                return -mask if no_overflow else (-mask, value + mask)
-
+    mask = pow(2, clip) // 2 # 128
+    if value > mask:
+        return mask-1 if no_overflow else (mask-1, value - mask)
+    elif value < -mask:
+        return -mask if no_overflow else (-mask, value + mask)
     return value if no_overflow else (value, 0)
 
+def clip_unsigned(value, clip, no_overflow=False):
+    """Value to possibly clip is clipped to max of bit length set by clip
+    params:
+    value = value to clip
+    clip =  amount of bits allowed
+    return:
+    tuple (a, b)
+    a = value resulting from the clipping
+    b = amount of owerflow due to clipping, 0 if no clipping
+    """
+    mask = pow(2, clip)-1 # 255
+    if value > mask:
+        return mask if no_overflow else (mask, value - mask)
+    elif value < 0:
+        return 0 if no_overflow else (0, value)
+    return value if no_overflow else (value, 0)
 
 def rounding(value):
     """Round given value
@@ -296,9 +303,10 @@ class MemoryBank:
         self.mem = [0 for x in range(self.size)] # Initialize bank
 
     def write_buffer(self, offset, data):
-        """Write data to bank. Starting from first free address.
+        """Write data buffer to bank. Starting from given offset
 
         Params:
+        offset -- starting address of the write
         data -- [Int] data to write to bank
 
         Returns:
@@ -311,19 +319,17 @@ class MemoryBank:
         return []
 
     def write(self, offset, data):
-        """Write data to bank. Starting from first free address.
+        """Write data to given offset in bank.
 
         Params:
         data -- [Int] data to write to bank
-
-        Returns:
-        unwritten -- [Int] data that didn't fit to bank
         """
         assert(offset < self.size)
         self.mem[offset] = data & 0xFF # Enforce 8bit width
 
 
     def read(self, offset):
+        """Read byte from memory at given offset"""
         return self.mem[offset]
 
 class Dla:
@@ -523,7 +529,7 @@ class Dla:
                 bytes_written += 1
                 offset += 1
             else:
-                print("Output written outside memory region")
+                print("WARNING: output written outside VP memory region")
 
 
     def set_input_data(self, data):
@@ -658,14 +664,14 @@ class Dla:
         """Clip pp values if register is set"""
         clip_amount = self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5)
         if clip_amount > 0:
-            return execute_for_all_elements(clip, values, clip_amount, True, True)
+            return execute_for_all_elements(clip_unsigned, values, clip_amount, True)
         return values
 
     def mac_clip(self, values):
         """Clip mac values if register is set"""
         clip_amount = self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5)
         if clip_amount > 0:
-            return execute_for_all_elements(clip, values, clip_amount, True, True)
+            return execute_for_all_elements(clip_unsigned, values, clip_amount, True)
         return values
 
     def process(self):
