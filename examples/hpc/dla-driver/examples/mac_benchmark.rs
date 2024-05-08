@@ -9,32 +9,20 @@ use panic_halt as _;
 
 use rand::rngs::SmallRng;
 use rand::RngCore;
-use rand::{Rng, SeedableRng};
+use rand::SeedableRng;
 
-use alloc::vec::*;
+use alloc::vec::Vec;
 
-macro_rules! conv2d_out_parameters_height {
-    (($input_h:expr, $kernel_h:expr, $padding_h:expr, $dilation_h:expr, $stride_h:expr)) => {{
-        ($input_h + 2 * $padding_h - $dilation_h * ($kernel_h - 1) - 1) / $stride_h + 1
-    }};
-}
-
-macro_rules! conv2d_out_parameters_width {
-    (($input_w:expr, $kernel_w:expr, $padding_w:expr, $dilation_w:expr, $stride_w:expr)) => {{
-        ($input_w + 2 * $padding_w - $dilation_w * ($kernel_w - 1) - 1) / $stride_w + 1
-    }};
-}
-
-fn conv2d_output_parameters(
+fn calculate_conv2d_out_param_dim(
     input: (usize, usize),
     kernel: (usize, usize),
     padding: (usize, usize),
     dilation: (usize, usize),
     stride: (usize, usize),
 ) -> (usize, usize) {
-    let w_out = (input.0 + 2 * padding.0 - dilation.0 * (kernel.0 - 1) - 1) / stride.0 + 1;
-    let h_out = (input.1 + 2 * padding.1 - dilation.1 * (kernel.1 - 1) - 1) / stride.1 + 1;
-    (w_out, h_out)
+    let output_width = (input.0 + 2 * padding.0 - dilation.0 * (kernel.0 - 1) - 1) / stride.0 + 1;
+    let output_height = (input.1 + 2 * padding.1 - dilation.1 * (kernel.1 - 1) - 1) / stride.1 + 1;
+    (output_width, output_height)
 }
 
 fn generate_random_array(buffer: &mut [u8], size: usize) {
@@ -47,7 +35,7 @@ fn generate_random_array(buffer: &mut [u8], size: usize) {
 fn generate_random_matrix(height: usize, width: usize, seed: u64) -> Vec<u8> {
     let mut res: Vec<u8> = Vec::new();
     let mut rng = SmallRng::seed_from_u64(seed);
-    for i in 0..(height * width) {
+    for _ in 0..(height * width) {
         res.push((rng.next_u64() & 0xFF) as u8);
     }
     res
@@ -56,7 +44,7 @@ fn generate_random_matrix(height: usize, width: usize, seed: u64) -> Vec<u8> {
 fn generate_random_matrix_small(height: usize, width: usize, seed: u64) -> Vec<u8> {
     let mut res: Vec<u8> = Vec::new();
     let mut rng = SmallRng::seed_from_u64(seed);
-    for i in 0..(height * width) {
+    for _ in 0..(height * width) {
         res.push((rng.next_u64() & 0x1) as u8);
     }
     res
@@ -64,26 +52,32 @@ fn generate_random_matrix_small(height: usize, width: usize, seed: u64) -> Vec<u
 
 fn run_random_layer(
     dla: &mut Dla,
-    in_w: usize,
-    in_h: usize,
-    k_w: usize,
-    k_h: usize,
+    input_width: usize,
+    input_height: usize,
+    kernel_width: usize,
+    kernel_height: usize,
     seed: u64,
 ) -> Vec<u8> {
     // Generate input and kernel
     dla.init_layer();
 
-    let mut input = generate_random_matrix(in_w, in_h, seed);
-    let mut kernel = generate_random_matrix_small(k_w, k_h, seed * 2);
+    let mut input = generate_random_matrix(input_width, input_height, seed);
+    let mut kernel = generate_random_matrix_small(kernel_width, kernel_height, seed * 2);
 
-    dla.set_kernel_size(1, k_w, k_h);
-    dla.set_input_size(1, in_w, in_h);
+    dla.set_kernel_size(1, kernel_width, kernel_height);
+    dla.set_input_size(1, input_width, input_height);
 
     dla.write_input(&mut input);
     dla.write_kernel(&mut kernel);
 
     // Calculate output size
-    let (w_out, h_out) = conv2d_output_parameters((in_w, in_h), (k_w, k_h), (0, 0), (1, 1), (1, 1));
+    let (output_width, output_height) = calculate_conv2d_out_param_dim(
+        (input_width, input_height),
+        (kernel_width, kernel_height),
+        (0, 0),
+        (1, 1),
+        (1, 1),
+    );
 
     dla.kernel_data_ready(true);
     dla.input_data_ready(true);
@@ -92,7 +86,7 @@ fn run_random_layer(
     sprintln!("Waiting for calculation");
     while !dla.handle_handshake() {}
     sprintln!("Calculation ready");
-    let output: Vec<u8> = dla.read_output(w_out * h_out);
+    let output: Vec<u8> = dla.read_output(output_width * output_height);
     output
 }
 
