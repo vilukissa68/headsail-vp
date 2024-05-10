@@ -19,6 +19,7 @@ use mmap::*;
 pub struct Dla {
 }
 
+#[derive(Clone, Copy)]
 #[rustfmt::skip]
 pub enum MemoryBank {
     Bank0, Bank1, Bank2, Bank3, Bank4, Bank5, Bank6, Bank7, Bank8, Bank9,
@@ -117,12 +118,7 @@ impl Dla {
         Dla {
         }
     }
-    pub fn write_str(&self, s: &str) {
-        for b in s.as_bytes() {
-            unsafe { ptr::write_volatile(DLA0_ADDR as *mut u8, *b) };
-        }
-    }
-    pub fn write(&self, offset: usize, value: u8) {
+    pub fn write_u8(&self, offset: usize, value: u8) {
         unsafe { ptr::write_volatile((offset) as *mut u8, value) };
     }
 
@@ -134,7 +130,7 @@ impl Dla {
         unsafe { ptr::read_volatile((DLA0_ADDR + offset) as *mut u32) }
     }
 
-    pub fn read(&self, buf: &mut [u8], len: usize, offset: usize) {
+    pub fn read_bytes(&self, offset: usize, len: usize, buf: &mut [u8]) {
         for i in 0..len {
             unsafe { buf[i] = ptr::read_volatile((DLA0_ADDR + offset + i) as *mut u8) }
         }
@@ -451,7 +447,7 @@ impl Dla {
         MemoryBank::from_u32(bank_idx)
     }
 
-    pub fn set_mac_clip(&self, clip_amount: usize) {
+    pub fn set_mac_clip(&self, clip_amount: u32) {
         let mut reg = self.read_u32(DLA_MAC_CTRL);
         // Cap clipping amount
         if clip_amount > 21 {

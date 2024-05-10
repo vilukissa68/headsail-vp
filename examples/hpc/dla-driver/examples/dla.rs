@@ -9,7 +9,6 @@ use panic_halt as _;
 fn main() -> ! {
     sprintln!("Hello world!");
     let mut dla = Dla::new();
-    dla.write_str("Hello DLA");
     dla.init_layer();
     sprintln!("Dla initalized");
     loop {}
