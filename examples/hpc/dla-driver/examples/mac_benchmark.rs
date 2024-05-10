@@ -58,17 +58,9 @@ fn run_random_layer(
     kernel_height: usize,
     seed: u64,
 ) -> Vec<u8> {
-    // Generate input and kernel
-    dla.init_layer();
 
     let mut input = generate_random_matrix(input_width, input_height, seed);
     let mut kernel = generate_random_matrix_small(kernel_width, kernel_height, seed * 2);
-
-    dla.set_kernel_size(1, kernel_width, kernel_height);
-    dla.set_input_size(1, input_width, input_height);
-
-    dla.write_input(&mut input);
-    dla.write_kernel(&mut kernel);
 
     // Calculate output size
     let (output_width, output_height) = calculate_conv2d_out_param_dim(
@@ -79,6 +71,40 @@ fn run_random_layer(
         (1, 1),
     );
 
+    // Initalize layer
+    let config = LayerConfig {
+        input_bank: MemoryBank::Bank0,
+        kernel_bank: MemoryBank::Bank8,
+        output_bank: MemoryBank::Bank12,
+        bias_addr: 0,
+        pp_enabled: true,
+        relu_enabled: true,
+        bias_enabled: true,
+        input_width,
+        input_height,
+        input_channels: 1,
+        kernel_width,
+        kernel_height,
+        kernel_channels: 1,
+        buf_pad_top: 0,
+        buf_pad_right: 0,
+        buf_pad_bottom: 0,
+        buf_pad_left: 0,
+        buf_pad_value: 0,
+        buf_stride_x: 1,
+        buf_stride_y: 1,
+        mac_clip: 8,
+        pp_clip: 8,
+        simd_mode: SimdBitMode::EightBits,
+    };
+
+    dla.init_layer(config);
+
+    // Write input and kernel to buffer
+    dla.write_input(&mut input);
+    dla.write_kernel(&mut kernel);
+
+    // Mark data ready to start calculations
     dla.kernel_data_ready(true);
     dla.input_data_ready(true);
 
@@ -96,9 +122,6 @@ fn main() -> ! {
 
     let mut dla = Dla::new();
     sprintln!("Starting benchmark..");
-
-    dla.set_mac_clip(8);
-    dla.set_pp_clip(8);
 
     for x in 0..2 {
         let res = run_random_layer(&mut dla, 8, 8, 2, 2, x * x);
