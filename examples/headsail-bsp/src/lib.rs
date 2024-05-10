@@ -3,6 +3,7 @@
 
 pub mod sprintln;
 pub mod uart;
+pub mod timer_unit;
 
 #[cfg(feature = "hpc")]
 pub use hpc::*;
