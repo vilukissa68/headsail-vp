@@ -17,10 +17,6 @@ use headsail_bsp::{sprint, sprintln};
 use mmap::*;
 
 pub struct Dla {
-    simd_mode: SimdBitMode,
-    input_bank: MemoryBank,
-    kernel_bank: MemoryBank,
-    output_bank: MemoryBank,
 }
 
 #[rustfmt::skip]
@@ -30,6 +26,29 @@ pub enum MemoryBank {
 }
 
 impl MemoryBank {
+
+    fn from_u32(value: u32) -> MemoryBank {
+        match value {
+            0 => MemoryBank::Bank0,
+            1 => MemoryBank::Bank1,
+            2 => MemoryBank::Bank2,
+            3 => MemoryBank::Bank3,
+            4 => MemoryBank::Bank4,
+            5 => MemoryBank::Bank5,
+            6 => MemoryBank::Bank6,
+            7 => MemoryBank::Bank7,
+            8=> MemoryBank::Bank8,
+            9 => MemoryBank::Bank9 ,
+            10 => MemoryBank::Bank10,
+            11 => MemoryBank::Bank11,
+            12 => MemoryBank::Bank12,
+            13 => MemoryBank::Bank13,
+            14 => MemoryBank::Bank14,
+            15 => MemoryBank::Bank15,
+            _ => MemoryBank::Bank0,
+        }
+    }
+
     fn addr(&self) -> usize {
         match self {
             MemoryBank::Bank0 => MEMORY_BANK_0_OFFSET,
@@ -96,10 +115,6 @@ macro_rules! get_bits {
 impl Dla {
     pub fn new() -> Self {
         Dla {
-            simd_mode: SimdBitMode::EightBits,
-            input_bank: MemoryBank::Bank0,
-            kernel_bank: MemoryBank::Bank8,
-            output_bank: MemoryBank::Bank12,
         }
     }
     pub fn write_str(&self, s: &str) {
@@ -148,7 +163,7 @@ impl Dla {
         } else {
             unsafe {
                 ptr::read_volatile(
-                    (MEMORY_BANK_BASE_ADDR + bank.addr() + (offset & !0xF)) as *mut u128,
+                    (MEMORY_BANK_BASE_ADDR + bank.addr() + offset ) as *mut u128,
                 )
             }
         }
@@ -176,61 +191,58 @@ impl Dla {
     pub fn read_output(&self, len: usize) -> Vec<u8> {
         // VP only support reading from banks
         if cfg!(feature = "vp") {
-            return self.read_data_bank(&self.output_bank, len);
+            return self.read_data_bank(&self.get_output_bank(), len);
         }
         self.read_data_bank(&MemoryBank::Bank0, len)
     }
 
     pub fn read_input_bank(&self, len: usize) -> Vec<u8> {
-        self.read_data_bank(&self.input_bank, len)
+        self.read_data_bank(&self.get_input_bank(), len)
     }
 
     pub fn read_weight_bank(&self, len: usize) -> Vec<u8> {
-        self.read_data_bank(&self.kernel_bank, len)
+        self.read_data_bank(&self.get_kernel_bank(), len)
     }
 
     pub fn write_input(&self, input: &mut [u8]) {
         // TODO optimize memory bank logic
-        self.write_data_bank(self.input_bank.addr(), input)
+        self.write_data_bank(self.get_input_bank().addr(), input)
     }
 
     pub fn write_kernel(&self, kernel: &mut [u8]) {
         // TODO optimize memory bank logic
-        self.write_data_bank(self.kernel_bank.addr(), kernel)
+        self.write_data_bank(self.get_kernel_bank().addr(), kernel)
     }
 
     pub fn set_input_data_bank(&mut self, bank: MemoryBank) {
-        self.input_bank = bank;
         let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
         reg = set_bits!(
             DLA_BUF_DATA_BANK_B_OFFSET,
             DLA_BUF_DATA_BANK_B_BITMASK,
             reg,
-            self.input_bank.value()
+            bank.value()
         );
         self.write_u32(DLA_BUF_DATA_BANK, reg);
     }
 
     pub fn set_kernel_data_bank(&mut self, bank: MemoryBank) {
-        self.kernel_bank = bank;
         let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
         reg = set_bits!(
             DLA_BUF_DATA_BANK_A_OFFSET,
             DLA_BUF_DATA_BANK_A_BITMASK,
             reg,
-            self.kernel_bank.value()
+            bank.value()
         );
         self.write_u32(DLA_BUF_DATA_BANK, reg);
     }
 
     pub fn set_output_bank(&mut self, bank: MemoryBank) {
-        self.output_bank = bank;
         let mut reg = self.read_u32(DLA_PP_AXI_WRITE);
         reg = set_bits!(
             DLA_PP_AXI_WRITE_ADDRESS_OFFSET,
             DLA_PP_AXI_WRITE_ADDRESS_BITMASK,
             reg,
-            self.output_bank.addr() + MEMORY_BANK_BASE_ADDR
+            bank.addr() + MEMORY_BANK_BASE_ADDR
         );
         self.write_u32(DLA_PP_AXI_WRITE, reg);
     }
@@ -400,7 +412,6 @@ impl Dla {
     }
 
     pub fn set_simd_select(&mut self, mode: SimdBitMode) {
-        self.simd_mode = mode.clone();
         let mut reg = self.read_u32(DLA_MAC_CTRL);
         reg = set_bits!(
             DLA_SIMD_SELECT_OFFSET,
@@ -411,7 +422,7 @@ impl Dla {
         self.write_u32(DLA_MAC_CTRL, reg)
     }
 
-    pub fn get_simd_format(&self) -> SimdBitMode {
+    pub fn get_simd_mode(&self) -> SimdBitMode {
         let mut reg = self.read_u32(DLA_MAC_CTRL);
         reg = get_bits!(reg, DLA_SIMD_SELECT_BITMASK);
         match reg {
@@ -420,6 +431,24 @@ impl Dla {
             2 => SimdBitMode::TwoBits,
             _ => SimdBitMode::EightBits,
         }
+    }
+
+    pub fn get_input_bank(&self) -> MemoryBank {
+        let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
+        reg = get_bits!(reg, DLA_BUF_DATA_BANK_B_BITMASK);
+        MemoryBank::from_u32(reg)
+    }
+
+    pub fn get_kernel_bank(&self) -> MemoryBank {
+        let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
+        reg = get_bits!(reg, DLA_BUF_DATA_BANK_A_BITMASK);
+        MemoryBank::from_u32(reg)
+    }
+
+    pub fn get_output_bank(&self) -> MemoryBank {
+        let reg = self.read_u32(DLA_PP_AXI_WRITE);
+        let bank_idx : u32 = (reg - MEMORY_BANK_BASE_ADDR as u32) / MEMORY_BANK_SIZE as u32;
+        MemoryBank::from_u32(bank_idx)
     }
 
     pub fn set_mac_clip(&self, clip_amount: usize) {
