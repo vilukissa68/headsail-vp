@@ -90,7 +90,6 @@ impl MemoryBank {
             MemoryBank::Bank13 => MEMORY_BANK_13_OFFSET,
             MemoryBank::Bank14 => MEMORY_BANK_14_OFFSET,
             MemoryBank::Bank15 => MEMORY_BANK_15_OFFSET,
-            _ => 0,
         }
     }
     fn value(&self) -> usize {
@@ -111,7 +110,6 @@ impl MemoryBank {
             MemoryBank::Bank13 => 13,
             MemoryBank::Bank14 => 14,
             MemoryBank::Bank15 => 15,
-            _ => 0,
         }
     }
 }
