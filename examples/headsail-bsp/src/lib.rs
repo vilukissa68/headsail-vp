@@ -3,7 +3,15 @@
 
 pub mod sprintln;
 pub mod uart;
-pub mod timer_unit;
+pub mod timer {
+    #[cfg(not(feature = "vp"))]
+    pub use crate::apb_timer::*;
+    #[cfg(feature = "vp")]
+    pub use crate::timer_unit::*;
+}
+
+mod apb_timer;
+mod timer_unit;
 
 #[cfg(feature = "hpc")]
 pub use hpc::*;
