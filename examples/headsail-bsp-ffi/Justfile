@@ -1,7 +1,7 @@
 build-sysctrl:
     cargo build --target=riscv32imc-unknown-none-elf -Fpanic-uart
-    sh weaken_compiler_builtins.sh
+    ./weaken_compiler_builtins.sh
 
 build-hpc:
     cargo build --target=riscv64imac-unknown-none-elf -Fpanic-uart
-    sh weaken_compiler_builtins.sh
+    ./weaken_compiler_builtins.sh

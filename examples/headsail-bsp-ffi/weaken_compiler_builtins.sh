@@ -1,3 +1,4 @@
+#!/bin/bash
 mkdir -p tmp/
 cd tmp
 ARCH=riscv64-unknown-elf
