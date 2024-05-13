@@ -133,8 +133,7 @@ macro_rules! get_bits {
     };
 }
 
-pub struct Dla{
-}
+pub struct Dla {}
 
 impl Dla {
     pub fn new() -> Self {
@@ -364,14 +363,7 @@ impl Dla {
         self.write_u32(DLA_HANDSHAKE, reg);
     }
 
-    fn set_input_padding(
-        &self,
-        top: u32,
-        right: u32,
-        bottom: u32,
-        left: u32,
-        value: u32,
-    ) {
+    fn set_input_padding(&self, top: u32, right: u32, bottom: u32, left: u32, value: u32) {
         let mut reg = 0;
         reg = set_bits!(DLA_BUF_PAD_TOP_OFFSET, DLA_BUF_PAD_TOP_BITMASK, reg, top);
         reg = set_bits!(

@@ -58,7 +58,6 @@ fn run_random_layer(
     kernel_height: u32,
     seed: u64,
 ) -> Vec<u8> {
-
     let mut input = generate_random_matrix(input_width, input_height, seed);
     let mut kernel = generate_random_matrix_small(kernel_width, kernel_height, seed * 2);
 
