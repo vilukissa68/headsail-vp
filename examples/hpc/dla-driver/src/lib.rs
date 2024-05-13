@@ -199,10 +199,10 @@ impl Dla {
         }
     }
 
-    pub fn write_data_bank(&self, offset: usize, buf: &mut [u8]) {
+    pub fn write_data_bank(&self, offset: usize, buf: &mut [i8]) {
         //sprintln!("\nWrite to bank {:#x}, data: {:?}", offset, buf);
         for (i, b) in buf.iter().enumerate() {
-            unsafe { ptr::write_volatile((MEMORY_BANK_BASE_ADDR + offset + i) as *mut u8, *b) };
+            unsafe { ptr::write_volatile((MEMORY_BANK_BASE_ADDR + offset + i) as *mut i8, *b) };
         }
     }
 
@@ -226,8 +226,8 @@ impl Dla {
         }
     }
 
-    fn read_data_bank(&self, bank: &MemoryBank, len: usize) -> Vec<u8> {
-        let mut res: Vec<u8> = Vec::new();
+    fn read_data_bank(&self, bank: &MemoryBank, len: usize) -> Vec<i8> {
+        let mut res: Vec<i8> = Vec::new();
 
         let mut next_bank_offset = 0;
         while res.len() < len {
@@ -237,7 +237,7 @@ impl Dla {
 
             // Copy everything from one 128-bit address
             for i in 0..bytes_to_copy {
-                let byte = ((data >> (i * 8)) & 0xFF) as u8;
+                let byte = ((data >> (i * 8)) & 0xFF) as i8;
                 res.push(byte)
             }
             next_bank_offset = next_bank_offset + 0x10;
@@ -245,7 +245,7 @@ impl Dla {
         res
     }
 
-    pub fn read_output(&self, len: usize) -> Vec<u8> {
+    pub fn read_output(&self, len: usize) -> Vec<i8> {
         // VP only support reading from banks
         if cfg!(feature = "vp") {
             return self.read_data_bank(&self.get_output_bank(), len);
@@ -253,20 +253,20 @@ impl Dla {
         self.read_data_bank(&MemoryBank::Bank0, len)
     }
 
-    pub fn read_input_bank(&self, len: usize) -> Vec<u8> {
+    pub fn read_input_bank(&self, len: usize) -> Vec<i8> {
         self.read_data_bank(&self.get_input_bank(), len)
     }
 
-    pub fn read_weight_bank(&self, len: usize) -> Vec<u8> {
+    pub fn read_weight_bank(&self, len: usize) -> Vec<i8> {
         self.read_data_bank(&self.get_kernel_bank(), len)
     }
 
-    pub fn write_input(&self, input: &mut [u8]) {
+    pub fn write_input(&self, input: &mut [i8]) {
         // TODO optimize memory bank logic
         self.write_data_bank(self.get_input_bank().addr(), input)
     }
 
-    pub fn write_kernel(&self, kernel: &mut [u8]) {
+    pub fn write_kernel(&self, kernel: &mut [i8]) {
         // TODO optimize memory bank logic
         self.write_data_bank(self.get_kernel_bank().addr(), kernel)
     }
