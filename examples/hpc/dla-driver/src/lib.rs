@@ -261,7 +261,7 @@ impl Dla {
         self.write_u32(DLA_PP_AXI_WRITE, reg);
     }
 
-    fn set_input_size(&self, channels: usize, width: usize, height: usize) {
+    fn set_input_size(&self, channels: u32, width: u32, height: u32) {
         let mut reg = 0;
         reg = set_bits!(
             DLA_BUF_INPUT_CHANNELS_OFFSET,
@@ -284,7 +284,7 @@ impl Dla {
         self.write_u32(DLA_BUF_INPUT, reg);
     }
 
-    fn set_kernel_size(&self, channels: usize, width: usize, height: usize) {
+    fn set_kernel_size(&self, channels: u32, width: u32, height: u32) {
         let mut reg = 0;
         reg = set_bits!(
             DLA_BUF_KERNEL_0_S_CHANNELS_OFFSET,
@@ -364,11 +364,11 @@ impl Dla {
 
     fn set_input_padding(
         &self,
-        top: usize,
-        right: usize,
-        bottom: usize,
-        left: usize,
-        value: usize,
+        top: u32,
+        right: u32,
+        bottom: u32,
+        left: u32,
+        value: u32,
     ) {
         let mut reg = 0;
         reg = set_bits!(DLA_BUF_PAD_TOP_OFFSET, DLA_BUF_PAD_TOP_BITMASK, reg, top);
@@ -394,7 +394,7 @@ impl Dla {
         self.write_u32(DLA_BUF_PAD, reg);
     }
 
-    fn set_stride(&self, x: usize, y: usize) {
+    fn set_stride(&self, x: u32, y: u32) {
         let mut reg = 0;
         reg = set_bits!(
             DLA_BUF_STRIDE_X_OFFSET,
@@ -455,7 +455,7 @@ impl Dla {
         MemoryBank::from_u32(bank_idx)
     }
 
-    pub fn set_mac_clip(&self, clip_amount: u32) {
+    fn set_mac_clip(&self, clip_amount: u32) {
         let mut reg = self.read_u32(DLA_MAC_CTRL);
         // Cap clipping amount
         if clip_amount > 21 {
@@ -466,7 +466,7 @@ impl Dla {
         self.write_u32(DLA_MAC_CTRL, reg)
     }
 
-    fn set_pp_clip(&self, clip_amount: usize) {
+    fn set_pp_clip(&self, clip_amount: u32) {
         let mut reg = self.read_u32(DLA_PP_CTRL);
         // Cap clipping amount
         if clip_amount > 0x1F {

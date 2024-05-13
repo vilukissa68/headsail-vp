@@ -14,12 +14,12 @@ use rand::SeedableRng;
 use alloc::vec::Vec;
 
 fn calculate_conv2d_out_param_dim(
-    input: (usize, usize),
-    kernel: (usize, usize),
-    padding: (usize, usize),
-    dilation: (usize, usize),
-    stride: (usize, usize),
-) -> (usize, usize) {
+    input: (u32, u32),
+    kernel: (u32, u32),
+    padding: (u32, u32),
+    dilation: (u32, u32),
+    stride: (u32, u32),
+) -> (u32, u32) {
     let output_width = (input.0 + 2 * padding.0 - dilation.0 * (kernel.0 - 1) - 1) / stride.0 + 1;
     let output_height = (input.1 + 2 * padding.1 - dilation.1 * (kernel.1 - 1) - 1) / stride.1 + 1;
     (output_width, output_height)
@@ -32,7 +32,7 @@ fn generate_random_array(buffer: &mut [u8], size: usize) {
     }
 }
 
-fn generate_random_matrix(height: usize, width: usize, seed: u64) -> Vec<u8> {
+fn generate_random_matrix(height: u32, width: u32, seed: u64) -> Vec<u8> {
     let mut res: Vec<u8> = Vec::new();
     let mut rng = SmallRng::seed_from_u64(seed);
     for _ in 0..(height * width) {
@@ -41,7 +41,7 @@ fn generate_random_matrix(height: usize, width: usize, seed: u64) -> Vec<u8> {
     res
 }
 
-fn generate_random_matrix_small(height: usize, width: usize, seed: u64) -> Vec<u8> {
+fn generate_random_matrix_small(height: u32, width: u32, seed: u64) -> Vec<u8> {
     let mut res: Vec<u8> = Vec::new();
     let mut rng = SmallRng::seed_from_u64(seed);
     for _ in 0..(height * width) {
@@ -52,10 +52,10 @@ fn generate_random_matrix_small(height: usize, width: usize, seed: u64) -> Vec<u
 
 fn run_random_layer(
     dla: &mut Dla,
-    input_width: usize,
-    input_height: usize,
-    kernel_width: usize,
-    kernel_height: usize,
+    input_width: u32,
+    input_height: u32,
+    kernel_width: u32,
+    kernel_height: u32,
     seed: u64,
 ) -> Vec<u8> {
 
@@ -112,7 +112,7 @@ fn run_random_layer(
     sprintln!("Waiting for calculation");
     while !dla.handle_handshake() {}
     sprintln!("Calculation ready");
-    let output: Vec<u8> = dla.read_output(output_width * output_height);
+    let output: Vec<u8> = dla.read_output(output_width as usize * output_height as usize);
     output
 }
 
