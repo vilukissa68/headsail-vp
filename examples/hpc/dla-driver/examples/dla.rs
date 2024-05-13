@@ -1,15 +1,15 @@
 #![no_std]
 #![no_main]
 
-use headsail_bsp::{rt::entry, sprintln};
 use dla_driver::*;
+use headsail_bsp::{rt::entry, sprintln};
 use panic_halt as _;
 
 #[entry]
 fn main() -> ! {
     sprintln!("Hello world!");
-    dla_write_str("Hello DLA");
-    dla_init();
+    let mut dla = Dla::new();
+    dla.init_layer();
     sprintln!("Dla initalized");
     loop {}
 }
