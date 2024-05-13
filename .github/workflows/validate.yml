@@ -3,6 +3,7 @@ name: Validate
 on:
   push:
     branches: [ "main" ]
+    branches: [ "feat/clippy" ]
   pull_request:
     branches: [ "main" ]
 
