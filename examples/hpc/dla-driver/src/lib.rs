@@ -133,10 +133,12 @@ macro_rules! get_bits {
     };
 }
 
+pub struct Dla{
+}
+
 impl Dla {
     pub fn new() -> Self {
-        Dla {
-        }
+        Dla {}
     }
     pub fn write_u8(&self, offset: usize, value: u8) {
         unsafe { ptr::write_volatile((offset) as *mut u8, value) };
