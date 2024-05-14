@@ -182,27 +182,27 @@ impl Dla {
         Dla {}
     }
     pub fn write_u8(&self, offset: usize, value: u8) {
-        unsafe { ptr::write_volatile((offset) as *mut u8, value) };
+        unsafe { ptr::write_volatile((offset) as *mut _, value) };
     }
 
     fn write_u32(&self, offset: usize, value: u32) {
-        unsafe { ptr::write_volatile((DLA0_ADDR + offset) as *mut u32, value) }
+        unsafe { ptr::write_volatile((DLA0_ADDR + offset) as *mut _, value) }
     }
 
     fn read_u32(&self, offset: usize) -> u32 {
-        unsafe { ptr::read_volatile((DLA0_ADDR + offset) as *mut u32) }
+        unsafe { ptr::read_volatile((DLA0_ADDR + offset) as *mut _) }
     }
 
     pub fn read_bytes(&self, offset: usize, len: usize, buf: &mut [u8]) {
         for i in 0..len {
-            unsafe { buf[i] = ptr::read_volatile((DLA0_ADDR + offset + i) as *mut u8) }
+            unsafe { buf[i] = ptr::read_volatile((DLA0_ADDR + offset + i) as *mut _) }
         }
     }
 
     pub fn write_data_bank(&self, offset: usize, buf: &mut [i8]) {
         //sprintln!("\nWrite to bank {:#x}, data: {:?}", offset, buf);
         for (i, b) in buf.iter().enumerate() {
-            unsafe { ptr::write_volatile((MEMORY_BANK_BASE_ADDR + offset + i) as *mut i8, *b) };
+            unsafe { ptr::write_volatile((MEMORY_BANK_BASE_ADDR + offset + i) as *mut _, *b) };
         }
     }
 
@@ -221,7 +221,7 @@ impl Dla {
             result
         } else {
             unsafe {
-                ptr::read_volatile((MEMORY_BANK_BASE_ADDR + bank.addr() + offset) as *mut u128)
+                ptr::read_volatile((MEMORY_BANK_BASE_ADDR + bank.addr() + offset) as *mut _)
             }
         }
     }
