@@ -28,7 +28,7 @@ fn calculate_conv2d_out_param_dim(
 fn generate_random_array(buffer: &mut [i8], size: usize) {
     let mut rng = SmallRng::seed_from_u64(1234567890);
     for i in 0..size {
-        buffer[i] = rng.next_u64() as i8;
+        buffer[i] = (((rng.next_u64() % u8::MAX as u64) as i8) + i8::MIN) as i8;
     }
 }
 
@@ -36,7 +36,7 @@ fn generate_random_matrix(height: u32, width: u32, seed: u64) -> Vec<i8> {
     let mut res: Vec<i8> = Vec::new();
     let mut rng = SmallRng::seed_from_u64(seed);
     for _ in 0..(height * width) {
-        res.push((rng.next_u64() & 0xFF) as i8);
+        res.push((((rng.next_u64() % u8::MAX as u64) as i8) + i8::MIN) as i8);
     }
     res
 }
@@ -45,7 +45,7 @@ fn generate_random_matrix_small(height: u32, width: u32, seed: u64) -> Vec<i8> {
     let mut res: Vec<i8> = Vec::new();
     let mut rng = SmallRng::seed_from_u64(seed);
     for _ in 0..(height * width) {
-        res.push((rng.next_u64() & 0x3) as i8);
+        res.push((((rng.next_u64() % 4) as i8) - 2) as i8);
     }
     res
 }
@@ -75,7 +75,7 @@ fn run_random_layer(
         input_bank: Some(MemoryBank::Bank0),
         kernel_bank: Some(MemoryBank::Bank8),
         output_bank: Some(MemoryBank::Bank12),
-        bias_addr: 0,
+        bias_addr: Some(0),
         pp_enabled: true,
         relu_enabled: true,
         bias_enabled: true,
@@ -116,8 +116,7 @@ fn run_random_layer(
     sprintln!("Waiting for calculation");
     while !dla.handle_handshake() {}
     sprintln!("Calculation ready");
-    let output: Vec<i8> = dla.read_output(output_width as usize * output_height as usize);
-    output
+    dla.read_output(output_width as usize * output_height as usize)
 }
 
 #[entry]
