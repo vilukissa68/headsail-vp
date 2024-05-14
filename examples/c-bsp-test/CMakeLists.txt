@@ -3,12 +3,11 @@ cmake_minimum_required(VERSION 3.10)
 # Set riscv target
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR riscv64)
+# set(CMAKE_C_COMPILER $ENV{CC})
+# set(CMAKE_ASM_COMPILER $ENV{CC}/../riscv64-unknown-elf-as)
+# set(CMAKE_LINKER $ENV{CC}/../riscv64-unknown-elf-ld)
 
-project(RISCV_Compiler C)
-
-set(CMAKE_C_COMPILER $ENV{CC})
-set(CMAKE_ASM_COMPILER $ENV{CC}/../riscv64-unknown-elf-as)
-set(CMAKE_LINKER $ENV{CC}/../riscv64-unknown-elf-ld)
+project(headsail-bsp C)
 
 ## Add bsp
 set(HEADSAIL_BSP_FFI ${CMAKE_CURRENT_SOURCE_DIR}/../headsail-bsp-ffi)
@@ -23,15 +22,6 @@ add_custom_command(
 )
 
 add_custom_target(build_hpc DEPENDS ${HEADSAIL_BSP_HPC_DIR}/libheadsail_bsp_ffi.a)
-
-# Find memory layout
-execute_process(COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/find_linkx.sh ${HEADSAIL_BSP_FFI} riscv64
-                OUTPUT_VARIABLE LINKX
-                OUTPUT_STRIP_TRAILING_WHITESPACE)
-
-execute_process(COMMAND sh ${CMAKE_CURRENT_SOURCE_DIR}/find_mem.sh ${HEADSAIL_BSP_FFI}
-                OUTPUT_VARIABLE MEM_HPC
-                OUTPUT_STRIP_TRAILING_WHITESPACE)
 
 # Set GCC compile options for RISC-V 64-bit architecture with IMAC extensions
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -march=rv64imac -nostartfiles -mabi=lp64 -fno-builtin -T${CMAKE_CURRENT_SOURCE_DIR}/linker.lds")
@@ -51,7 +41,3 @@ target_include_directories(main PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/../headsail-
 # Link bsp static lib
 link_directories(${HEADSAIL_BSP_HPC_DIR})
 target_link_libraries(main ${HEADSAIL_BSP_HPC_DIR}/libheadsail_bsp_ffi.a)
-
-message(STATUS ${HEADSAIL_BSP_HPC_DIR})
-message(STATUS ${MEM_HPC})
-message(STATUS ${LINKX})
