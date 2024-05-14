@@ -25,7 +25,7 @@ jobs:
     - uses: actions/checkout@v4
     - name: Run linter
       working-directory: ./examples/hpc/hello-dla
-      run: cargo clippy -- -D clippy::style
+      run: cargo clippy --all-targets --workspace -- -D clippy::all
     - name: Build examples
       working-directory: ./examples/hpc/hello-dla
       run: cargo build --example dla
