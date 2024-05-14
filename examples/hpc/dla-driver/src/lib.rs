@@ -15,9 +15,6 @@ const DEFAULT_INPUT_BANK: MemoryBank = MemoryBank::Bank0;
 const DEFAULT_KERNEL_BANK: MemoryBank = MemoryBank::Bank8;
 const DEFAULT_OUTPUT_BANK: MemoryBank = MemoryBank::Bank12;
 const DEFAULT_BIAS_ADDR: u32 = 0x0;
-const DEFAULT_PP_ENABLED: bool = true;
-const DEFAULT_RELU_ENABLED: bool = true;
-const DEFAULT_BIAS_ENABLED: bool = true;
 const DEFAULT_KERNEL_SIZE: KernelSize = KernelSize {
     channels: 1,
     width: 2,
@@ -75,9 +72,9 @@ pub struct LayerConfig {
     pub kernel_bank: Option<MemoryBank>,
     pub output_bank: Option<MemoryBank>,
     pub bias_addr: Option<u32>,
-    pub pp_enabled: Option<bool>,
-    pub relu_enabled: Option<bool>,
-    pub bias_enabled: Option<bool>,
+    pub pp_enabled: bool,
+    pub relu_enabled: bool,
+    pub bias_enabled: bool,
     pub input_size: Option<InputSize>,
     pub kernel_size: Option<KernelSize>,
     pub padding: Option<PaddingConfig>,
@@ -661,9 +658,9 @@ impl Dla {
         self.set_bias_addr(config.bias_addr.unwrap_or(DEFAULT_BIAS_ADDR));
 
         // Enable post processor
-        self.enable_pp(config.pp_enabled.unwrap_or(DEFAULT_PP_ENABLED));
-        self.enable_relu(config.relu_enabled.unwrap_or(DEFAULT_RELU_ENABLED));
-        self.enable_bias(config.bias_enabled.unwrap_or(DEFAULT_BIAS_ENABLED));
+        self.enable_pp(config.pp_enabled);
+        self.enable_relu(config.relu_enabled);
+        self.enable_bias(config.bias_enabled);
 
         // Set input and kernel dimensions
         self.set_kernel_size(config.kernel_size.unwrap_or(DEFAULT_KERNEL_SIZE));
