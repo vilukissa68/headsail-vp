@@ -14,12 +14,12 @@ use rand::SeedableRng;
 use alloc::vec::Vec;
 
 fn calculate_conv2d_out_param_dim(
-    input: (usize, usize),
-    kernel: (usize, usize),
-    padding: (usize, usize),
-    dilation: (usize, usize),
-    stride: (usize, usize),
-) -> (usize, usize) {
+    input: (u32, u32),
+    kernel: (u32, u32),
+    padding: (u32, u32),
+    dilation: (u32, u32),
+    stride: (u32, u32),
+) -> (u32, u32) {
     let output_width = (input.0 + 2 * padding.0 - dilation.0 * (kernel.0 - 1) - 1) / stride.0 + 1;
     let output_height = (input.1 + 2 * padding.1 - dilation.1 * (kernel.1 - 1) - 1) / stride.1 + 1;
     (output_width, output_height)
@@ -32,7 +32,7 @@ fn generate_random_array(buffer: &mut [u8], size: usize) {
     }
 }
 
-fn generate_random_matrix(height: usize, width: usize, seed: u64) -> Vec<u8> {
+fn generate_random_matrix(height: u32, width: u32, seed: u64) -> Vec<u8> {
     let mut res: Vec<u8> = Vec::new();
     let mut rng = SmallRng::seed_from_u64(seed);
     for _ in 0..(height * width) {
@@ -41,7 +41,7 @@ fn generate_random_matrix(height: usize, width: usize, seed: u64) -> Vec<u8> {
     res
 }
 
-fn generate_random_matrix_small(height: usize, width: usize, seed: u64) -> Vec<u8> {
+fn generate_random_matrix_small(height: u32, width: u32, seed: u64) -> Vec<u8> {
     let mut res: Vec<u8> = Vec::new();
     let mut rng = SmallRng::seed_from_u64(seed);
     for _ in 0..(height * width) {
@@ -52,23 +52,14 @@ fn generate_random_matrix_small(height: usize, width: usize, seed: u64) -> Vec<u
 
 fn run_random_layer(
     dla: &mut Dla,
-    input_width: usize,
-    input_height: usize,
-    kernel_width: usize,
-    kernel_height: usize,
+    input_width: u32,
+    input_height: u32,
+    kernel_width: u32,
+    kernel_height: u32,
     seed: u64,
 ) -> Vec<u8> {
-    // Generate input and kernel
-    dla.init_layer();
-
     let mut input = generate_random_matrix(input_width, input_height, seed);
     let mut kernel = generate_random_matrix_small(kernel_width, kernel_height, seed * 2);
-
-    dla.set_kernel_size(1, kernel_width, kernel_height);
-    dla.set_input_size(1, input_width, input_height);
-
-    dla.write_input(&mut input);
-    dla.write_kernel(&mut kernel);
 
     // Calculate output size
     let (output_width, output_height) = calculate_conv2d_out_param_dim(
@@ -79,6 +70,45 @@ fn run_random_layer(
         (1, 1),
     );
 
+    // Initalize layer
+    let config = LayerConfig {
+        input_bank: Some(MemoryBank::Bank0),
+        kernel_bank: Some(MemoryBank::Bank8),
+        output_bank: Some(MemoryBank::Bank12),
+        bias_addr: 0,
+        pp_enabled: true,
+        relu_enabled: true,
+        bias_enabled: true,
+        input_size: Some(InputSize {
+            channels: 1,
+            width: input_width,
+            height: input_height,
+        }),
+        kernel_size: Some(KernelSize {
+            channels: 1,
+            width: kernel_width,
+            height: kernel_height,
+        }),
+        padding: Some(PaddingConfig {
+            top: 0,
+            right: 0,
+            left: 0,
+            bottom: 0,
+            value: 0,
+        }),
+        stride: Some(StrideConfig { x: 1, y: 1 }),
+        mac_clip: Some(8),
+        pp_clip: Some(8),
+        simd_mode: Some(SimdBitMode::EightBits),
+    };
+
+    dla.init_layer(config);
+
+    // Write input and kernel to buffer
+    dla.write_input(&mut input);
+    dla.write_kernel(&mut kernel);
+
+    // Mark data ready to start calculations
     dla.kernel_data_ready(true);
     dla.input_data_ready(true);
 
@@ -86,7 +116,7 @@ fn run_random_layer(
     sprintln!("Waiting for calculation");
     while !dla.handle_handshake() {}
     sprintln!("Calculation ready");
-    let output: Vec<u8> = dla.read_output(output_width * output_height);
+    let output: Vec<u8> = dla.read_output(output_width as usize * output_height as usize);
     output
 }
 
@@ -96,9 +126,6 @@ fn main() -> ! {
 
     let mut dla = Dla::new();
     sprintln!("Starting benchmark..");
-
-    dla.set_mac_clip(8);
-    dla.set_pp_clip(8);
 
     for x in 0..2 {
         let res = run_random_layer(&mut dla, 8, 8, 2, 2, x * x);

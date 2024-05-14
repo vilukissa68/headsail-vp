@@ -11,12 +11,77 @@ pub use mmap::{
     MEMORY_BANK_9_OFFSET, MEMORY_BANK_BASE_ADDR,
 };
 
+const DEFAULT_INPUT_BANK: MemoryBank = MemoryBank::Bank0;
+const DEFAULT_KERNEL_BANK: MemoryBank = MemoryBank::Bank8;
+const DEFAULT_OUTPUT_BANK: MemoryBank = MemoryBank::Bank12;
+const DEFAULT_BIAS_ADDR: u32 = 0x0;
+const DEFAULT_KERNEL_SIZE: KernelSize = KernelSize {
+    channels: 1,
+    width: 2,
+    height: 2,
+};
+const DEFAULT_INPUT_SIZE: InputSize = InputSize {
+    channels: 1,
+    width: 8,
+    height: 8,
+};
+const DEFAULT_PADDING: PaddingConfig = PaddingConfig {
+    top: 0,
+    right: 0,
+    left: 0,
+    bottom: 0,
+    value: 0,
+};
+const DEFAULT_STRIDE: StrideConfig = StrideConfig { x: 1, y: 1 };
+const DEFAULT_MAC_CLIP: u32 = 8;
+const DEFAULT_PP_CLIP: u32 = 8;
+const DEFAULT_SIMD_MODE: SimdBitMode = SimdBitMode::EightBits;
+
 use alloc::vec::Vec;
 use core::ptr;
 use headsail_bsp::{sprint, sprintln};
 use mmap::*;
 
-pub struct Dla {
+pub struct KernelSize {
+    pub channels: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+pub struct InputSize {
+    pub channels: u32,
+    pub width: u32,
+    pub height: u32,
+}
+
+pub struct PaddingConfig {
+    pub top: u32,
+    pub right: u32,
+    pub left: u32,
+    pub bottom: u32,
+    pub value: u32,
+}
+
+pub struct StrideConfig {
+    pub x: u32,
+    pub y: u32,
+}
+
+pub struct LayerConfig {
+    pub input_bank: Option<MemoryBank>,
+    pub kernel_bank: Option<MemoryBank>,
+    pub output_bank: Option<MemoryBank>,
+    pub bias_addr: Option<u32>,
+    pub pp_enabled: bool,
+    pub relu_enabled: bool,
+    pub bias_enabled: bool,
+    pub input_size: Option<InputSize>,
+    pub kernel_size: Option<KernelSize>,
+    pub padding: Option<PaddingConfig>,
+    pub stride: Option<StrideConfig>,
+    pub mac_clip: Option<u32>,
+    pub pp_clip: Option<u32>,
+    pub simd_mode: Option<SimdBitMode>,
 }
 
 #[derive(Clone, Copy)]
@@ -27,7 +92,6 @@ pub enum MemoryBank {
 }
 
 impl MemoryBank {
-
     fn from_u32(value: u32) -> MemoryBank {
         match value {
             0 => MemoryBank::Bank0,
@@ -38,8 +102,8 @@ impl MemoryBank {
             5 => MemoryBank::Bank5,
             6 => MemoryBank::Bank6,
             7 => MemoryBank::Bank7,
-            8=> MemoryBank::Bank8,
-            9 => MemoryBank::Bank9 ,
+            8 => MemoryBank::Bank8,
+            9 => MemoryBank::Bank9,
             10 => MemoryBank::Bank10,
             11 => MemoryBank::Bank11,
             12 => MemoryBank::Bank12,
@@ -68,7 +132,6 @@ impl MemoryBank {
             MemoryBank::Bank13 => MEMORY_BANK_13_OFFSET,
             MemoryBank::Bank14 => MEMORY_BANK_14_OFFSET,
             MemoryBank::Bank15 => MEMORY_BANK_15_OFFSET,
-            _ => 0,
         }
     }
     fn value(&self) -> usize {
@@ -89,7 +152,6 @@ impl MemoryBank {
             MemoryBank::Bank13 => 13,
             MemoryBank::Bank14 => 14,
             MemoryBank::Bank15 => 15,
-            _ => 0,
         }
     }
 }
@@ -113,20 +175,21 @@ macro_rules! get_bits {
     };
 }
 
+pub struct Dla {}
+
 impl Dla {
     pub fn new() -> Self {
-        Dla {
-        }
+        Dla {}
     }
     pub fn write_u8(&self, offset: usize, value: u8) {
         unsafe { ptr::write_volatile((offset) as *mut u8, value) };
     }
 
-    pub fn write_u32(&self, offset: usize, value: u32) {
+    fn write_u32(&self, offset: usize, value: u32) {
         unsafe { ptr::write_volatile((DLA0_ADDR + offset) as *mut u32, value) }
     }
 
-    pub fn read_u32(&self, offset: usize) -> u32 {
+    fn read_u32(&self, offset: usize) -> u32 {
         unsafe { ptr::read_volatile((DLA0_ADDR + offset) as *mut u32) }
     }
 
@@ -158,9 +221,7 @@ impl Dla {
             result
         } else {
             unsafe {
-                ptr::read_volatile(
-                    (MEMORY_BANK_BASE_ADDR + bank.addr() + offset ) as *mut u128,
-                )
+                ptr::read_volatile((MEMORY_BANK_BASE_ADDR + bank.addr() + offset) as *mut u128)
             }
         }
     }
@@ -210,7 +271,7 @@ impl Dla {
         self.write_data_bank(self.get_kernel_bank().addr(), kernel)
     }
 
-    pub fn set_input_data_bank(&mut self, bank: MemoryBank) {
+    fn set_input_data_bank(&self, bank: MemoryBank) {
         let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
         reg = set_bits!(
             DLA_BUF_DATA_BANK_B_OFFSET,
@@ -221,7 +282,7 @@ impl Dla {
         self.write_u32(DLA_BUF_DATA_BANK, reg);
     }
 
-    pub fn set_kernel_data_bank(&mut self, bank: MemoryBank) {
+    fn set_kernel_data_bank(&self, bank: MemoryBank) {
         let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
         reg = set_bits!(
             DLA_BUF_DATA_BANK_A_OFFSET,
@@ -232,7 +293,7 @@ impl Dla {
         self.write_u32(DLA_BUF_DATA_BANK, reg);
     }
 
-    pub fn set_output_bank(&mut self, bank: MemoryBank) {
+    fn set_output_bank(&self, bank: MemoryBank) {
         let mut reg = self.read_u32(DLA_PP_AXI_WRITE);
         reg = set_bits!(
             DLA_PP_AXI_WRITE_ADDRESS_OFFSET,
@@ -243,48 +304,48 @@ impl Dla {
         self.write_u32(DLA_PP_AXI_WRITE, reg);
     }
 
-    pub fn set_input_size(&self, channels: usize, width: usize, height: usize) {
+    fn set_input_size(&self, input_size: InputSize) {
         let mut reg = 0;
         reg = set_bits!(
             DLA_BUF_INPUT_CHANNELS_OFFSET,
             DLA_BUF_INPUT_CHANNELS_BITMASK,
             reg,
-            channels - 1
+            input_size.channels - 1
         );
         reg = set_bits!(
             DLA_BUF_INPUT_WIDTH_OFFSET,
             DLA_BUF_INPUT_WIDTH_BITMASK,
             reg,
-            width - 1
+            input_size.width - 1
         );
         reg = set_bits!(
             DLA_BUF_INPUT_HEIGHT_OFFSET,
             DLA_BUF_INPUT_HEIGHT_BITMASK,
             reg,
-            height - 1
+            input_size.height - 1
         );
         self.write_u32(DLA_BUF_INPUT, reg);
     }
 
-    pub fn set_kernel_size(&self, channels: usize, width: usize, height: usize) {
+    fn set_kernel_size(&self, kernel_size: KernelSize) {
         let mut reg = 0;
         reg = set_bits!(
             DLA_BUF_KERNEL_0_S_CHANNELS_OFFSET,
             DLA_BUF_KERNEL_0_S_CHANNELS_BITMASK,
             reg,
-            channels - 1
+            kernel_size.channels - 1
         );
         reg = set_bits!(
             DLA_BUF_KERNEL_0_WIDTH_OFFSET,
             DLA_BUF_KERNEL_0_WIDTH_BITMASK,
             reg,
-            width - 1
+            kernel_size.width - 1
         );
         reg = set_bits!(
             DLA_BUF_KERNEL_0_HEIGHT_OFFSET,
             DLA_BUF_KERNEL_0_HEIGHT_BITMASK,
             reg,
-            height - 1
+            kernel_size.height - 1
         );
         self.write_u32(DLA_BUF_KERNEL_0, reg);
     }
@@ -311,7 +372,7 @@ impl Dla {
         self.write_u32(DLA_BUF_CTRL, reg);
     }
 
-    pub fn enable_pp(&self, enable: bool) {
+    fn enable_pp(&self, enable: bool) {
         let mut reg = self.read_u32(DLA_HANDSHAKE);
         reg = set_bits!(
             DLA_HANDSHAKE_BYPASS_ENABLE_OFFSET,
@@ -322,7 +383,7 @@ impl Dla {
         self.write_u32(DLA_HANDSHAKE, reg);
     }
 
-    pub fn enable_relu(&self, enable: bool) {
+    fn enable_relu(&self, enable: bool) {
         let mut reg = self.read_u32(DLA_HANDSHAKE);
         reg = set_bits!(
             DLA_HANDSHAKE_ACTIVE_ENABLE_OFFSET,
@@ -333,7 +394,7 @@ impl Dla {
         self.write_u32(DLA_HANDSHAKE, reg);
     }
 
-    pub fn enable_bias(&self, enable: bool) {
+    fn enable_bias(&self, enable: bool) {
         let mut reg = self.read_u32(DLA_HANDSHAKE);
         reg = set_bits!(
             DLA_HANDSHAKE_BIAS_ENABLE_OFFSET,
@@ -344,70 +405,63 @@ impl Dla {
         self.write_u32(DLA_HANDSHAKE, reg);
     }
 
-    pub fn set_input_padding(
-        &self,
-        top: usize,
-        right: usize,
-        bottom: usize,
-        left: usize,
-        value: usize,
-    ) {
+    fn set_input_padding(&self, padding: PaddingConfig) {
         let mut reg = 0;
-        reg = set_bits!(DLA_BUF_PAD_TOP_OFFSET, DLA_BUF_PAD_TOP_BITMASK, reg, top);
+        reg = set_bits!(
+            DLA_BUF_PAD_TOP_OFFSET,
+            DLA_BUF_PAD_TOP_BITMASK,
+            reg,
+            padding.top
+        );
         reg = set_bits!(
             DLA_BUF_PAD_RIGHT_OFFSET,
             DLA_BUF_PAD_RIGHT_BITMASK,
             reg,
-            right
+            padding.right
         );
         reg = set_bits!(
             DLA_BUF_PAD_BOTTOM_OFFSET,
             DLA_BUF_PAD_BOTTOM_BITMASK,
             reg,
-            bottom
+            padding.bottom
         );
-        reg = set_bits!(DLA_BUF_PAD_LEFT_OFFSET, DLA_BUF_PAD_LEFT_BITMASK, reg, left);
+        reg = set_bits!(
+            DLA_BUF_PAD_LEFT_OFFSET,
+            DLA_BUF_PAD_LEFT_BITMASK,
+            reg,
+            padding.left
+        );
         reg = set_bits!(
             DLA_BUF_PAD_VALUE_OFFSET,
             DLA_BUF_PAD_VALUE_BITMASK,
             reg,
-            value
+            padding.value
         );
         self.write_u32(DLA_BUF_PAD, reg);
     }
 
-    pub fn set_stride(&self, x: usize, y: usize) {
+    fn set_stride(&self, stride: StrideConfig) {
         let mut reg = 0;
         reg = set_bits!(
             DLA_BUF_STRIDE_X_OFFSET,
             DLA_BUF_STRIDE_X_BITMASK,
             reg,
-            x - 1
+            stride.x - 1
         );
         reg = set_bits!(
             DLA_BUF_STRIDE_Y_OFFSET,
             DLA_BUF_STRIDE_Y_BITMASK,
             reg,
-            y - 1
+            stride.y - 1
         );
         self.write_u32(DLA_BUF_STRIDE, reg);
-    }
-
-    pub fn set_bias_address(&self, addr: usize) {
-        let reg = set_bits!(
-            DLA_PP_AXI_READ_ADDRESS_OFFSET,
-            DLA_PP_AXI_READ_ADDRESS_BITMASK,
-            0,
-            addr
-        );
-        self.write_u32(DLA_PP_AXI_READ, reg);
     }
 
     pub fn get_status(&self) -> u32 {
         return self.read_u32(DLA_STATUS_ADDR);
     }
 
-    pub fn set_simd_select(&mut self, mode: SimdBitMode) {
+    fn set_simd_mode(&self, mode: SimdBitMode) {
         let mut reg = self.read_u32(DLA_MAC_CTRL);
         reg = set_bits!(
             DLA_SIMD_SELECT_OFFSET,
@@ -418,7 +472,7 @@ impl Dla {
         self.write_u32(DLA_MAC_CTRL, reg)
     }
 
-    pub fn get_simd_mode(&self) -> SimdBitMode {
+    fn get_simd_mode(&self) -> SimdBitMode {
         let mut reg = self.read_u32(DLA_MAC_CTRL);
         reg = get_bits!(reg, DLA_SIMD_SELECT_BITMASK);
         match reg {
@@ -429,25 +483,25 @@ impl Dla {
         }
     }
 
-    pub fn get_input_bank(&self) -> MemoryBank {
+    fn get_input_bank(&self) -> MemoryBank {
         let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
         reg = get_bits!(reg, DLA_BUF_DATA_BANK_B_BITMASK);
         MemoryBank::from_u32(reg)
     }
 
-    pub fn get_kernel_bank(&self) -> MemoryBank {
+    fn get_kernel_bank(&self) -> MemoryBank {
         let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
         reg = get_bits!(reg, DLA_BUF_DATA_BANK_A_BITMASK);
         MemoryBank::from_u32(reg)
     }
 
-    pub fn get_output_bank(&self) -> MemoryBank {
+    fn get_output_bank(&self) -> MemoryBank {
         let reg = self.read_u32(DLA_PP_AXI_WRITE);
-        let bank_idx : u32 = (reg - MEMORY_BANK_BASE_ADDR as u32) / MEMORY_BANK_SIZE as u32;
+        let bank_idx: u32 = (reg - MEMORY_BANK_BASE_ADDR as u32) / MEMORY_BANK_SIZE as u32;
         MemoryBank::from_u32(bank_idx)
     }
 
-    pub fn set_mac_clip(&self, clip_amount: u32) {
+    fn set_mac_clip(&self, clip_amount: u32) {
         let mut reg = self.read_u32(DLA_MAC_CTRL);
         // Cap clipping amount
         if clip_amount > 21 {
@@ -458,7 +512,7 @@ impl Dla {
         self.write_u32(DLA_MAC_CTRL, reg)
     }
 
-    pub fn set_pp_clip(&self, clip_amount: usize) {
+    fn set_pp_clip(&self, clip_amount: u32) {
         let mut reg = self.read_u32(DLA_PP_CTRL);
         // Cap clipping amount
         if clip_amount > 0x1F {
@@ -469,7 +523,7 @@ impl Dla {
         self.write_u32(DLA_PP_CTRL, reg)
     }
 
-    pub fn set_pp_rounding(&self, enable: bool) {
+    fn set_pp_rounding(&self, enable: bool) {
         let mut reg = self.read_u32(DLA_PP_CTRL);
         reg = set_bits!(
             DLA_ROUNDING_OFFSET,
@@ -485,7 +539,7 @@ impl Dla {
         return !get_bits!(status, DLA_BUF_DONE_BITMASK) != 0;
     }
 
-    pub fn set_bias_addr(&self, addr: u32) {
+    fn set_bias_addr(&self, addr: u32) {
         self.write_u32(DLA_PP_AXI_READ, addr);
     }
 
@@ -568,7 +622,7 @@ impl Dla {
         return true;
     }
 
-    pub fn init_layer(&mut self) {
+    fn handshake_next_layer(&self) {
         let mut reg = self.read_u32(DLA_HANDSHAKE);
         reg = set_bits!(
             DLA_HANDSHAKE_BUFFER_ENABLE_OFFSET,
@@ -589,14 +643,41 @@ impl Dla {
             1
         );
         self.write_u32(DLA_HANDSHAKE, reg);
+    }
 
-        self.set_input_data_bank(MemoryBank::Bank0);
-        self.set_kernel_data_bank(MemoryBank::Bank0);
-        self.set_output_bank(MemoryBank::Bank12);
-        self.set_simd_select(SimdBitMode::EightBits);
+    pub fn init_layer(&self, config: LayerConfig) {
+        // Handshake for next layer
+        self.handshake_next_layer();
 
-        self.enable_pp(true);
-        self.enable_relu(true);
-        self.enable_bias(true);
+        // Set memory banks
+        self.set_input_data_bank(config.input_bank.unwrap_or(DEFAULT_INPUT_BANK));
+        self.set_kernel_data_bank(config.kernel_bank.unwrap_or(DEFAULT_KERNEL_BANK));
+        self.set_output_bank(config.output_bank.unwrap_or(DEFAULT_OUTPUT_BANK));
+
+        // Set bias address
+        self.set_bias_addr(config.bias_addr.unwrap_or(DEFAULT_BIAS_ADDR));
+
+        // Enable post processor
+        self.enable_pp(config.pp_enabled);
+        self.enable_relu(config.relu_enabled);
+        self.enable_bias(config.bias_enabled);
+
+        // Set input and kernel dimensions
+        self.set_kernel_size(config.kernel_size.unwrap_or(DEFAULT_KERNEL_SIZE));
+
+        self.set_input_size(config.input_size.unwrap_or(DEFAULT_INPUT_SIZE));
+
+        // Set simd
+        self.set_simd_mode(config.simd_mode.unwrap_or(DEFAULT_SIMD_MODE));
+
+        // Set padding
+        self.set_input_padding(config.padding.unwrap_or(DEFAULT_PADDING));
+
+        // Set stride
+        self.set_stride(config.stride.unwrap_or(DEFAULT_STRIDE));
+
+        // Set clipping
+        self.set_mac_clip(config.mac_clip.unwrap_or(DEFAULT_MAC_CLIP));
+        self.set_pp_clip(config.pp_clip.unwrap_or(DEFAULT_PP_CLIP));
     }
 }
