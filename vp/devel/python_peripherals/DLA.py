@@ -722,8 +722,8 @@ class Dla:
         input_ch, input_w, input_h, input_data = self.get_input_data()
         input_data = flat_to_CWH(input_data, input_ch, input_w, input_h)
 
-        kernel_ch, kernel_w, kernel_h, kernel_data = self.get_weight_data()
-        kernel_data = flat_to_CWH(kernel_data, kernel_ch, kernel_w, kernel_h)
+        kernel_amount, kernel_w, kernel_h, kernel_data = self.get_weight_data()
+        kernel_data = flat_to_CWH(kernel_data, kernel_amount, kernel_w, kernel_h)
 
         # Convonlution
         padding, dilation, stride = self.get_conv_params()
@@ -732,9 +732,8 @@ class Dla:
         if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1):
             print("Mac not enabled")
             # TODO: This might be not correct, make sure S_CHANNELS work like this
-            for channel in range(input_ch):
-                for k_channel in range(kernel_ch):
-                    res.append(self.mac.conv2d_native(input_data[channel], kernel_data[k_channel], padding, dilation, stride))
+            for kernel_idx in range(kernel_amount):
+                res.append(self.mac.conv2d_native(input_data, kernel_data[kernel_idx], padding, dilation, stride))
 
             # Clip results
             res = dla.mac_clip(res)
@@ -826,13 +825,80 @@ class DlaMac:
         w_in = len(A[0])
         h_kernel = len(kernel)
         w_kernel = len(kernel[0])
-        h_out = math.floor((h_in + 2*padding[0] - dilation[0] * (h_kernel - 1) -1) / stride[0] +1)
+        print("h_in_", h_in, "w_in:", w_in, "h_kernel:", h_kernel, "w_kernel:", w_kernel, "padding:", padding)
+        h_out = math.floor(((h_in + 2*padding[0] - dilation[0] * (h_kernel - 1) -1) / stride[0]) +1)
         w_out = math.floor((w_in + 2*padding[1] - dilation[1] * (w_kernel - 1) -1) / stride[1] +1)
 
         h_middle_zero = h_kernel % 2 == 1
         w_middle_zero = w_kernel % 2 == 1
 
-        return A, kernel, int(h_out), int(w_out), h_middle_zero, w_middle_zero
+        return h_out, w_out, h_middle_zero, w_middle_zero
+
+    def conv2d(self, input_img, kernels, padding=(0,0), dilation=(1,1), stride=(1,1)):
+        # Find output size of single produced filter
+        # Number of output filters is defined by the number of kernels
+        # Each inputed kernel is applied for the whole input entry
+        h_out, w_out, h_middle_zero, w_middle_zero = self.conv2d_check_parameters(input_img[0], kernels[0][0], padding, dilation, stride)
+
+        # Initialize output filters
+        output_filters = [[[ 0 for _ in range(w_out)] for _ in range(h_out) ] for _ in range(len(kernels)) ] # np.zeros(kernel_out, w_out, h_out)
+
+        h_kernel_max_offset = len(kernels[0][0]) // 2 # Kernel height max offset
+        w_kernel_max_offset = len(kernels[0][0][0]) // 2 # Kernel width max offset
+
+        print("h_out:", h_out, " w_out:", w_out)
+
+        # Apply each kernel to input_img
+        for (kernel_idx, kernel) in enumerate(kernels):
+                if w_middle_zero:
+                    center_x_0 = h_kernel_max_offset * dilation[0]
+                else:
+                    center_x_0 = h_kernel_max_offset * dilation[0] -1
+
+                if h_middle_zero:
+                    center_y_0 = w_kernel_max_offset * dilation[1]
+                else:
+                    center_y_0 = w_kernel_max_offset * dilation[1] - 1
+
+                for j in range(h_out):
+                    if h_middle_zero:
+                        center_y = center_y_0 + j * stride[1]
+                        range_y = [center_y + k * dilation[1] for k in range(-h_kernel_max_offset, h_kernel_max_offset + 1)]
+                    else:
+                        center_y = (center_y_0) + j * stride[1] # Calculate from top left of center
+                        range_y = [center_y + k * dilation[1] for k in range(0, h_kernel_max_offset + 1)]
+
+                    for i in range(w_out):
+                        if w_middle_zero:
+                            center_x = center_x_0 + i * stride[0]
+                            range_x = [center_x + k * dilation[0] for k in range(-w_kernel_max_offset, w_kernel_max_offset + 1)]
+                        else:
+                            center_x = (center_x_0) + i * stride[0]
+                            range_x = [center_x + k * dilation[0] for k in range(0, w_kernel_max_offset + 1)]
+
+                        channel_sums = 0
+                        for (channel_idx, channel_data) in enumerate(input_img):
+
+                            # Constuct a sub matrix
+                            mat_sub = [[0 for _ in range_x ] for _ in range_y ] # np.zeros(w_out, h_out)
+
+                            for mat_x in range(len(range_x)):
+                                for mat_y in range(len(range_y)):
+                                    mat_sub[mat_y][mat_x] = channel_data[range_y[mat_y]][range_x[mat_x]]
+
+                            channel_sums = channel_sums + self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
+
+                        print(j , i, kernel_idx, channel_sums)
+                        output_filters[kernel_idx][j][i] = channel_sums
+
+        return output_filters
+
+
+
+
+
+
+
 
 
     # Perform conv2d to value written
@@ -840,8 +906,8 @@ class DlaMac:
         """2D convolution
 
         Params:
-        mat_in -- Matrix in form [[Int]] to be convolved
-        kernel -- Matrix in form of [[Int]] to use ase convolution kernel
+        mat_in -- Matrix in form [[[Int]]] to be convolved
+        kernel -- Matrix in form of [[[[Int]]]] to use ase convolution kernel
         padding -- Tuple (Int, Int) sets padding in (x,y) direction
         dilation -- Tuple (Int, Int) sets dilation in (x,y) direction
         stride -- Tuple (Int, Int) sets stride in (x,y) direction
@@ -850,7 +916,7 @@ class DlaMac:
         mat_out -- Result of convolution operation in form of [[Int]]
         """
 
-        mat_in, kernel, h_out, w_out, h_middle_zero, w_middle_zero = self.conv2d_check_parameters(mat_in, kernel, padding, dilation, stride)
+        h_out, w_out, h_middle_zero, w_middle_zero = self.conv2d_check_parameters(mat_in, kernel, padding, dilation, stride)
 
         h_kernel = len(kernel)
         w_kernel = len(kernel[0])
@@ -1009,64 +1075,81 @@ if __name__ == "__main__":
     print("Running as independent module")
     dla = Dla()
 
-    A_ch, A_h, A_w = 3, 5, 5
-    B_ch, B_h, B_w = 1, 3, 3
+    # A_ch, A_h, A_w = 3, 5, 5
+    # B_ch, B_h, B_w = 1, 3, 3
 
-    # Set input size
-    dla.set_register(BUF_INPUT, BUF_CHANNELS_OFFSET, 12, A_ch - 1)
-    dla.set_register(BUF_INPUT, BUF_WIDTH_OFFSET, 9, A_h - 1)
-    dla.set_register(BUF_INPUT, BUF_HEIGHT_OFFSET, 9, A_w - 1)
+    # # Set input size
+    # dla.set_register(BUF_INPUT, BUF_CHANNELS_OFFSET, 12, A_ch - 1)
+    # dla.set_register(BUF_INPUT, BUF_WIDTH_OFFSET, 9, A_h - 1)
+    # dla.set_register(BUF_INPUT, BUF_HEIGHT_OFFSET, 9, A_w - 1)
 
-    # Set weight size
-    dla.set_register(BUF_KERNEL_0, BUF_KERNEL_0_S_CHANNELS_OFFSET, 12, B_ch - 1)
-    dla.set_register(BUF_KERNEL_0, BUF_KERNEL_0_WIDTH_OFFSET, 4, B_h - 1)
-    dla.set_register(BUF_KERNEL_0, BUF_KERNEL_0_HEIGHT_OFFSET, 4, B_w - 1)
+    # # Set weight size
+    # dla.set_register(BUF_KERNEL_0, BUF_KERNEL_0_S_CHANNELS_OFFSET, 12, B_ch - 1)
+    # dla.set_register(BUF_KERNEL_0, BUF_KERNEL_0_WIDTH_OFFSET, 4, B_h - 1)
+    # dla.set_register(BUF_KERNEL_0, BUF_KERNEL_0_HEIGHT_OFFSET, 4, B_w - 1)
 
-    # Set banks for input and weight data
-    dla.set_register(BUF_DATA_BANK, BUF_DATA_BANK_A_OFFSET, 4, 0)
-    dla.set_register(BUF_DATA_BANK, BUF_DATA_BANK_B_OFFSET, 4, 8)
+    # # Set banks for input and weight data
+    # dla.set_register(BUF_DATA_BANK, BUF_DATA_BANK_A_OFFSET, 4, 0)
+    # dla.set_register(BUF_DATA_BANK, BUF_DATA_BANK_B_OFFSET, 4, 8)
 
-    # Generate 256 x 256 image
-    A = [[[random.randint(-127,127) for _ in range(A_ch) ] for _ in range(A_h)] for _ in range(A_w)]
-    B = [[[random.randint(-127, 127) for _ in range(B_ch) ] for _ in range(B_h)] for _ in range(B_w)]
-    A = reshape_to_cwh(A) # HWC to CWH
-    B = reshape_to_cwh(B)
+    # # Generate 256 x 256 image
+    # A = [[[random.randint(-127,127) for _ in range(A_ch) ] for _ in range(A_h)] for _ in range(A_w)]
+    # B = [[[random.randint(-127, 127) for _ in range(B_ch) ] for _ in range(B_h)] for _ in range(B_w)]
+    # A = reshape_to_cwh(A) # HWC to CWH
+    # B = reshape_to_cwh(B)
 
-    print_matrix(A[0], "A0:")
-    print_matrix(B[0], "B0:")
+    # print_matrix(A[0], "A0:")
+    # print_matrix(B[0], "B0:")
 
-    A = separate_channels(A) # CHW to 2D
-    B = separate_channels(B)
-    C = dla.mac.conv2d_native(A[0], B[0])
-    print_matrix(C, "C:")
+    # A = separate_channels(A) # CHW to 2D
+    # B = separate_channels(B)
+    # C = dla.mac.conv2d_native(A[0], B[0])
+    # print_matrix(C, "C:")
 
-    # Write input data to data bank
-    A = flatten_tensor(A)
-    dla.set_input_data(A)
+    # # Write input data to data bank
+    # A = flatten_tensor(A)
+    # dla.set_input_data(A)
 
-    # Write weight data to data bank
-    B = flatten_tensor(B)
-    dla.set_weight_data(B)
+    # # Write weight data to data bank
+    # B = flatten_tensor(B)
+    # dla.set_weight_data(B)
 
-    # Initialization ready
-    dla.set_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1, 0x1) # Data buffer
-    dla.set_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1, 0x1) # DLA array
-    dla.set_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1, 0x1) # Post processor
+    # # Initialization ready
+    # dla.set_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1, 0x1) # Data buffer
+    # dla.set_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1, 0x1) # DLA array
+    # dla.set_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1, 0x1) # Post processor
 
-    # Enable PP
-    dla.set_register(PP_CTRL, PP_SELECT_OFFSET, 1, 1)
-    dla.set_register(PP_CTRL, ACTIVE_MODE_OFFSET, 2, 0)
+    # # Enable PP
+    # dla.set_register(PP_CTRL, PP_SELECT_OFFSET, 1, 1)
+    # dla.set_register(PP_CTRL, ACTIVE_MODE_OFFSET, 2, 0)
 
-    ## Mac clip
-    dla.set_register(MAC_CTRL, MAC_CLIP_OFFSET, 5, 8)
-    # PP clip
-    dla.set_register(PP_CTRL, PP_CLIP_OFFSET, 5, 8)
+    # ## Mac clip
+    # dla.set_register(MAC_CTRL, MAC_CLIP_OFFSET, 5, 8)
+    # # PP clip
+    # dla.set_register(PP_CTRL, PP_CLIP_OFFSET, 5, 8)
 
-    # Input data is ready
-    dla.set_register(BUF_CTRL, READ_A_VALID_OFFSET, 1, 0x1) # All weight data ready
-    dla.set_register(BUF_CTRL, READ_B_VALID_OFFSET, 1, 0x1) # All input data ready
+    # # Input data is ready
+    # dla.set_register(BUF_CTRL, READ_A_VALID_OFFSET, 1, 0x1) # All weight data ready
+    # dla.set_register(BUF_CTRL, READ_B_VALID_OFFSET, 1, 0x1) # All input data ready
 
-    dla.process()
+    # dla.process()
+    input_img = [[[0,0,0,2,0], [0,1,2,1,2], [0,0,1,2,0], [1,0,0,0,2], [0,0,1,0,1]],
+                 [[2,0,1,0,1], [0,0,2,2,1], [1,0,2,1,1], [2,1,2,2,1], [0,0,1,1,2]],
+                 [[0,1,1,1,0], [0,2,0,1,2], [1,0,0,1,2], [1,1,1,0,0], [1,1,2,0,2]]]
+    kernel_1 = [[[-1,-1,0], [-1,0,0], [-1,-1,1]],
+                [[0,0,1], [1,-1,-1], [1,-1,0]],
+                [[1,0,-1], [-1, 1, -1], [-1,0,-1]]]
+    kernel_2 = [[[1,0,0], [-1,0,1], [0,-1,1]],
+                [[0,1,-1], [-1,0,0], [0,-1,-1]],
+                [[0,-1,1], [-1, -1, -1], [0,1,0]]]
+    kernels = [kernel_1, kernel_2]
+
+    res = dla.mac.conv2d(input_img, kernels, padding=(0,0), stride=(1,1))
+    for i, r in enumerate(res):
+        print_matrix(r, "{} Results:".format(i))
+
+
+
 
 else:
     if request.isInit:
