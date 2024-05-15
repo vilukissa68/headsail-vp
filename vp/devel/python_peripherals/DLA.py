@@ -779,29 +779,6 @@ class DlaMac:
     def __init__(self):
         self.name = "DLA MAC"
 
-    def add_padding(self, A, padding=(1,1)):
-        """Pads input matrix
-
-        Params:
-        A -- Matrix in form [[Int]] to pad
-        padding -- Tuple (Int, Int) sets padding in (x,y) direction
-
-        Returns:
-        out -- Padded matrix A
-        """
-        h_in = len(A)
-        w_in = len(A[0])
-
-        # Prepare padded output matrix
-        out = [[0 for _ in range(w_in + padding[1])] for _ in range(h_in + padding[0])]
-
-        # Insert A to padded matrix
-        for i in range(h_in):
-            for j in range(w_in):
-                out[i + padding[0]][j + padding[1]] = A[i][j]
-
-        return out
-
     def conv2d_check_parameters(self, A, kernel, padding, dilation, stride):
         """Calculates outputs of convolution matrix based on preferred inputs
 
@@ -834,6 +811,17 @@ class DlaMac:
 
         return h_out, w_out, h_middle_zero, w_middle_zero
 
+    def pad_matrix(self, mat_in, padding):
+        h_in = len(mat_in)
+        w_in = len(mat_in[0])
+
+        mat_out = [[ 0 for _ in range(w_in + padding[1]*2)] for _ in range(h_in + padding[0] * 2) ] # np.zeros( w_out, h_out)
+        for (i, row) in enumerate(mat_in):
+            for (j, x) in enumerate(row):
+                mat_out[i + padding[0]][j + padding[1]] = x
+        return mat_out
+
+
     def conv2d(self, input_img, kernels, padding=(0,0), dilation=(1,1), stride=(1,1)):
         # Find output size of single produced filter
         # Number of output filters is defined by the number of kernels
@@ -862,22 +850,25 @@ class DlaMac:
 
                 for j in range(h_out):
                     if h_middle_zero:
-                        center_y = center_y_0 + j * stride[1]
+                        center_y = center_y_0 + (j * stride[1])
                         range_y = [center_y + k * dilation[1] for k in range(-h_kernel_max_offset, h_kernel_max_offset + 1)]
                     else:
-                        center_y = (center_y_0) + j * stride[1] # Calculate from top left of center
+                        center_y = center_y_0 + (j * stride[1]) # Calculate from top left of center
                         range_y = [center_y + k * dilation[1] for k in range(0, h_kernel_max_offset + 1)]
 
                     for i in range(w_out):
                         if w_middle_zero:
-                            center_x = center_x_0 + i * stride[0]
+                            center_x = center_x_0 + (i * stride[0])
                             range_x = [center_x + k * dilation[0] for k in range(-w_kernel_max_offset, w_kernel_max_offset + 1)]
                         else:
-                            center_x = (center_x_0) + i * stride[0]
+                            center_x = center_x_0 + (i * stride[0])
                             range_x = [center_x + k * dilation[0] for k in range(0, w_kernel_max_offset + 1)]
 
-                        channel_sums = 0
+                        channel_sum = 0
                         for (channel_idx, channel_data) in enumerate(input_img):
+
+                            # Pad channel
+                            channel_data = self.pad_matrix(channel_data, padding)
 
                             # Constuct a sub matrix
                             mat_sub = [[0 for _ in range_x ] for _ in range_y ] # np.zeros(w_out, h_out)
@@ -885,11 +876,9 @@ class DlaMac:
                             for mat_x in range(len(range_x)):
                                 for mat_y in range(len(range_y)):
                                     mat_sub[mat_y][mat_x] = channel_data[range_y[mat_y]][range_x[mat_x]]
+                            channel_sum = channel_sum + self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
 
-                            channel_sums = channel_sums + self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
-
-                        print(j , i, kernel_idx, channel_sums)
-                        output_filters[kernel_idx][j][i] = channel_sums
+                        output_filters[kernel_idx][j][i] = channel_sum
 
         return output_filters
 
@@ -1144,7 +1133,7 @@ if __name__ == "__main__":
                 [[0,-1,1], [-1, -1, -1], [0,1,0]]]
     kernels = [kernel_1, kernel_2]
 
-    res = dla.mac.conv2d(input_img, kernels, padding=(0,0), stride=(1,1))
+    res = dla.mac.conv2d(input_img, kernels, padding=(1,1), stride=(2,2))
     for i, r in enumerate(res):
         print_matrix(r, "{} Results:".format(i))
 
