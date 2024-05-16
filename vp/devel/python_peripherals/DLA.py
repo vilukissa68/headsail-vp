@@ -209,8 +209,6 @@ def flatten(array):
         output.append(x)
     return output
 
-
-
 def reshape(array, shape):
 
     def construct(flat, shape):
@@ -220,6 +218,7 @@ def reshape(array, shape):
         return [construct(flat[i * sub_size: (i + 1) * sub_size], shape[1:]) for i in range(shape[0])]
 
     output = zeroes(shape)
+    print("Assert here")
     assert get_size(output) == get_size(array)
     flat = flatten(array)
 
@@ -240,6 +239,7 @@ def flatten_tensor(data):
 
 def flat_to_CWH(data, channels, width, height):
     """Takes in 1d array of length C*W*H and reshapes it to tensor of format CWH"""
+    print("flat to CWH assert")
     assert channels * width * height == len(data)
     output = [[[0 for _ in range(height)] for _ in range(width)] for _ in range(channels)]
     i = 0
@@ -633,31 +633,36 @@ class Dla:
             offset += 1
 
     def get_weight_data(self):
-       """Get all kernel/weight data from memory banks in CWH format
+        """Get all kernel/weight data from memory banks in CWH format
 
        Returns:
-       channels -- Int Number of channels
-       width -- Int Width of input
-       height -- Int Height of input
-       data -- [Int] List of all the weight values in CWH format
-       """
-       width = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_WIDTH_OFFSET, 4) + 1
-       height = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_HEIGHT_OFFSET, 4) + 1
-       channels = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_S_CHANNELS_OFFSET, 4) + 1
-       bank_idx = self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_A_OFFSET, 4)
-       bank = self.banks[bank_idx]
+        channels -- Int Number of channels
+        width -- Int Width of input
+        height -- Int Height of input
+        data -- [Int] List of all the weight values in CWH format
+        """
+        width = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_WIDTH_OFFSET, 4) + 1
+        height = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_HEIGHT_OFFSET, 4) + 1
+        filter_amount = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_S_CHANNELS_OFFSET, 4) + 1
+        input_channels = self.get_register(BUF_INPUT, BUF_CHANNELS_OFFSET, 12) + 1
+        bank_idx = self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_A_OFFSET, 4)
+        bank = self.banks[bank_idx]
 
-       data = []
-       offset = 0;
-       while len(data) < (channels * width * height):
-           # Move to next bank
-           if offset > bank.size:
-               bank_idx = bank_idx + 1
-               bank = self.banks[bank_idx]
-               offset = 0
-           data.append(bank.read(offset))
-           offset += 1
-       return channels, width, height, data
+        data = []
+        offset = 0;
+        while len(data) < (filter_amount * input_channels * width * height):
+            # Move to next bank
+            if offset > bank.size:
+                bank_idx = bank_idx + 1
+                bank = self.banks[bank_idx]
+                offset = 0
+            data.append(bank.read(offset))
+            offset += 1
+
+        data = reshape(data, (filter_amount, input_channels, width, height))
+        print("Kernel:", get_shape(data))
+        print("filter_amount:", filter_amount, "width:", width, "height:", height, "input_channels:", input_channels)
+        return filter_amount, width, height, data
 
     def get_input_data(self):
         # TODO: Only read as much data as is needed to fill input layer (C* W * H)
@@ -667,7 +672,7 @@ class Dla:
         channels -- Int Number of channels
         width -- Int Width of input
         Height -- Int Height of input
-        data -- [Int] List of all the input values in CWH format
+        data -- [[Int]] List of all the input values in CWH format
         """
         width = self.get_register(BUF_INPUT, BUF_WIDTH_OFFSET, 9) + 1
         height = self.get_register(BUF_INPUT, BUF_HEIGHT_OFFSET, 9) + 1
@@ -685,6 +690,8 @@ class Dla:
                 offset = 0
             data.append(bank.read(offset))
             offset += 1
+        data = reshape(data, (channels, width, height))
+        print(data)
         return channels, width, height, data
 
     # TODO: Finish this when external memory is figured out
@@ -777,21 +784,19 @@ class Dla:
 
         # Load data from memory banks and reshape
         input_ch, input_w, input_h, input_data = self.get_input_data()
-        input_data = flat_to_CWH(input_data, input_ch, input_w, input_h)
+        #input_data = flat_to_CWH(input_data, input_ch, input_w, input_h)
 
         kernel_amount, kernel_w, kernel_h, kernel_data = self.get_weight_data()
-        kernel_data = flat_to_CWH(kernel_data, kernel_amount, kernel_w, kernel_h)
+        #kernel_data = flat_to_CWH(kernel_data, kernel_amount, kernel_w, kernel_h)
 
         # Convonlution
         padding, dilation, stride = self.get_conv_params()
 
-        res = []
         if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1):
             print("Mac not enabled")
             # TODO: This might be not correct, make sure S_CHANNELS work like this
-            for kernel_idx in range(kernel_amount):
-                print("kernel_idx:", kernel_idx)
-                res.append(self.mac.conv2d(input_data, kernel_data[kernel_idx], padding, dilation, stride))
+            print("kernel_idx:", kernel_data)
+            res = self.mac.conv2d(input_data, kernel_data, padding, dilation, stride)
 
             # Clip results
             res = dla.mac_clip(res)
@@ -816,8 +821,11 @@ class Dla:
             # Clipping and rounding
             res = dla.pp_clip(res)
             res = dla.round(res)
+            print("Shape:", get_shape(res))
             for (i, r) in enumerate(res):
                 print_matrix(r, "{} PP:".format(i))
+
+
 
         # After calculating one layer the device needs new configuration
         self.write_output(flatten_tensor(res))
@@ -884,6 +892,8 @@ class DlaMac:
         # Find output size of single produced filter
         # Number of output filters is defined by the number of kernels
         # Each inputed kernel is applied for the whole input entry
+        print("Kernels shape:", get_shape(kernels))
+        print("Input shape:", get_shape(input_img))
         h_out, w_out, h_middle_zero, w_middle_zero = self.conv2d_check_parameters(input_img[0], kernels[0][0], padding, dilation, stride)
 
         # Initialize output filters
@@ -896,6 +906,8 @@ class DlaMac:
 
         # Apply each kernel to input_img
         for (kernel_idx, kernel) in enumerate(kernels):
+                print_matrix(kernel)
+                print(get_shape(kernel))
                 if w_middle_zero:
                     center_x_0 = h_kernel_max_offset * dilation[0]
                 else:
@@ -934,10 +946,13 @@ class DlaMac:
                             for mat_x in range(len(range_x)):
                                 for mat_y in range(len(range_y)):
                                     mat_sub[mat_y][mat_x] = channel_data[range_y[mat_y]][range_x[mat_x]]
+
                             channel_sum = channel_sum + self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
 
                         output_filters[kernel_idx][j][i] = channel_sum
 
+        print(get_shape(output_filters))
+        print_matrix(output_filters, "Output")
         return output_filters
 
     # ReLU
@@ -968,6 +983,8 @@ class DlaMac:
         return x + b
 
     def matmul_element_wise(self, A, B):
+        print(A)
+        print(B)
         """Multiply elements between matrices A and B
 
         Params:
@@ -977,6 +994,7 @@ class DlaMac:
         Returns:
         C -- Matrix C in form of [[Int]]
         """
+        print("Matmul assert")
         assert len(A) == len(B) and len(A[0]) == len(B[0])
         C = [[0 for _ in range(len(A[0])) ] for _ in range(len(A)) ] # np.zeros(w_out, h_out)
         for x in range(len(A)):
@@ -1050,87 +1068,74 @@ if __name__ == "__main__":
     print("Running as independent module")
     dla = Dla()
 
-    # A_ch, A_h, A_w = 3, 5, 5
-    # B_ch, B_h, B_w = 1, 3, 3
+    A_ch, A_h, A_w = 3, 5, 5
+    B_ch, B_h, B_w = 2, 3, 3
 
-    # # Set input size
-    # dla.set_register(BUF_INPUT, BUF_CHANNELS_OFFSET, 12, A_ch - 1)
-    # dla.set_register(BUF_INPUT, BUF_WIDTH_OFFSET, 9, A_h - 1)
-    # dla.set_register(BUF_INPUT, BUF_HEIGHT_OFFSET, 9, A_w - 1)
+    # Set input size
+    dla.set_register(BUF_INPUT, BUF_CHANNELS_OFFSET, 12, A_ch - 1)
+    dla.set_register(BUF_INPUT, BUF_WIDTH_OFFSET, 9, A_h - 1)
+    dla.set_register(BUF_INPUT, BUF_HEIGHT_OFFSET, 9, A_w - 1)
 
-    # # Set weight size
-    # dla.set_register(BUF_KERNEL_0, BUF_KERNEL_0_S_CHANNELS_OFFSET, 12, B_ch - 1)
-    # dla.set_register(BUF_KERNEL_0, BUF_KERNEL_0_WIDTH_OFFSET, 4, B_h - 1)
-    # dla.set_register(BUF_KERNEL_0, BUF_KERNEL_0_HEIGHT_OFFSET, 4, B_w - 1)
+    # Set weight size
+    dla.set_register(BUF_KERNEL_0, BUF_KERNEL_0_S_CHANNELS_OFFSET, 12, B_ch - 1)
+    dla.set_register(BUF_KERNEL_0, BUF_KERNEL_0_WIDTH_OFFSET, 4, B_h - 1)
+    dla.set_register(BUF_KERNEL_0, BUF_KERNEL_0_HEIGHT_OFFSET, 4, B_w - 1)
 
-    # # Set banks for input and weight data
-    # dla.set_register(BUF_DATA_BANK, BUF_DATA_BANK_A_OFFSET, 4, 0)
-    # dla.set_register(BUF_DATA_BANK, BUF_DATA_BANK_B_OFFSET, 4, 8)
+    # Set banks for input and weight data
+    dla.set_register(BUF_DATA_BANK, BUF_DATA_BANK_A_OFFSET, 4, 0)
+    dla.set_register(BUF_DATA_BANK, BUF_DATA_BANK_B_OFFSET, 4, 8)
 
-    # # Generate 256 x 256 image
-    # A = [[[random.randint(-127,127) for _ in range(A_ch) ] for _ in range(A_h)] for _ in range(A_w)]
-    # B = [[[random.randint(-127, 127) for _ in range(B_ch) ] for _ in range(B_h)] for _ in range(B_w)]
-    # A = reshape_to_cwh(A) # HWC to CWH
-    # B = reshape_to_cwh(B)
+    # Generate 256 x 256 image
+    A = [[[0,0,0,2,0], [0,1,2,1,2], [0,0,1,2,0], [1,0,0,0,2], [0,0,1,0,1]],
+                 [[2,0,1,0,1], [0,0,2,2,1], [1,0,2,1,1], [2,1,2,2,1], [0,0,1,1,2]],
+                 [[0,1,1,1,0], [0,2,0,1,2], [1,0,0,1,2], [1,1,1,0,0], [1,1,2,0,2]]]
+    kernel_1 = [[[-1,-1,0], [-1,0,0], [-1,-1,1]],
+                [[0,0,1], [1,-1,-1], [1,-1,0]],
+                [[1,0,-1], [-1, 1, -1], [-1,0,-1]]]
+    kernel_2 = [[[1,0,0], [-1,0,1], [0,-1,1]],
+                [[0,1,-1], [-1,0,0], [0,-1,-1]],
+                [[0,-1,1], [-1, -1, -1], [0,1,0]]]
+    B = [kernel_1, kernel_2]
 
-    # print_matrix(A[0], "A0:")
-    # print_matrix(B[0], "B0:")
+
+
+    print_matrix(A[0], "A0:")
+    print_matrix(B[0], "B0:")
 
     # A = separate_channels(A) # CHW to 2D
     # B = separate_channels(B)
-    # C = dla.mac.conv2d_native(A[0], B[0])
-    # print_matrix(C, "C:")
+    C = dla.mac.conv2d(A, B)
+    print_matrix(C, "C:")
 
-    # # Write input data to data bank
-    # A = flatten_tensor(A)
-    # dla.set_input_data(A)
+    # Write input data to data bank
+    A = flatten(A)
+    dla.set_input_data(A)
 
-    # # Write weight data to data bank
-    # B = flatten_tensor(B)
-    # dla.set_weight_data(B)
+    # Write weight data to data bank
+    B = flatten(B)
+    dla.set_weight_data(B)
 
-    # # Initialization ready
-    # dla.set_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1, 0x1) # Data buffer
-    # dla.set_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1, 0x1) # DLA array
-    # dla.set_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1, 0x1) # Post processor
+    # Initialization ready
+    dla.set_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1, 0x1) # Data buffer
+    dla.set_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1, 0x1) # DLA array
+    dla.set_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1, 0x1) # Post processor
 
-    # # Enable PP
-    # dla.set_register(PP_CTRL, PP_SELECT_OFFSET, 1, 1)
-    # dla.set_register(PP_CTRL, ACTIVE_MODE_OFFSET, 2, 0)
+    # Enable PP
+    dla.set_register(PP_CTRL, PP_SELECT_OFFSET, 1, 1)
+    dla.set_register(PP_CTRL, ACTIVE_MODE_OFFSET, 2, 0)
+    dla.set_register(HANDSHAKE, HANDSHAKE_BIAS_ENABLE_OFFSET, 1, 1)
+    dla.set_register(HANDSHAKE, HANDSHAKE_ACTIVE_ENABLE_OFFSET, 1, 1)
 
-    # ## Mac clip
-    # dla.set_register(MAC_CTRL, MAC_CLIP_OFFSET, 5, 8)
-    # # PP clip
-    # dla.set_register(PP_CTRL, PP_CLIP_OFFSET, 5, 8)
+    ## Mac clip
+    dla.set_register(MAC_CTRL, MAC_CLIP_OFFSET, 5, 8)
+    # PP clip
+    dla.set_register(PP_CTRL, PP_CLIP_OFFSET, 5, 8)
 
-    # # Input data is ready
-    # dla.set_register(BUF_CTRL, READ_A_VALID_OFFSET, 1, 0x1) # All weight data ready
-    # dla.set_register(BUF_CTRL, READ_B_VALID_OFFSET, 1, 0x1) # All input data ready
+    # Input data is ready
+    dla.set_register(BUF_CTRL, READ_A_VALID_OFFSET, 1, 0x1) # All weight data ready
+    dla.set_register(BUF_CTRL, READ_B_VALID_OFFSET, 1, 0x1) # All input data ready
 
-    # dla.process()
-    input_img = [[[0,0,0,2,0], [0,1,2,1,2], [0,0,1,2,0], [1,0,0,0,2], [0,0,1,0,1]],
-                 [[2,0,1,0,1], [0,0,2,2,1], [1,0,2,1,1], [2,1,2,2,1], [0,0,1,1,2]],
-                 [[0,1,1,1,0], [0,2,0,1,2], [1,0,0,1,2], [1,1,1,0,0], [1,1,2,0,2]]]
-    # kernel_1 = [[[-1,-1,0], [-1,0,0], [-1,-1,1]],
-    #             [[0,0,1], [1,-1,-1], [1,-1,0]],
-    #             [[1,0,-1], [-1, 1, -1], [-1,0,-1]]]
-    # kernel_2 = [[[1,0,0], [-1,0,1], [0,-1,1]],
-    #             [[0,1,-1], [-1,0,0], [0,-1,-1]],
-    #             [[0,-1,1], [-1, -1, -1], [0,1,0]]]
-    # kernels = [kernel_1, kernel_2]
-
-    # res = dla.mac.conv2d(input_img, kernels, padding=(1,1), stride=(2,2))
-    # for i, r in enumerate(res):
-    #     print_matrix(r, "{} Results:".format(i))
-
-    input_img = zeroes((3,4,5))
-    print(input_img)
-    print(get_shape(input_img))
-    input_img = reshape(input_img, (4,3,5))
-    print(input_img)
-    print(get_shape(input_img))
-
-
+    dla.process()
 
 else:
     if request.isInit:
