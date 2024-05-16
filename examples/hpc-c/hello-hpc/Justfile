@@ -1,0 +1,26 @@
+script_dir := "../scripts"
+root_dir := "../../../"
+
+configure:
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    source {{script_dir}}/export_riscv.env
+    mkdir -p build && cd build
+    cmake ..
+
+build: configure
+    #!/usr/bin/env bash
+    set -euxo pipefail
+    source {{script_dir}}/export_riscv.env
+    # Already exists due to configure recipe
+    cd build
+    make
+
+run: build
+    {{root_dir}}/scripts/run_on_hpc.sh {{justfile_directory()}}/build/hello-hpc
+
+clean:
+    rm -rf build/
+
+clean-build: clean build
+clean-run: clean-build run

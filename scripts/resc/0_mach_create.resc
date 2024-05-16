@@ -9,5 +9,5 @@ emulation CreateUartPtyTerminal "term1" "/tmp/uart1" True
 connector Connect sysbus.apb_uart_0 term0
 connector Connect sysbus.apb_uart_1 term1
 
-:showAnalyzer sysbus.apb_uart_0
+showAnalyzer sysbus.apb_uart_0
 :showAnalyzer sysbus.apb_uart_1

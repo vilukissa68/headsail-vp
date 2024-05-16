@@ -50,7 +50,7 @@ jobs:
     - name: Create Renode peripheral symlinks
       run: ln -s $(readlink -f "./vp/devel/python_peripherals/DLA.py") "$RENODE_DIR/scripts/pydev/DLA.py"
     - name: Run example
-      run: renode-test scripts/robot/hello_dla.robot --variable BIN:"$(readlink -f $DLA_BIN)"
+      run: renode-test scripts/robot/is_hello.robot --variable BIN:"$(readlink -f $DLA_BIN)"
     - name: Upload snapshots
       if: failure()
       uses: actions/upload-artifact@v4

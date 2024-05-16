@@ -2,7 +2,7 @@
 ${SCRIPT}                       ${CURDIR}/../resc/1_hpc.resc
 ${CPU}                          sysbus.cpu_hpc0
 ${UART}                         sysbus.apb_uart_0
-${BIN}                          ${CURDIR}/../../examples/hpc/hello-dla/target/riscv64imac-unknown-none-elf/debug/examples/dla
+${BIN}                          ${CURDIR}/../../examples/hpc-c/hello-hpc/build/hello-hpc
 
 *** Settings ***
 Suite Setup     Setup
@@ -15,7 +15,7 @@ Create Machine
     Execute Script              ${SCRIPT}
 
 *** Test Cases ***
-Hello DLA works
+Binary prints "Hello World!" on UART0
     Create Machine
     Create Terminal Tester      ${UART}
 
