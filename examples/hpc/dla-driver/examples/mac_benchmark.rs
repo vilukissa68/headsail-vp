@@ -75,7 +75,7 @@ fn run_random_layer(
         input_bank: Some(MemoryBank::Bank0),
         kernel_bank: Some(MemoryBank::Bank8),
         output_bank: Some(MemoryBank::Bank12),
-        bias_addr: 0,
+        bias_addr: Some(0),
         pp_enabled: true,
         relu_enabled: true,
         bias_enabled: true,
