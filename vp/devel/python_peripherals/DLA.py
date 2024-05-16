@@ -193,6 +193,22 @@ def flat_to_CWH(data, channels, width, height):
                 i = i + 1
     return output
 
+def cast_long_to_signed_byte(value):
+    """Bitwise cast of unsigned char to signed char.
+
+    Params:
+    value -- Int Unsigned value to cast to signed char
+
+    Returns:
+    byte -- Int Signed value in range -128..127
+    """
+    assert(0 <= value <= 255)
+    value = value & 0xFF
+    if value <= 127:
+        return value
+    return value - 256
+
+
 def separate_channels(data):
     """Reformats data so that each channels is it's own 2D array
 
@@ -255,11 +271,12 @@ def clip_signed(value, clip, no_overflow=False):
     a = value resulting from the clipping
     b = amount of owerflow due to clipping, 0 if no clipping
     """
-    mask = pow(2, clip) // 2 # 128
-    if value > mask:
-        return mask-1 if no_overflow else (mask-1, value - mask)
-    elif value < -mask:
-        return -mask if no_overflow else (-mask, value + mask)
+    upper_bound = pow(2, clip) // 2 - 1 # 127
+    lower_bound = -upper_bound - 1
+    if value > upper_bound:
+        return upper_bound if no_overflow else (upper_bound, value - upper_bound)
+    elif value < lower_bound:
+        return lower_bound if no_overflow else (lower_bound, value + (-lower_bound))
     return value if no_overflow else (value, 0)
 
 def clip_unsigned(value, clip, no_overflow=False):
@@ -315,7 +332,7 @@ class MemoryBank:
         for i in range(len(data)):
             if offset + i > self.size:
                 return data[i:]
-            self.mem[offset + i] = data[i] & 0xFF # Enforce 8bit width
+            self.mem[offset + i] = data[i]
         return []
 
     def write(self, offset, data):
@@ -325,7 +342,7 @@ class MemoryBank:
         data -- [Int] data to write to bank
         """
         assert(offset < self.size)
-        self.mem[offset] = data & 0xFF # Enforce 8bit width
+        self.mem[offset] = data
 
 
     def read(self, offset):
@@ -459,7 +476,8 @@ class Dla:
         target_bank = (request.absolute - MEMORY_BANK_ADDR) // MEMORY_BANK_SIZE
         offset = request.offset - memory_bank_to_offset(target_bank)
         for byte in range(request.length):
-            value = (request.value >> (byte * 8)) & 0xFF
+            value = (request.value >> (byte * 8))
+            value = cast_long_to_signed_byte(value) # NOTE: renode always uses unsigned bytes, so here need to cast u8 to i8
             self.banks[target_bank].write(offset + byte, value)
 
     def write_bank(self, bank, data):
@@ -510,6 +528,10 @@ class Dla:
         Params:
         data -- [Int] data to write
         """
+        if data == []:
+            print("WARN: output was empty.")
+            return
+
         addr = self.get_output_addr()
         print("addr:", addr)
         # If addr is bank
@@ -664,14 +686,14 @@ class Dla:
         """Clip pp values if register is set"""
         clip_amount = self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5)
         if clip_amount > 0:
-            return execute_for_all_elements(clip_unsigned, values, clip_amount, True)
+            return execute_for_all_elements(clip_signed, values, clip_amount, True)
         return values
 
     def mac_clip(self, values):
         """Clip mac values if register is set"""
         clip_amount = self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5)
         if clip_amount > 0:
-            return execute_for_all_elements(clip_unsigned, values, clip_amount, True)
+            return execute_for_all_elements(clip_signed, values, clip_amount, True)
         return values
 
     def process(self):
@@ -706,10 +728,10 @@ class Dla:
         # Convonlution
         padding, dilation, stride = self.get_conv_params()
 
+        res = []
         if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1):
             print("Mac not enabled")
             # TODO: This might be not correct, make sure S_CHANNELS work like this
-            res = []
             for channel in range(input_ch):
                 for k_channel in range(kernel_ch):
                     res.append(self.mac.conv2d_native(input_data[channel], kernel_data[k_channel], padding, dilation, stride))
@@ -731,10 +753,14 @@ class Dla:
             # ReLU (active low)
             if self.get_register(HANDSHAKE, HANDSHAKE_ACTIVE_ENABLE_OFFSET, 1):
                 res = execute_for_all_elements(self.mac.relu_native, res)
-                res = dla.pp_clip(res)
-                res = dla.round(res)
                 for (i, r) in enumerate(res):
                     print_matrix(r, "{} ReLU:".format(i))
+
+            # Clipping and rounding
+            res = dla.pp_clip(res)
+            res = dla.round(res)
+            for (i, r) in enumerate(res):
+                print_matrix(r, "{} PP:".format(i))
 
         # After calculating one layer the device needs new configuration
         self.write_output(flatten_tensor(res))
