@@ -83,7 +83,7 @@ pub struct PaddingConfig {
     pub right: u32,
     pub left: u32,
     pub bottom: u32,
-        pub padding_value: u32,
+    pub padding_value: u32,
 }
 
 /// Conv2d stride
@@ -144,7 +144,7 @@ impl TryFrom<u32> for MemoryBank {
 }
 
 impl MemoryBank {
-        fn offset(&self) -> usize {
+    fn offset(&self) -> usize {
         match self {
             MemoryBank::Bank0 => MEMORY_BANK_0_OFFSET,
             MemoryBank::Bank1 => MEMORY_BANK_1_OFFSET,
