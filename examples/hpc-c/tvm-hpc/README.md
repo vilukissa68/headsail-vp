@@ -12,7 +12,11 @@ mkdir build
 
 Configure cmake for building tvm, by copying the config.cmake file in tvm-hpc directory to tvm repository.
 ``` sh
-cp <config.cmake in tvm-hpc directory> <path to tvm repository>/build/config.cmake 
+cp <config.cmake-in-tvm-hpc-directory> <path-to-tvm-repository>/build/config.cmake 
+```
+
+For example:
+``` sh
 cp headsail-vp/examples/hpc-c/tvm-hpc/config.cmake tvm/build/config.cmake
 
 ```
