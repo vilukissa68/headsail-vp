@@ -3,9 +3,9 @@
 //#include <stdio.h>
 //#include <stdlib.h>
 
+#include "boot.h"
 #include "headsail_bsp.h"
 #include "bundle.h"
-#include "boot.h"
 
 #include <tvm/runtime/c_runtime_api.h>
 
