@@ -170,6 +170,14 @@ def reshape_to_cwh(data):
     return output
 
 def zeroes(shape):
+    """Numpy style zeros functions. Take in shape as tuple and creates tensor of zeros by the dimensions defined in the tuple
+
+    Params:
+    shape -- Tuple(dimx, dimy, dimz...) defining dimensions of the resulting tensor
+
+    Returns:
+    tensor -- ndimensional tensor filled with zeros
+    """
     innner_most_array = [0 for _ in range(shape[-1])]
 
     if len(shape) == 1:
@@ -183,33 +191,67 @@ def zeroes(shape):
 
     return array
 
-def get_size(array):
-    shape = get_shape(array)
+def get_size(tensor):
+    """Gets number of elements in ndimensional tensor
 
-    output = 1
+    Params:
+    tensor -- tensor to count elements int
+
+    Returns:
+    count -- Int number of elements in input tensor
+    """
+    shape = get_shape(tensor)
+
+    count = 1
     for dim in shape:
-        output *= dim
+        count *= dim
 
-    return output
+    return count
 
-def get_shape(array):
+def get_shape(tensor):
+    """Get dimensionality of ndimensional tensor
+
+    Params:
+    tensor -- input tensor to find dimensionality from
+
+    Returns:
+    shape -- Tuple(dimx, dimy, dimz...) of the dimensionality of the input tensor
+
+    """
+    shape = []
+    while isinstance(tensor, list):
+        shape.append(len(tensor))
+        tensor = tensor[0]
+    return tuple(shape)
+
+def flatten(tensor):
+    """Flattens ndimensional tensor to one dimensional tensor/vector
+
+    Params:
+    tensor -- ndimensional tensor to flatten
+
+    Returns:
+    output -- 1-dimensional tensor
+    """
     output = []
-    while isinstance(array, list):
-        output.append(len(array))
-        array = array[0]
-    return tuple(output)
-
-def flatten(array):
-    output = []
-    if isinstance(array[0], list):
-        for l in array:
+    if isinstance(tensor[0], list):
+        for l in tensor:
             output = output + (flatten(l))
         return output
-    for x in array:
+    for x in tensor:
         output.append(x)
     return output
 
-def reshape(array, shape):
+def reshape(tensor, shape):
+    """Numpy style reshape. Reshapes input tensor to dimensionality defined by the shape parameter. Input tensor and shape have equal number of elements.
+
+    Params:
+    tensor -- ndimensional tensor to reshape
+    shape -- Tuple(dimx, dimy, dimz...) defining the shape of the output tensor
+
+    Returns:
+    output -- ndimensional tensor shaped from input tensor with shape of shape parameter
+    """
 
     def construct(flat, shape):
         if len(shape) == 1:
@@ -219,8 +261,8 @@ def reshape(array, shape):
 
     output = zeroes(shape)
     print("Assert here")
-    assert get_size(output) == get_size(array)
-    flat = flatten(array)
+    assert get_size(output) == get_size(tensor)
+    flat = flatten(tensor)
 
     return construct(flat, shape)
 
