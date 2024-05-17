@@ -2,7 +2,7 @@
 mkdir -p tmp/
 cd tmp
 ARCH=riscv64-unknown-elf
-FILE=$(find ../target/riscv64imac-unknown-none-elf/release -name libheadsail_bsp_ffi.a)
+FILE=$(find .. -name libheadsail_bsp_ffi.a)
 $ARCH-ar x $FILE
 for f in compiler_builtins-*;
 do
