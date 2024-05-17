@@ -94,7 +94,7 @@ fn run_random_layer(
             right: 0,
             left: 0,
             bottom: 0,
-            value: 0,
+            padding_value: 0,
         }),
         stride: Some(StrideConfig { x: 1, y: 1 }),
         mac_clip: Some(8),

@@ -118,30 +118,33 @@ pub enum MemoryBank {
     Bank10, Bank11, Bank12, Bank13, Bank14, Bank15,
 }
 
-impl MemoryBank {
-    fn from_u32(value: u32) -> MemoryBank {
+impl TryFrom<u32> for MemoryBank {
+    type Error = &'static str;
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
         match value {
-            0 => MemoryBank::Bank0,
-            1 => MemoryBank::Bank1,
-            2 => MemoryBank::Bank2,
-            3 => MemoryBank::Bank3,
-            4 => MemoryBank::Bank4,
-            5 => MemoryBank::Bank5,
-            6 => MemoryBank::Bank6,
-            7 => MemoryBank::Bank7,
-            8 => MemoryBank::Bank8,
-            9 => MemoryBank::Bank9,
-            10 => MemoryBank::Bank10,
-            11 => MemoryBank::Bank11,
-            12 => MemoryBank::Bank12,
-            13 => MemoryBank::Bank13,
-            14 => MemoryBank::Bank14,
-            15 => MemoryBank::Bank15,
-            _ => MemoryBank::Bank0,
+            0 => Ok(MemoryBank::Bank0),
+            1 => Ok(MemoryBank::Bank1),
+            2 => Ok(MemoryBank::Bank2),
+            3 => Ok(MemoryBank::Bank3),
+            4 => Ok(MemoryBank::Bank4),
+            5 => Ok(MemoryBank::Bank5),
+            6 => Ok(MemoryBank::Bank6),
+            7 => Ok(MemoryBank::Bank7),
+            8 => Ok(MemoryBank::Bank8),
+            9 => Ok(MemoryBank::Bank9),
+            10 => Ok(MemoryBank::Bank10),
+            11 => Ok(MemoryBank::Bank11),
+            12 => Ok(MemoryBank::Bank12),
+            13 => Ok(MemoryBank::Bank13),
+            14 => Ok(MemoryBank::Bank14),
+            15 => Ok(MemoryBank::Bank15),
+            _ => Err("Error"),
         }
     }
+}
 
-    fn addr(&self) -> usize {
+impl MemoryBank {
+        fn offset(&self) -> usize {
         match self {
             MemoryBank::Bank0 => MEMORY_BANK_0_OFFSET,
             MemoryBank::Bank1 => MEMORY_BANK_1_OFFSET,
@@ -161,7 +164,7 @@ impl MemoryBank {
             MemoryBank::Bank15 => MEMORY_BANK_15_OFFSET,
         }
     }
-    fn value(&self) -> usize {
+    fn from(&self) -> usize {
         match self {
             MemoryBank::Bank0 => 0,
             MemoryBank::Bank1 => 1,
@@ -217,7 +220,7 @@ impl Dla {
 
     /// Reads u32 from dla configuration registers at offset
     fn read_u32(&self, offset: usize) -> u32 {
-        unsafe { ptr::read_volatile((DLA0_ADDR + offset) as *mut _) }
+        unsafe { ptr::read_volatile((DLA0_ADDR + offset) as *const _) }
     }
 
     /// Writes buffer DLA's data bank(s) based on offset
@@ -229,14 +232,14 @@ impl Dla {
     }
 
     /// Read register from one of the DLA's data banks
-    fn read_data_bank_offset(&self, bank: &MemoryBank, offset: usize) -> u128 {
+    fn read_data_bank_offset(&self, bank: MemoryBank, offset: usize) -> u128 {
         // NOTE: this function enforces the 128-bit addressing
         if cfg!(feature = "vp") {
             let mut result: u128 = 0;
             for i in 0..4 {
                 result |= (unsafe {
                     ptr::read_volatile(
-                        (MEMORY_BANK_BASE_ADDR + bank.addr() + offset + (i * 4)) as *mut u32,
+                        (MEMORY_BANK_BASE_ADDR + bank.offset() + offset + (i * 4)) as *mut u32,
                     )
                 } as u128)
                     << (32 * i)
@@ -244,14 +247,14 @@ impl Dla {
             result
         } else {
             unsafe {
-                ptr::read_volatile((MEMORY_BANK_BASE_ADDR + bank.addr() + offset) as *mut _)
+                ptr::read_volatile((MEMORY_BANK_BASE_ADDR + bank.offset() + offset) as *const _)
             }
         }
     }
 
     /// Reads len number of bytes from DLA's memory banks, starting from bank given as parameter
-    fn read_data_bank(&self, bank: &MemoryBank, len: usize) -> Vec<i8> {
-        let mut res: Vec<i8> = Vec::new();
+    fn read_data_bank(&self, bank: MemoryBank, len: usize) -> Vec<i8> {
+        let mut res: Vec<i8> = Vec::with_capacity(len);
 
         let mut next_bank_offset = 0;
         while res.len() < len {
@@ -273,31 +276,31 @@ impl Dla {
     pub fn read_output(&self, len: usize) -> Vec<i8> {
         // VP only support reading from banks
         if cfg!(feature = "vp") {
-            return self.read_data_bank(&self.get_output_bank(), len);
+            return self.read_data_bank(self.get_output_bank(), len);
         }
-        self.read_data_bank(&MemoryBank::Bank0, len)
+        self.read_data_bank(MemoryBank::Bank0, len)
     }
 
     /// Reads len amount of bytes from DLA's input bank(s)
     pub fn read_input_bank(&self, len: usize) -> Vec<i8> {
-        self.read_data_bank(&self.get_input_bank(), len)
+        self.read_data_bank(self.get_input_bank(), len)
     }
 
     /// Reads len amount of bytes from DLA's weight bank(s)
     pub fn read_weight_bank(&self, len: usize) -> Vec<i8> {
-        self.read_data_bank(&self.get_kernel_bank(), len)
+        self.read_data_bank(self.get_kernel_bank(), len)
     }
 
     /// Writes buffer to DLA's input bank(s)
     pub fn write_input(&self, input: &mut [i8]) {
         // TODO optimize memory bank logic
-        self.write_data_bank(self.get_input_bank().addr(), input)
+        self.write_data_bank(self.get_input_bank().offset(), input)
     }
 
     /// Writes buffer to DLA's kernel bank(s)
     pub fn write_kernel(&self, kernel: &mut [i8]) {
         // TODO optimize memory bank logic
-        self.write_data_bank(self.get_kernel_bank().addr(), kernel)
+        self.write_data_bank(self.get_kernel_bank().offset(), kernel)
     }
 
     /// Sets one of the DLA's memory banks as starting bank for inputs
@@ -307,7 +310,7 @@ impl Dla {
             DLA_BUF_DATA_BANK_B_OFFSET,
             DLA_BUF_DATA_BANK_B_BITMASK,
             reg,
-            bank.value()
+            bank.from()
         );
         self.write_u32(DLA_BUF_DATA_BANK, reg);
     }
@@ -319,7 +322,7 @@ impl Dla {
             DLA_BUF_DATA_BANK_A_OFFSET,
             DLA_BUF_DATA_BANK_A_BITMASK,
             reg,
-            bank.value()
+            bank.from()
         );
         self.write_u32(DLA_BUF_DATA_BANK, reg);
     }
@@ -331,7 +334,7 @@ impl Dla {
             DLA_PP_AXI_WRITE_ADDRESS_OFFSET,
             DLA_PP_AXI_WRITE_ADDRESS_BITMASK,
             reg,
-            bank.addr() + MEMORY_BANK_BASE_ADDR
+            bank.offset() + MEMORY_BANK_BASE_ADDR
         );
         self.write_u32(DLA_PP_AXI_WRITE, reg);
     }
@@ -531,44 +534,54 @@ impl Dla {
     fn get_input_bank(&self) -> MemoryBank {
         let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
         reg = get_bits!(reg, DLA_BUF_DATA_BANK_B_BITMASK);
-        MemoryBank::from_u32(reg)
+        let bank = match MemoryBank::try_from(reg) {
+            Ok(bank) => bank,
+            Err(e) => panic!("{}", e),
+        };
+        bank
     }
 
     /// Reads index of the first kernel bank
     fn get_kernel_bank(&self) -> MemoryBank {
         let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
         reg = get_bits!(reg, DLA_BUF_DATA_BANK_A_BITMASK);
-        MemoryBank::from_u32(reg)
+        let bank = match MemoryBank::try_from(reg) {
+            Ok(bank) => bank,
+            Err(e) => panic!("{}", e),
+        };
+        bank
     }
 
     /// Reads index of the first output bank
     fn get_output_bank(&self) -> MemoryBank {
         let reg = self.read_u32(DLA_PP_AXI_WRITE);
         let bank_idx: u32 = (reg - MEMORY_BANK_BASE_ADDR as u32) / MEMORY_BANK_SIZE as u32;
-        MemoryBank::from_u32(bank_idx)
+        let bank = match MemoryBank::try_from(bank_idx) {
+            Ok(bank) => bank,
+            Err(e) => panic!("{}", e),
+        };
+        bank
     }
 
     /// Sets clipping after conv2d
     fn set_mac_clip(&self, clip_amount: u32) {
-        let mut reg = self.read_u32(DLA_MAC_CTRL);
         // Cap clipping amount
         if clip_amount > 21 {
-            reg = set_bits!(DLA_MAC_CLIP_OFFSET, DLA_MAC_CLIP_BITMASK, reg, 0x1F);
-        } else {
-            reg = set_bits!(DLA_MAC_CLIP_OFFSET, DLA_MAC_CLIP_BITMASK, reg, clip_amount);
+            panic!("Clip can't be more than 20")
         }
+        let mut reg = self.read_u32(DLA_MAC_CTRL);
+        reg = set_bits!(DLA_MAC_CLIP_OFFSET, DLA_MAC_CLIP_BITMASK, reg, clip_amount);
         self.write_u32(DLA_MAC_CTRL, reg)
     }
 
     /// Sets clipping after post-processing
     fn set_pp_clip(&self, clip_amount: u32) {
-        let mut reg = self.read_u32(DLA_PP_CTRL);
         // Cap clipping amount
         if clip_amount > 0x1F {
-            reg = set_bits!(DLA_PP_CLIP_OFFSET, DLA_PP_CLIP_BITMASK, reg, 0x1F);
-        } else {
-            reg = set_bits!(DLA_PP_CLIP_OFFSET, DLA_PP_CLIP_BITMASK, reg, clip_amount);
+            panic!("Clip can't be more than 20")
         }
+        let mut reg = self.read_u32(DLA_PP_CTRL);
+        reg = set_bits!(DLA_PP_CLIP_OFFSET, DLA_PP_CLIP_BITMASK, reg, clip_amount);
         self.write_u32(DLA_PP_CTRL, reg)
     }
 
@@ -601,7 +614,7 @@ impl Dla {
         let buf_enabled = get_bits!(handshake_reg, DLA_HANDSHAKE_BUFFER_ENABLE_BITMASK) != 0;
         let mac_enabled = get_bits!(handshake_reg, DLA_HANDSHAKE_MAC_ENABLE_BITMASK) != 0;
         let active_enabled = get_bits!(handshake_reg, DLA_HANDSHAKE_ACTIVE_ENABLE_BITMASK) != 0;
-        buf_enabled & mac_enabled & active_enabled
+        buf_enabled && mac_enabled && active_enabled
     }
 
     /// Responds to DLA handshake by disabling hardware
