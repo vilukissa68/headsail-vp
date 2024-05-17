@@ -336,9 +336,7 @@ def print_matrix(A, name=""):
     """Print matrix"""
     print(name)
     for x in range(len(A)):
-        row = ""
-        for y in range(len(A[0])):
-            row = row + str(A[x][y]) + " "
+        row = " ".join("{:4}".format(value) for value in A[x])
         print(row)
 
 def memory_bank_to_offset(bank):
@@ -983,7 +981,6 @@ class DlaMac:
 
                             # Pad channel
                             channel_data = self.pad_matrix(channel_data, padding, padding_value=padding_value)
-                            print_matrix(channel_data, "Padded:")
 
                             # Constuct a sub matrix
                             mat_sub = [[0 for _ in range_x ] for _ in range_y ] # np.zeros(w_out, h_out)
