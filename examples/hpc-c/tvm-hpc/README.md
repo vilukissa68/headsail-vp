@@ -39,9 +39,9 @@ make
 
 Export TVM environment variables with, these need to be set when building the tvm-hpc project
 ```sh
-export TVM_HOME=$HOME/work/tvm
-export TVM_LIBRARY_PATH=$HOME/work/tvm/build
-export PYTHONPATH=$TVM_HOME/python:${PYTHONPATH}
+export TVM_HOME=<path-to-tvm-root>
+export TVM_LIBRARY_PATH=<path-to-tvm-root>/build
+export PYTHONPATH=<path-to-tvm-root>/python:${PYTHONPATH}
 ```
 
 More information in https://tvm.apache.org/docs/install/from_source.html
