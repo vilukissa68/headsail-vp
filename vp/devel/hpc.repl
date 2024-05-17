@@ -18,10 +18,7 @@ cpu_hpc3: CPU.RiscV64 @ sysbus
     hartId: 3
     timeProvider: clint
 
-sdram0: Memory.MappedMemory @ sysbus 0x00000000
-    size: 0x10000000
-
-sdram1: Memory.MappedMemory @ sysbus 0x10000000
+sdram: Memory.MappedMemory @ sysbus 0x10000000
     size: 0x60000000
 
 /*
