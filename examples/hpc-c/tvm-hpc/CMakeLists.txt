@@ -5,7 +5,7 @@ set(CMAKE_SYSTEM_PROCESSOR riscv64)
 project(headsail-tvm C)
 
 # Path to onnx model
-set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/../../../../tvm-headsail/torch/add.onnx)
+set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/model.onnx)
 
 # Add C-runtime 0
 set(CRT0 ${CMAKE_CURRENT_SOURCE_DIR}/../crt0)
