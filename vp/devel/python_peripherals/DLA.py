@@ -183,9 +183,7 @@ def zeroes(shape):
     if len(shape) == 1:
         return innner_most_array
 
-    print(shape)
     for dim in reversed(shape[:-1]):
-        print(dim)
         array = [innner_most_array for _ in range(dim)]
         innner_most_array = array
 
@@ -260,7 +258,6 @@ def reshape(tensor, shape):
         return [construct(flat[i * sub_size: (i + 1) * sub_size], shape[1:]) for i in range(shape[0])]
 
     output = zeroes(shape)
-    print("Assert here")
     assert get_size(output) == get_size(tensor)
     flat = flatten(tensor)
 
@@ -281,7 +278,6 @@ def flatten_tensor(data):
 
 def flat_to_CWH(data, channels, width, height):
     """Takes in 1d array of length C*W*H and reshapes it to tensor of format CWH"""
-    print("flat to CWH assert")
     assert channels * width * height == len(data)
     output = [[[0 for _ in range(height)] for _ in range(width)] for _ in range(channels)]
     i = 0
@@ -731,7 +727,6 @@ class Dla:
             data.append(bank.read(offset))
             offset += 1
         data = reshape(data, (channels, width, height))
-        print(data)
         return channels, width, height, data
 
     # TODO: Finish this when external memory is figured out
@@ -866,8 +861,6 @@ class Dla:
             for (i, r) in enumerate(res):
                 print_matrix(r, "{} PP:".format(i))
 
-
-
         # After calculating one layer the device needs new configuration
         self.write_output(flatten_tensor(res))
 
@@ -909,7 +902,6 @@ class DlaMac:
         w_in = len(A[0])
         h_kernel = len(kernel)
         w_kernel = len(kernel[0])
-        print("h_in_", h_in, "w_in:", w_in, "h_kernel:", h_kernel, "w_kernel:", w_kernel, "padding:", padding)
         h_out = math.floor(((h_in + 2*padding[0] - dilation[0] * (h_kernel - 1) -1) / stride[0]) +1)
         w_out = math.floor((w_in + 2*padding[1] - dilation[1] * (w_kernel - 1) -1) / stride[1] +1)
 
@@ -1025,8 +1017,6 @@ class DlaMac:
         return x + b
 
     def matmul_element_wise(self, A, B):
-        print(A)
-        print(B)
         """Multiply elements between matrices A and B
 
         Params:
@@ -1036,7 +1026,6 @@ class DlaMac:
         Returns:
         C -- Matrix C in form of [[Int]]
         """
-        print("Matmul assert")
         assert len(A) == len(B) and len(A[0]) == len(B[0])
         C = [[0 for _ in range(len(A[0])) ] for _ in range(len(A)) ] # np.zeros(w_out, h_out)
         for x in range(len(A)):
@@ -1138,8 +1127,6 @@ if __name__ == "__main__":
                 [[0,1,-1], [-1,0,0], [0,-1,-1]],
                 [[0,-1,1], [-1, -1, -1], [0,1,0]]]
     B = [kernel_1, kernel_2]
-
-
 
     print_matrix(A[0], "A0:")
     print_matrix(B[0], "B0:")
