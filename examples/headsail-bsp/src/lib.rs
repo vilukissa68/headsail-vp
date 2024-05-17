@@ -4,6 +4,16 @@
 pub mod sprintln;
 pub mod uart;
 pub mod timer {
+    /*!
+     * Timer module for Headsail. When running on the Renode 
+     * Virtual Prototype, the "vp" feature should be enabled. 
+     * All operations are Read-Modify-Write.
+     * 
+     * HOW TO USE THIS DRIVER:
+     * In order to use any of the four timers that come with 
+     * Headsail HPC SubSystem, use the respective Timer{0..3} 
+     * type alias provided and the functions associated with it.
+     */
     #[cfg(not(feature = "vp"))]
     pub use crate::apb_timer::*;
     #[cfg(feature = "vp")]
