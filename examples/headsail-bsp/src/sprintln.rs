@@ -1,3 +1,4 @@
+//! Macros to implement Rust-style print formatting using `print`/`println`
 use crate::uart::uart_write;
 
 pub struct Uart;
