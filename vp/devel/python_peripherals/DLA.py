@@ -169,6 +169,112 @@ def reshape_to_cwh(data):
                 output[ch][w][h] = data[h][w][ch]
     return output
 
+def zeroes(shape):
+    """Numpy style zeros functions. Take in shape as tuple and creates tensor of zeros by the dimensions defined in the tuple
+
+    Params:
+    shape -- Tuple(dimx, dimy, dimz...) defining dimensions of the resulting tensor
+
+    Returns:
+    tensor -- ndimensional tensor filled with zeros
+    """
+    innner_most_array = [0 for _ in range(shape[-1])]
+
+    if len(shape) == 1:
+        return innner_most_array
+
+    for dim in reversed(shape[:-1]):
+        array = [innner_most_array for _ in range(dim)]
+        innner_most_array = array
+
+    return array
+
+def get_size(tensor):
+    """Gets number of elements in ndimensional tensor
+
+    Params:
+    tensor -- tensor to count elements int
+
+    Returns:
+    count -- Int number of elements in input tensor
+    """
+    shape = get_shape(tensor)
+
+    count = 1
+    for dim in shape:
+        count *= dim
+
+    return count
+
+def get_shape(tensor):
+    """Get dimensionality of ndimensional tensor
+
+    Params:
+    tensor -- input tensor to find dimensionality from
+
+    Returns:
+    shape -- Tuple(dimx, dimy, dimz...) of the dimensionality of the input tensor
+
+    """
+    shape = []
+    while isinstance(tensor, list):
+        shape.append(len(tensor))
+        tensor = tensor[0]
+    return tuple(shape)
+
+def flatten(tensor, order='C'):
+    """Flattens ndimensional tensor to one dimensional tensor/vector
+
+    Params:
+    tensor -- ndimensional tensor to flatten
+    order -- order of flattenning, C=Row-major order, F=Column-major order
+
+    Returns:
+    output -- 1-dimensional tensor
+    """
+    if order == 'F':
+        tensor = transpose(tensor)
+    elif order == 'C':
+        tensor = tensor
+    else:
+        raise Exception("Invalid order for flattening: {}. Orders supported are C=Row-major, F=Column-major".format(order))
+
+    output = []
+    if isinstance(tensor[0], list):
+        for l in tensor:
+            output = output + (flatten(l))
+        return output
+    for x in tensor:
+        output.append(x)
+    return output
+
+def transpose(tensor):
+    return [list(x) for x in zip(*tensor)]
+
+def reshape(tensor, shape):
+    """Numpy style reshape. Reshapes input tensor to dimensionality defined by the shape parameter. Input tensor and shape have equal number of elements.
+
+    Params:
+    tensor -- ndimensional tensor to reshape
+    shape -- Tuple(dimx, dimy, dimz...) defining the shape of the output tensor
+
+    Returns:
+    output -- ndimensional tensor shaped from input tensor with shape of shape parameter
+    """
+
+    def construct(flat, shape):
+        if len(shape) == 1:
+            return flat[:shape[0]]
+        sub_size = int(len(flat) / shape[0])
+        return [construct(flat[i * sub_size: (i + 1) * sub_size], shape[1:]) for i in range(shape[0])]
+
+    output = zeroes(shape)
+    assert get_size(output) == get_size(tensor)
+    flat = flatten(tensor)
+
+    return construct(flat, shape)
+
+
 def flatten_tensor(data):
     """Expect tensor in data CWH format and return 1d array"""
     in_height = len(data[0][0])
@@ -236,10 +342,14 @@ def bit_not(n, numbits=32):
 def print_matrix(A, name=""):
     """Print matrix"""
     print(name)
+
+    if not isinstance(A[0], list):
+        row = " ".join("{:4}".format(value) for value in A)
+        print(row)
+        return
+
     for x in range(len(A)):
-        row = ""
-        for y in range(len(A[0])):
-            row = row + str(A[x][y]) + " "
+        row = " ".join("{:4}".format(value) for value in A[x])
         print(row)
 
 def memory_bank_to_offset(bank):
@@ -576,31 +686,36 @@ class Dla:
             offset += 1
 
     def get_weight_data(self):
-       """Get all kernel/weight data from memory banks in CWH format
+        """Get all kernel/weight data from memory banks in FCWH format. (filter, image channel, width, height)
 
        Returns:
-       channels -- Int Number of channels
-       width -- Int Width of input
-       height -- Int Height of input
-       data -- [Int] List of all the weight values in CWH format
-       """
-       width = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_WIDTH_OFFSET, 4) + 1
-       height = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_HEIGHT_OFFSET, 4) + 1
-       channels = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_S_CHANNELS_OFFSET, 4) + 1
-       bank_idx = self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_A_OFFSET, 4)
-       bank = self.banks[bank_idx]
+        filter_amount -- Int Number of filters
+        width -- Int Width of input
+        height -- Int Height of input
+        data -- [Int] List of all the weight values in FCWH format
+        """
+        width = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_WIDTH_OFFSET, 4) + 1
+        height = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_HEIGHT_OFFSET, 4) + 1
+        filter_amount = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_S_CHANNELS_OFFSET, 4) + 1
+        input_channels = self.get_register(BUF_INPUT, BUF_CHANNELS_OFFSET, 12) + 1
+        bank_idx = self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_A_OFFSET, 4)
+        bank = self.banks[bank_idx]
 
-       data = []
-       offset = 0;
-       while len(data) < (channels * width * height):
-           # Move to next bank
-           if offset > bank.size:
-               bank_idx = bank_idx + 1
-               bank = self.banks[bank_idx]
-               offset = 0
-           data.append(bank.read(offset))
-           offset += 1
-       return channels, width, height, data
+        data = []
+        offset = 0;
+        while len(data) < (filter_amount * input_channels * width * height):
+            # Move to next bank
+            if offset > bank.size:
+                bank_idx = bank_idx + 1
+                bank = self.banks[bank_idx]
+                offset = 0
+            data.append(bank.read(offset))
+            offset += 1
+
+        data = reshape(data, (filter_amount, input_channels, width, height))
+        print("Kernel:", get_shape(data))
+        print("filter_amount:", filter_amount, "width:", width, "height:", height, "input_channels:", input_channels)
+        return filter_amount, width, height, data
 
     def get_input_data(self):
         # TODO: Only read as much data as is needed to fill input layer (C* W * H)
@@ -610,7 +725,7 @@ class Dla:
         channels -- Int Number of channels
         width -- Int Width of input
         Height -- Int Height of input
-        data -- [Int] List of all the input values in CWH format
+        data -- [[Int]] List of all the input values in CWH format
         """
         width = self.get_register(BUF_INPUT, BUF_WIDTH_OFFSET, 9) + 1
         height = self.get_register(BUF_INPUT, BUF_HEIGHT_OFFSET, 9) + 1
@@ -628,6 +743,7 @@ class Dla:
                 offset = 0
             data.append(bank.read(offset))
             offset += 1
+        data = reshape(data, (channels, width, height))
         return channels, width, height, data
 
     # TODO: Finish this when external memory is figured out
@@ -720,21 +836,20 @@ class Dla:
 
         # Load data from memory banks and reshape
         input_ch, input_w, input_h, input_data = self.get_input_data()
-        input_data = flat_to_CWH(input_data, input_ch, input_w, input_h)
+        #input_data = flat_to_CWH(input_data, input_ch, input_w, input_h)
 
-        kernel_ch, kernel_w, kernel_h, kernel_data = self.get_weight_data()
-        kernel_data = flat_to_CWH(kernel_data, kernel_ch, kernel_w, kernel_h)
+        kernel_amount, kernel_w, kernel_h, kernel_data = self.get_weight_data()
+        #kernel_data = flat_to_CWH(kernel_data, kernel_amount, kernel_w, kernel_h)
 
         # Convonlution
         padding, dilation, stride = self.get_conv_params()
 
-        res = []
         if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1):
             print("Mac not enabled")
             # TODO: This might be not correct, make sure S_CHANNELS work like this
-            for channel in range(input_ch):
-                for k_channel in range(kernel_ch):
-                    res.append(self.mac.conv2d_native(input_data[channel], kernel_data[k_channel], padding, dilation, stride))
+            print("kernel_idx:", kernel_data)
+            padding_value = self.get_register(BUF_PAD, BUF_PAD_VALUE_OFFSET, 8)
+            res = self.mac.conv2d(input_data, kernel_data, padding, dilation, stride, padding_value=padding_value)
 
             # Clip results
             res = dla.mac_clip(res)
@@ -759,6 +874,7 @@ class Dla:
             # Clipping and rounding
             res = dla.pp_clip(res)
             res = dla.round(res)
+            print("Shape:", get_shape(res))
             for (i, r) in enumerate(res):
                 print_matrix(r, "{} PP:".format(i))
 
@@ -779,29 +895,6 @@ class DlaMac:
     """Implement DLA's MAC array operations Conv2d, Bias and ReLU"""
     def __init__(self):
         self.name = "DLA MAC"
-
-    def add_padding(self, A, padding=(1,1)):
-        """Pads input matrix
-
-        Params:
-        A -- Matrix in form [[Int]] to pad
-        padding -- Tuple (Int, Int) sets padding in (x,y) direction
-
-        Returns:
-        out -- Padded matrix A
-        """
-        h_in = len(A)
-        w_in = len(A[0])
-
-        # Prepare padded output matrix
-        out = [[0 for _ in range(w_in + padding[1])] for _ in range(h_in + padding[0])]
-
-        # Insert A to padded matrix
-        for i in range(h_in):
-            for j in range(w_in):
-                out[i + padding[0]][j + padding[1]] = A[i][j]
-
-        return out
 
     def conv2d_check_parameters(self, A, kernel, padding, dilation, stride):
         """Calculates outputs of convolution matrix based on preferred inputs
@@ -832,72 +925,82 @@ class DlaMac:
         h_middle_zero = h_kernel % 2 == 1
         w_middle_zero = w_kernel % 2 == 1
 
-        return A, kernel, int(h_out), int(w_out), h_middle_zero, w_middle_zero
+        return int(h_out), int(w_out), h_middle_zero, w_middle_zero
 
+    def pad_matrix(self, mat_in, padding, padding_value=0):
 
-    # Perform conv2d to value written
-    def conv2d_native(self, mat_in, kernel, padding=(0,0), dilation=(1,1), stride=(1,1)):
-        """2D convolution
+        h_in = len(mat_in)
+        w_in = len(mat_in[0])
 
-        Params:
-        mat_in -- Matrix in form [[Int]] to be convolved
-        kernel -- Matrix in form of [[Int]] to use ase convolution kernel
-        padding -- Tuple (Int, Int) sets padding in (x,y) direction
-        dilation -- Tuple (Int, Int) sets dilation in (x,y) direction
-        stride -- Tuple (Int, Int) sets stride in (x,y) direction
-
-        Returns:
-        mat_out -- Result of convolution operation in form of [[Int]]
-        """
-
-        mat_in, kernel, h_out, w_out, h_middle_zero, w_middle_zero = self.conv2d_check_parameters(mat_in, kernel, padding, dilation, stride)
-
-        h_kernel = len(kernel)
-        w_kernel = len(kernel[0])
-
-        h_kernel_max_offset = h_kernel // 2 # Kernel height max offset
-        w_kernel_max_offset = w_kernel // 2 # Kernel width max offset
-
-        # Build array for output
-        mat_out = [[0 for _ in range(w_out) ] for _ in range(h_out) ] # np.zeros(w_out, h_out)
-
-        if w_middle_zero:
-            center_x_0 = h_kernel_max_offset * dilation[0]
-        else:
-            center_x_0 = h_kernel_max_offset * dilation[0] -1
-
-        if h_middle_zero:
-            center_y_0 = w_kernel_max_offset * dilation[1]
-        else:
-            center_y_0 = w_kernel_max_offset * dilation[1] - 1
-
-        for j in range(h_out):
-            if h_middle_zero:
-                center_y = center_y_0 + j * stride[1]
-                range_y = [center_y + k * dilation[1] for k in range(-h_kernel_max_offset, h_kernel_max_offset + 1)]
-            else:
-                center_y = (center_y_0) + j * stride[1] # Calculate from top left of center
-                range_y = [center_y + k * dilation[1] for k in range(0, h_kernel_max_offset + 1)]
-
-            for i in range(w_out):
-                if w_middle_zero:
-                    center_x = center_x_0 + i * stride[0]
-                    range_x = [center_x + k * dilation[0] for k in range(-w_kernel_max_offset, w_kernel_max_offset + 1)]
-                else:
-                    center_x = (center_x_0) + i * stride[0]
-                    range_x = [center_x + k * dilation[0] for k in range(0, w_kernel_max_offset + 1)]
-
-                # Constuct a sub matrix
-                mat_sub = [[0 for _ in range_x ] for _ in range_y ] # np.zeros(w_out, h_out)
-
-                for mat_x in range(len(range_x)):
-                    for mat_y in range(len(range_y)):
-                        mat_sub[mat_y][mat_x] = mat_in[range_y[mat_y]][range_x[mat_x]]
-
-                mat_out[j][i] = self.mat_sum(self.matmul_element_wise(mat_sub, kernel))
-
+        mat_out = [[ padding_value for _ in range(w_in + padding[1]*2)] for _ in range(h_in + padding[0] * 2) ] # np.zeros(w_out, h_out)
+        for (i, row) in enumerate(mat_in):
+            for (j, x) in enumerate(row):
+                mat_out[i + padding[0]][j + padding[1]] = x
         return mat_out
 
+
+    def conv2d(self, input_img, kernels, padding=(0,0), dilation=(1,1), stride=(1,1), padding_value=0):
+        # Find output size of single produced filter
+        # Number of output filters is defined by the number of kernels
+        # Each inputed kernel is applied for the whole input entry
+        print("Kernels shape:", get_shape(kernels))
+        print("Input shape:", get_shape(input_img))
+        h_out, w_out, h_middle_zero, w_middle_zero = self.conv2d_check_parameters(input_img[0], kernels[0][0], padding, dilation, stride)
+
+        # Initialize output filters
+        output_filters = [[[ 0 for _ in range(w_out)] for _ in range(h_out) ] for _ in range(len(kernels)) ] # np.zeros(kernel_out, w_out, h_out)
+
+        h_kernel_max_offset = len(kernels[0][0]) // 2 # Kernel height max offset
+        w_kernel_max_offset = len(kernels[0][0][0]) // 2 # Kernel width max offset
+
+        print("h_out:", h_out, " w_out:", w_out)
+
+        # Apply each kernel to input_img
+        for (kernel_idx, kernel) in enumerate(kernels):
+                if w_middle_zero:
+                    center_x_0 = h_kernel_max_offset * dilation[0]
+                else:
+                    center_x_0 = h_kernel_max_offset * dilation[0] -1
+
+                if h_middle_zero:
+                    center_y_0 = w_kernel_max_offset * dilation[1]
+                else:
+                    center_y_0 = w_kernel_max_offset * dilation[1] - 1
+
+                for j in range(h_out):
+                    if h_middle_zero:
+                        center_y = center_y_0 + (j * stride[1])
+                        range_y = [center_y + k * dilation[1] for k in range(-h_kernel_max_offset, h_kernel_max_offset + 1)]
+                    else:
+                        center_y = center_y_0 + (j * stride[1]) # Calculate from top left of center
+                        range_y = [center_y + k * dilation[1] for k in range(0, h_kernel_max_offset + 1)]
+
+                    for i in range(w_out):
+                        if w_middle_zero:
+                            center_x = center_x_0 + (i * stride[0])
+                            range_x = [center_x + k * dilation[0] for k in range(-w_kernel_max_offset, w_kernel_max_offset + 1)]
+                        else:
+                            center_x = center_x_0 + (i * stride[0])
+                            range_x = [center_x + k * dilation[0] for k in range(0, w_kernel_max_offset + 1)]
+
+                        channel_sum = 0
+                        for (channel_idx, channel_data) in enumerate(input_img):
+
+                            # Pad channel
+                            channel_data = self.pad_matrix(channel_data, padding, padding_value=padding_value)
+
+                            # Constuct a sub matrix
+                            mat_sub = [[0 for _ in range_x ] for _ in range_y ] # np.zeros(w_out, h_out)
+
+                            for mat_x in range(len(range_x)):
+                                for mat_y in range(len(range_y)):
+                                    mat_sub[mat_y][mat_x] = channel_data[range_y[mat_y]][range_x[mat_x]]
+
+                            channel_sum = channel_sum + self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
+
+                        output_filters[kernel_idx][j][i] = channel_sum
+
+        return output_filters
 
     # ReLU
     def relu_native(self, x):
@@ -1007,10 +1110,16 @@ def read(request, dla):
 
 if __name__ == "__main__":
     print("Running as independent module")
+
+    a = [[1,2],[3,4],[5,6]]
+    print_matrix(a)
+    print_matrix(flatten(a, 'C'))
+    print_matrix(flatten(a, 'F'))
+
     dla = Dla()
 
     A_ch, A_h, A_w = 3, 5, 5
-    B_ch, B_h, B_w = 1, 3, 3
+    B_ch, B_h, B_w = 2, 3, 3
 
     # Set input size
     dla.set_register(BUF_INPUT, BUF_CHANNELS_OFFSET, 12, A_ch - 1)
@@ -1027,25 +1136,31 @@ if __name__ == "__main__":
     dla.set_register(BUF_DATA_BANK, BUF_DATA_BANK_B_OFFSET, 4, 8)
 
     # Generate 256 x 256 image
-    A = [[[random.randint(-127,127) for _ in range(A_ch) ] for _ in range(A_h)] for _ in range(A_w)]
-    B = [[[random.randint(-127, 127) for _ in range(B_ch) ] for _ in range(B_h)] for _ in range(B_w)]
-    A = reshape_to_cwh(A) # HWC to CWH
-    B = reshape_to_cwh(B)
+    A = [[[0,0,0,2,0], [0,1,2,1,2], [0,0,1,2,0], [1,0,0,0,2], [0,0,1,0,1]],
+                 [[2,0,1,0,1], [0,0,2,2,1], [1,0,2,1,1], [2,1,2,2,1], [0,0,1,1,2]],
+                 [[0,1,1,1,0], [0,2,0,1,2], [1,0,0,1,2], [1,1,1,0,0], [1,1,2,0,2]]]
+    kernel_1 = [[[-1,-1,0], [-1,0,0], [-1,-1,1]],
+                [[0,0,1], [1,-1,-1], [1,-1,0]],
+                [[1,0,-1], [-1, 1, -1], [-1,0,-1]]]
+    kernel_2 = [[[1,0,0], [-1,0,1], [0,-1,1]],
+                [[0,1,-1], [-1,0,0], [0,-1,-1]],
+                [[0,-1,1], [-1, -1, -1], [0,1,0]]]
+    B = [kernel_1, kernel_2]
 
     print_matrix(A[0], "A0:")
-    print_matrix(B[0], "B0:")
 
-    A = separate_channels(A) # CHW to 2D
-    B = separate_channels(B)
-    C = dla.mac.conv2d_native(A[0], B[0])
-    print_matrix(C, "C:")
+    # A = separate_channels(A) # CHW to 2D
+    # B = separate_channels(B)
+    C = dla.mac.conv2d(A, B)
+    for (i,c) in enumerate(C):
+        print_matrix(c, "C{}".format(i))
 
     # Write input data to data bank
-    A = flatten_tensor(A)
+    A = flatten(A)
     dla.set_input_data(A)
 
     # Write weight data to data bank
-    B = flatten_tensor(B)
+    B = flatten(B)
     dla.set_weight_data(B)
 
     # Initialization ready
@@ -1056,6 +1171,8 @@ if __name__ == "__main__":
     # Enable PP
     dla.set_register(PP_CTRL, PP_SELECT_OFFSET, 1, 1)
     dla.set_register(PP_CTRL, ACTIVE_MODE_OFFSET, 2, 0)
+    dla.set_register(HANDSHAKE, HANDSHAKE_BIAS_ENABLE_OFFSET, 1, 1)
+    dla.set_register(HANDSHAKE, HANDSHAKE_ACTIVE_ENABLE_OFFSET, 1, 1)
 
     ## Mac clip
     dla.set_register(MAC_CTRL, MAC_CLIP_OFFSET, 5, 8)
