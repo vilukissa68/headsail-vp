@@ -45,6 +45,9 @@ use core::ptr;
 use headsail_bsp::{sprint, sprintln};
 use mmap::*;
 
+/// Clip error type
+struct InvalidClip(u32);
+
 /// Dimensions of kernel
 pub struct KernelSize {
     pub channels: u32,
@@ -119,7 +122,7 @@ pub enum MemoryBank {
 }
 
 impl TryFrom<u32> for MemoryBank {
-    type Error = &'static str;
+    type Error = ();
     fn try_from(value: u32) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(MemoryBank::Bank0),
@@ -138,7 +141,30 @@ impl TryFrom<u32> for MemoryBank {
             13 => Ok(MemoryBank::Bank13),
             14 => Ok(MemoryBank::Bank14),
             15 => Ok(MemoryBank::Bank15),
-            _ => Err("Error"),
+            _ => Err(()),
+        }
+    }
+}
+
+impl Into<usize> for MemoryBank {
+    fn into(self) -> usize {
+        match self {
+            MemoryBank::Bank0 => 0,
+            MemoryBank::Bank1 => 1,
+            MemoryBank::Bank2 => 2,
+            MemoryBank::Bank3 => 3,
+            MemoryBank::Bank4 => 4,
+            MemoryBank::Bank5 => 5,
+            MemoryBank::Bank6 => 6,
+            MemoryBank::Bank7 => 7,
+            MemoryBank::Bank8 => 8,
+            MemoryBank::Bank9 => 9,
+            MemoryBank::Bank10 => 10,
+            MemoryBank::Bank11 => 11,
+            MemoryBank::Bank12 => 12,
+            MemoryBank::Bank13 => 13,
+            MemoryBank::Bank14 => 14,
+            MemoryBank::Bank15 => 15,
         }
     }
 }
@@ -162,26 +188,6 @@ impl MemoryBank {
             MemoryBank::Bank13 => MEMORY_BANK_13_OFFSET,
             MemoryBank::Bank14 => MEMORY_BANK_14_OFFSET,
             MemoryBank::Bank15 => MEMORY_BANK_15_OFFSET,
-        }
-    }
-    fn from(&self) -> usize {
-        match self {
-            MemoryBank::Bank0 => 0,
-            MemoryBank::Bank1 => 1,
-            MemoryBank::Bank2 => 2,
-            MemoryBank::Bank3 => 3,
-            MemoryBank::Bank4 => 4,
-            MemoryBank::Bank5 => 5,
-            MemoryBank::Bank6 => 6,
-            MemoryBank::Bank7 => 7,
-            MemoryBank::Bank8 => 8,
-            MemoryBank::Bank9 => 9,
-            MemoryBank::Bank10 => 10,
-            MemoryBank::Bank11 => 11,
-            MemoryBank::Bank12 => 12,
-            MemoryBank::Bank13 => 13,
-            MemoryBank::Bank14 => 14,
-            MemoryBank::Bank15 => 15,
         }
     }
 }
@@ -306,11 +312,12 @@ impl Dla {
     /// Sets one of the DLA's memory banks as starting bank for inputs
     fn set_input_data_bank(&self, bank: MemoryBank) {
         let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
+        let b: usize = bank.into();
         reg = set_bits!(
             DLA_BUF_DATA_BANK_B_OFFSET,
             DLA_BUF_DATA_BANK_B_BITMASK,
             reg,
-            bank.from()
+            b
         );
         self.write_u32(DLA_BUF_DATA_BANK, reg);
     }
@@ -318,11 +325,12 @@ impl Dla {
     /// Sets one of the DLA's memory banks as starting bank for kernels
     fn set_kernel_data_bank(&self, bank: MemoryBank) {
         let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
+        let b: usize = bank.into();
         reg = set_bits!(
             DLA_BUF_DATA_BANK_A_OFFSET,
             DLA_BUF_DATA_BANK_A_BITMASK,
             reg,
-            bank.from()
+            b
         );
         self.write_u32(DLA_BUF_DATA_BANK, reg);
     }
@@ -330,11 +338,12 @@ impl Dla {
     /// Sets one of the DLA's memory banks as starting bank for outputs
     fn set_output_bank(&self, bank: MemoryBank) {
         let mut reg = self.read_u32(DLA_PP_AXI_WRITE);
+        let b: usize = bank.into();
         reg = set_bits!(
             DLA_PP_AXI_WRITE_ADDRESS_OFFSET,
             DLA_PP_AXI_WRITE_ADDRESS_BITMASK,
             reg,
-            bank.offset() + MEMORY_BANK_BASE_ADDR
+            b + MEMORY_BANK_BASE_ADDR
         );
         self.write_u32(DLA_PP_AXI_WRITE, reg);
     }
@@ -534,55 +543,45 @@ impl Dla {
     fn get_input_bank(&self) -> MemoryBank {
         let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
         reg = get_bits!(reg, DLA_BUF_DATA_BANK_B_BITMASK);
-        let bank = match MemoryBank::try_from(reg) {
-            Ok(bank) => bank,
-            Err(e) => panic!("{}", e),
-        };
-        bank
+        MemoryBank::try_from(reg).unwrap()
     }
 
     /// Reads index of the first kernel bank
     fn get_kernel_bank(&self) -> MemoryBank {
         let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
         reg = get_bits!(reg, DLA_BUF_DATA_BANK_A_BITMASK);
-        let bank = match MemoryBank::try_from(reg) {
-            Ok(bank) => bank,
-            Err(e) => panic!("{}", e),
-        };
-        bank
+        MemoryBank::try_from(reg).unwrap()
     }
 
     /// Reads index of the first output bank
     fn get_output_bank(&self) -> MemoryBank {
         let reg = self.read_u32(DLA_PP_AXI_WRITE);
         let bank_idx: u32 = (reg - MEMORY_BANK_BASE_ADDR as u32) / MEMORY_BANK_SIZE as u32;
-        let bank = match MemoryBank::try_from(bank_idx) {
-            Ok(bank) => bank,
-            Err(e) => panic!("{}", e),
-        };
-        bank
+        MemoryBank::try_from(bank_idx).unwrap()
     }
 
     /// Sets clipping after conv2d
-    fn set_mac_clip(&self, clip_amount: u32) {
+    fn set_mac_clip(&self, clip_amount: u32) -> Result<(), InvalidClip> {
         // Cap clipping amount
         if clip_amount > 21 {
-            panic!("Clip can't be more than 20")
+            return Err(InvalidClip(clip_amount));
         }
         let mut reg = self.read_u32(DLA_MAC_CTRL);
         reg = set_bits!(DLA_MAC_CLIP_OFFSET, DLA_MAC_CLIP_BITMASK, reg, clip_amount);
-        self.write_u32(DLA_MAC_CTRL, reg)
+        self.write_u32(DLA_MAC_CTRL, reg);
+        Ok(())
     }
 
     /// Sets clipping after post-processing
-    fn set_pp_clip(&self, clip_amount: u32) {
+    fn set_pp_clip(&self, clip_amount: u32) -> Result<(), InvalidClip> {
         // Cap clipping amount
         if clip_amount > 0x1F {
-            panic!("Clip can't be more than 20")
+            return Err(InvalidClip(clip_amount));
         }
         let mut reg = self.read_u32(DLA_PP_CTRL);
         reg = set_bits!(DLA_PP_CLIP_OFFSET, DLA_PP_CLIP_BITMASK, reg, clip_amount);
-        self.write_u32(DLA_PP_CTRL, reg)
+        self.write_u32(DLA_PP_CTRL, reg);
+        Ok(())
     }
 
     /// Sets rounding after post-processing
@@ -755,7 +754,13 @@ impl Dla {
         self.set_stride(config.stride.unwrap_or(DEFAULT_STRIDE));
 
         // Set clipping
-        self.set_mac_clip(config.mac_clip.unwrap_or(DEFAULT_MAC_CLIP));
-        self.set_pp_clip(config.pp_clip.unwrap_or(DEFAULT_PP_CLIP));
+        match self.set_mac_clip(config.mac_clip.unwrap_or(DEFAULT_MAC_CLIP)) {
+            Ok(_) => (),
+            Err(_) => sprintln!("Mac clip value, exceeds allowed maximum of 21"),
+        }
+        match self.set_pp_clip(config.pp_clip.unwrap_or(DEFAULT_PP_CLIP)) {
+            Ok(_) => (),
+            Err(_) => sprintln!("PP clip value, exceeds allowed maximum of 21"),
+        }
     }
 }
