@@ -222,15 +222,23 @@ def get_shape(tensor):
         tensor = tensor[0]
     return tuple(shape)
 
-def flatten(tensor):
+def flatten(tensor, order='C'):
     """Flattens ndimensional tensor to one dimensional tensor/vector
 
     Params:
     tensor -- ndimensional tensor to flatten
+    order -- order of flattenning, C=Row-major order, F=Column-major order
 
     Returns:
     output -- 1-dimensional tensor
     """
+    if order == 'F':
+        tensor = transpose(tensor)
+    elif order == 'C':
+        tensor = tensor
+    else:
+        raise Exception("Invalid order for flattening: {}. Orders supported are C=Row-major, F=Column-major".format(order))
+
     output = []
     if isinstance(tensor[0], list):
         for l in tensor:
@@ -239,6 +247,9 @@ def flatten(tensor):
     for x in tensor:
         output.append(x)
     return output
+
+def transpose(tensor):
+    return [list(x) for x in zip(*tensor)]
 
 def reshape(tensor, shape):
     """Numpy style reshape. Reshapes input tensor to dimensionality defined by the shape parameter. Input tensor and shape have equal number of elements.
@@ -331,6 +342,12 @@ def bit_not(n, numbits=32):
 def print_matrix(A, name=""):
     """Print matrix"""
     print(name)
+
+    if not isinstance(A[0], list):
+        row = " ".join("{:4}".format(value) for value in A)
+        print(row)
+        return
+
     for x in range(len(A)):
         row = " ".join("{:4}".format(value) for value in A[x])
         print(row)
@@ -669,13 +686,13 @@ class Dla:
             offset += 1
 
     def get_weight_data(self):
-        """Get all kernel/weight data from memory banks in CWH format
+        """Get all kernel/weight data from memory banks in FCWH format. (filter, image channel, width, height)
 
        Returns:
-        channels -- Int Number of channels
+        filter_amount -- Int Number of filters
         width -- Int Width of input
         height -- Int Height of input
-        data -- [Int] List of all the weight values in CWH format
+        data -- [Int] List of all the weight values in FCWH format
         """
         width = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_WIDTH_OFFSET, 4) + 1
         height = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_HEIGHT_OFFSET, 4) + 1
@@ -902,7 +919,7 @@ class DlaMac:
         w_in = len(A[0])
         h_kernel = len(kernel)
         w_kernel = len(kernel[0])
-        h_out = math.floor(((h_in + 2*padding[0] - dilation[0] * (h_kernel - 1) -1) / stride[0]) +1)
+        h_out = math.floor((h_in + 2*padding[0] - dilation[0] * (h_kernel - 1) -1) / stride[0] +1)
         w_out = math.floor((w_in + 2*padding[1] - dilation[1] * (w_kernel - 1) -1) / stride[1] +1)
 
         h_middle_zero = h_kernel % 2 == 1
@@ -940,8 +957,6 @@ class DlaMac:
 
         # Apply each kernel to input_img
         for (kernel_idx, kernel) in enumerate(kernels):
-                print_matrix(kernel)
-                print(get_shape(kernel))
                 if w_middle_zero:
                     center_x_0 = h_kernel_max_offset * dilation[0]
                 else:
@@ -985,8 +1000,6 @@ class DlaMac:
 
                         output_filters[kernel_idx][j][i] = channel_sum
 
-        print(get_shape(output_filters))
-        print_matrix(output_filters, "Output")
         return output_filters
 
     # ReLU
@@ -1097,6 +1110,12 @@ def read(request, dla):
 
 if __name__ == "__main__":
     print("Running as independent module")
+
+    a = [[1,2],[3,4],[5,6]]
+    print_matrix(a)
+    print_matrix(flatten(a, 'C'))
+    print_matrix(flatten(a, 'F'))
+
     dla = Dla()
 
     A_ch, A_h, A_w = 3, 5, 5
@@ -1129,12 +1148,12 @@ if __name__ == "__main__":
     B = [kernel_1, kernel_2]
 
     print_matrix(A[0], "A0:")
-    print_matrix(B[0], "B0:")
 
     # A = separate_channels(A) # CHW to 2D
     # B = separate_channels(B)
     C = dla.mac.conv2d(A, B)
-    print_matrix(C, "C:")
+    for (i,c) in enumerate(C):
+        print_matrix(c, "C{}".format(i))
 
     # Write input data to data bank
     A = flatten(A)
