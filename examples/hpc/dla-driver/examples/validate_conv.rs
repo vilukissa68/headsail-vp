@@ -59,6 +59,7 @@ fn validate_conv2d() {
             height: 16,
         }),
         kernel_size: Some(KernelSize {
+            s_channels: 1,
             channels: 16,
             width: 3,
             height: 3,

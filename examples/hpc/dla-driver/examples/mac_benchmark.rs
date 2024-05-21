@@ -85,6 +85,7 @@ fn run_random_layer(
             height: input_height,
         }),
         kernel_size: Some(KernelSize {
+            s_channels: 1,
             channels: 1,
             width: kernel_width,
             height: kernel_height,

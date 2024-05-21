@@ -19,6 +19,7 @@ const DEFAULT_KERNEL_BANK: MemoryBank = MemoryBank::Bank8;
 const DEFAULT_OUTPUT_BANK: MemoryBank = MemoryBank::Bank12;
 const DEFAULT_BIAS_ADDR: u32 = 0x0;
 const DEFAULT_KERNEL_SIZE: KernelSize = KernelSize {
+    s_channels: 1,
     channels: 1,
     width: 2,
     height: 2,
@@ -50,6 +51,7 @@ struct InvalidClip(u32);
 
 /// Dimensions of kernel
 pub struct KernelSize {
+    pub s_channels: u32,
     pub channels: u32,
     pub width: u32,
     pub height: u32,
@@ -383,26 +385,36 @@ impl Dla {
 
     /// Sets dimensions for filters in convolution
     fn set_kernel_size(&self, kernel_size: KernelSize) {
-        let mut reg = 0;
-        reg = set_bits!(
+        let mut buf_kernel_0 = 0;
+        // Set BUF_KERNEL_0
+        buf_kernel_0 = set_bits!(
             DLA_BUF_KERNEL_0_S_CHANNELS_OFFSET,
             DLA_BUF_KERNEL_0_S_CHANNELS_BITMASK,
-            reg,
-            kernel_size.channels - 1
+            buf_kernel_0,
+            kernel_size.s_channels - 1
         );
-        reg = set_bits!(
+        buf_kernel_0 = set_bits!(
             DLA_BUF_KERNEL_0_WIDTH_OFFSET,
             DLA_BUF_KERNEL_0_WIDTH_BITMASK,
-            reg,
+            buf_kernel_0,
             kernel_size.width - 1
         );
-        reg = set_bits!(
+        buf_kernel_0 = set_bits!(
             DLA_BUF_KERNEL_0_HEIGHT_OFFSET,
             DLA_BUF_KERNEL_0_HEIGHT_BITMASK,
-            reg,
+            buf_kernel_0,
             kernel_size.height - 1
         );
-        self.write_u32(DLA_BUF_KERNEL_0, reg);
+        self.write_u32(DLA_BUF_KERNEL_0, buf_kernel_0);
+        // Set BUF_KERNEL_1
+        let mut buf_kernel_1 = 0;
+        buf_kernel_1 = set_bits!(
+            DLA_BUF_KERNEL_1_NUM_OFFSET,
+            DLA_BUF_KERNEL_1_NUM_BITMASK,
+            buf_kernel_1,
+            kernel_size.channels - 1
+        );
+        self.write_u32(DLA_BUF_KERNEL_1, buf_kernel_1);
     }
 
     /// Signals to DLA that all input data has been set

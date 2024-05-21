@@ -696,7 +696,8 @@ class Dla:
         """
         width = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_WIDTH_OFFSET, 4) + 1
         height = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_HEIGHT_OFFSET, 4) + 1
-        filter_amount = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_S_CHANNELS_OFFSET, 4) + 1
+        s_channels = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_S_CHANNELS_OFFSET, 4) + 1
+        filter_amount = self.get_register(BUF_KERNEL_1, BUF_KERNEL_1_NUM_OFFSET, 12) + 1
         input_channels = self.get_register(BUF_INPUT, BUF_CHANNELS_OFFSET, 12) + 1
         bank_idx = self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_A_OFFSET, 4)
         bank = self.banks[bank_idx]
@@ -715,7 +716,7 @@ class Dla:
         data = reshape(data, (filter_amount, input_channels, width, height))
         print("Kernel:", get_shape(data))
         print("filter_amount:", filter_amount, "width:", width, "height:", height, "input_channels:", input_channels)
-        return filter_amount, width, height, data
+        return filter_amount, s_channels, width, height, data
 
     def get_input_data(self):
         # TODO: Only read as much data as is needed to fill input layer (C* W * H)
@@ -838,7 +839,7 @@ class Dla:
         input_ch, input_w, input_h, input_data = self.get_input_data()
         #input_data = flat_to_CWH(input_data, input_ch, input_w, input_h)
 
-        kernel_amount, kernel_w, kernel_h, kernel_data = self.get_weight_data()
+        kernel_amount, s_channels, kernel_w, kernel_h, kernel_data = self.get_weight_data()
         #kernel_data = flat_to_CWH(kernel_data, kernel_amount, kernel_w, kernel_h)
 
         # Convonlution
@@ -847,7 +848,6 @@ class Dla:
         if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1):
             print("Mac not enabled")
             # TODO: This might be not correct, make sure S_CHANNELS work like this
-            print("kernel_idx:", kernel_data)
             padding_value = self.get_register(BUF_PAD, BUF_PAD_VALUE_OFFSET, 8)
             res = self.mac.conv2d(input_data, kernel_data, padding, dilation, stride, padding_value=padding_value)
 
