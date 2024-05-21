@@ -5,13 +5,13 @@ pub mod sprintln;
 pub mod uart;
 pub mod timer {
     /*!
-     * Timer module for Headsail. When running on the Renode 
-     * Virtual Prototype, the "vp" feature should be enabled. 
+     * Timer module for Headsail. When running on the Renode
+     * Virtual Prototype, the "vp" feature should be enabled.
      * All operations are Read-Modify-Write.
-     * 
+     *
      * HOW TO USE THIS DRIVER:
-     * In order to use any of the four timers that come with 
-     * Headsail HPC SubSystem, use the respective Timer{0..3} 
+     * In order to use any of the four timers that come with
+     * Headsail HPC SubSystem, use the respective Timer{0..3}
      * type alias provided and the functions associated with it.
      */
     #[cfg(not(feature = "vp"))]
@@ -35,6 +35,8 @@ pub mod alloc;
 #[cfg(feature = "hpc")]
 mod hpc;
 mod mmap;
+#[cfg(feature = "sysctrl")]
+mod sysctrl;
 #[cfg(any(feature = "panic-uart"))]
 mod ufmt_panic;
 
@@ -64,44 +66,7 @@ pub fn write_u32(addr: usize, val: u32) {
     unsafe { core::ptr::write_volatile(addr as *mut _, val) }
 }
 
-#[cfg(feature = "sysctrl-rt")]
-#[export_name = "_setup_interrupts"]
-fn setup_interrupt_vector() {
-    use riscv::register::mtvec;
-
-    // Set the trap vector
-    unsafe {
-        extern "C" {
-            fn _trap_vector();
-        }
-
-        // Set all the trap vectors for good measure
-        let bits = _trap_vector as usize;
-        mtvec::write(bits, mtvec::TrapMode::Vectored);
-    }
-}
-
 #[cfg(feature = "alloc")]
 pub fn init_alloc() {
     unsafe { alloc::init_heap() };
 }
-
-// The vector table
-//
-// Do the ESP trick and route all interrupts to the direct dispatcher.
-//
-// N.b. vectors length must be exactly 0x80
-#[cfg(feature = "sysctrl-rt")]
-core::arch::global_asm!(
-    "
-.section .vectors, \"ax\"
-    .global _trap_vector
-    // Trap vector base address must always be aligned on a 4-byte boundary
-    .align 4
-_trap_vector:
-    j _start_trap
-    .rept 31
-    .word _start_trap // 1..31
-    .endr
-"
-);

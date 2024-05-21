@@ -55,4 +55,9 @@ required-features = ["alloc", "rt", "sdram"]
 [[example]]
 name = "timer0"
 path = "examples/timer0.rs"
-required-features = ["rt"]
+required-features = ["panic-uart", "rt"]
+
+[[example]]
+name = "interrupts"
+path = "examples/interrupts.rs"
+required-features = ["panic-uart", "hpc-rt"]
