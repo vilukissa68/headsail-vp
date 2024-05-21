@@ -306,7 +306,10 @@ impl Dla {
     /// Writes buffer to DLA's input bank(s)
     pub fn write_input(&self, input: &mut [i8]) {
         // TODO optimize memory bank logic
-        self.write_data_bank(self.get_input_bank().offset(), input)
+        sprintln!("Get offset");
+        let offset = self.get_input_bank().offset();
+        sprintln!("Offset: {}", offset);
+        self.write_data_bank(offset, input)
     }
 
     /// Writes buffer to DLA's kernel bank(s)
@@ -549,6 +552,9 @@ impl Dla {
     fn get_input_bank(&self) -> MemoryBank {
         let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
         reg = get_bits!(reg, DLA_BUF_DATA_BANK_B_BITMASK);
+        // Shift value back here
+        reg = reg >> 16;
+        sprintln!("Reg:{:x}", reg);
         MemoryBank::try_from(reg).unwrap()
     }
 
@@ -750,6 +756,7 @@ impl Dla {
 
         self.set_input_size(config.input_size.unwrap_or(DEFAULT_INPUT_SIZE));
 
+        sprintln!("Here");
         // Set simd
         self.set_simd_mode(config.simd_mode.unwrap_or(DEFAULT_SIMD_MODE));
 

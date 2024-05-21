@@ -116,7 +116,7 @@ fn run_random_layer(
     sprintln!("Waiting for calculation");
     while !dla.handle_handshake() {}
     sprintln!("Calculation ready");
-    dla.read_output(output_width as usize * output_height as usize)
+    dla.read_output(output_width as usize * output_height as usize * 16)
 }
 
 #[entry]
