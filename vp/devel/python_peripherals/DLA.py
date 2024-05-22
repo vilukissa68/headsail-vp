@@ -632,7 +632,7 @@ class Dla:
         """
         return self.get_register(PP_AXI_WRITE, PP_AXI_WRITE_ADDRESS_OFFSET, 32) & 0xFFFFFFFF
 
-    def write_output(self, data):
+    def write_output(self, data, width=8):
         """Writes output to arbitrary memory address
 
         Params:
@@ -643,25 +643,65 @@ class Dla:
             return
 
         addr = self.get_output_addr()
-        print("addr:", addr)
+        print("Writing output to:{:x}".format(addr))
         # If addr is bank
-        if MEMORY_BANK_ADDR <= addr and addr < MEMORY_BANK_ADDR + (NO_MEMORY_BANKS * MEMORY_BANK_SIZE):
+        if MEMORY_BANK_ADDR <= addr and addr < (MEMORY_BANK_ADDR + (NO_MEMORY_BANKS * MEMORY_BANK_SIZE)):
             bank_idx = (addr - MEMORY_BANK_ADDR) // MEMORY_BANK_SIZE
             bank = self.banks[bank_idx]
 
-            bytes_written = 0
+            values_written = 0
             offset = 0
-            while bytes_written < len(data):
+            while values_written < len(data): # Data packing
+                # Bank switching when current bank is filled
                 if offset > bank.size:
                     bank_idx = bank_idx + 1
                     assert(bank_idx < len(self.banks))
                     bank = self.banks[bank_idx]
                     offset = 0
-                bank.write(offset, data[bytes_written])
-                bytes_written += 1
-                offset += 1
-            else:
-                print("WARNING: output written outside VP memory region")
+
+                # Write chunk
+                if width == 32:
+                    byte_3 = (data[values_written] & 0xFF000000) >> 24
+                    byte_2 = (data[values_written] & 0x00FF0000) >> 16
+                    byte_1 = (data[values_written] & 0x0000FF00) >> 8
+                    byte_0 = data[values_written] & 0x000000FF
+                    bank.write(offset, byte_3)
+                    bank.write(offset + 1, byte_2)
+                    bank.write(offset + 2, byte_1)
+                    bank.write(offset + 3, byte_0)
+                    values_written += 1
+                    offset += 4
+                elif width == 16:
+                    upper = (data[values_written] & 0xFF00) >> 8
+                    lower = data[values_written] & 0x00FF
+                    bank.write(offset, upper)
+                    bank.write(offset + 1, lower)
+                    values_written += 1
+                    offset += 2
+                elif width == 8:
+                    bank.write(offset, data[values_written])
+                    offset += 1
+                    values_written += 1
+                elif width == 4:
+                    fst = (data[values_written] & 0xF) << 4
+                    snd = (data[values_written + 1] & 0xF)
+                    combined = fst + snd
+                    bank.write(offset, combined)
+                    offset += 1
+                    values_written += 2
+                elif width == 2:
+                    fst = (data[values_written] & 0x3) << 6
+                    snd = (data[values_written + 1] & 0x3) << 4
+                    thrd = (data[values_written + 2] & 0x3) << 2
+                    frth=  (data[values_written + 3] & 0x3)
+                    combined = fst + snd + thrd + frth
+                    bank.write(offset, combined)
+                    offset += 1
+                    values_written += 4
+            print("First value -71798?:", bank.mem[0], bank.mem[1], bank.mem[2], bank.mem[3])
+
+        else:
+            print("WARNING: output written outside VP memory region")
 
 
     def set_input_data(self, data):
@@ -837,13 +877,22 @@ class Dla:
 
         # Load data from memory banks and reshape
         input_ch, input_w, input_h, input_data = self.get_input_data()
-        #input_data = flat_to_CWH(input_data, input_ch, input_w, input_h)
 
         kernel_amount, s_channels, kernel_w, kernel_h, kernel_data = self.get_weight_data()
-        #kernel_data = flat_to_CWH(kernel_data, kernel_amount, kernel_w, kernel_h)
 
         # Convonlution
         padding, dilation, stride = self.get_conv_params()
+
+        print("input:", input_ch, input_w, input_h)
+        print("kernel:", kernel_amount, s_channels, kernel_w, kernel_h)
+        print("padding:", padding)
+        print("dilation:", dilation)
+        print("stride:", stride)
+
+
+        # Pack output according to clipping
+        output_width = self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) if self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) > 0 else 32
+        print("output_width:", output_width)
 
         if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1):
             print("Mac not enabled")
@@ -871,6 +920,8 @@ class Dla:
                 for (i, r) in enumerate(res):
                     print_matrix(r, "{} ReLU:".format(i))
 
+            output_width = self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5) # Pack output according to clipping
+
             # Clipping and rounding
             res = dla.pp_clip(res)
             res = dla.round(res)
@@ -879,7 +930,8 @@ class Dla:
                 print_matrix(r, "{} PP:".format(i))
 
         # After calculating one layer the device needs new configuration
-        self.write_output(flatten_tensor(res))
+
+        self.write_output(flatten_tensor(res), output_width)
 
         # Set Done status
         self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 1)
@@ -946,6 +998,7 @@ class DlaMac:
         print("Kernels shape:", get_shape(kernels))
         print("Input shape:", get_shape(input_img))
         h_out, w_out, h_middle_zero, w_middle_zero = self.conv2d_check_parameters(input_img[0], kernels[0][0], padding, dilation, stride)
+        print("output shape:", h_out, w_out)
 
         # Initialize output filters
         output_filters = [[[ 0 for _ in range(w_out)] for _ in range(h_out) ] for _ in range(len(kernels)) ] # np.zeros(kernel_out, w_out, h_out)
@@ -996,6 +1049,9 @@ class DlaMac:
                                 for mat_y in range(len(range_y)):
                                     mat_sub[mat_y][mat_x] = channel_data[range_y[mat_y]][range_x[mat_x]]
 
+                            # print("mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
+                            # print_matrix(mat_sub, "sub_matrix")
+                            # print_matrix(kernel[channel_idx], "kernel")
                             channel_sum = channel_sum + self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
 
                         output_filters[kernel_idx][j][i] = channel_sum
@@ -1088,8 +1144,8 @@ class DlaMac:
 #     API     #
 
 def write(request, dla):
-    self.NoisyLog("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
-    print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
+    #self.NoisyLog("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
+    #print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
     if int(request.absolute) >= DLA_ADDR:
         dla.set_register(request.offset, 0, 32, request.value, preserve_register=False)
     else:
@@ -1097,14 +1153,13 @@ def write(request, dla):
     dla.process()
 
 def read(request, dla):
-    self.NoisyLog("Reading request: %s at 0x%x, value 0x%x" % (str(request.type), request.absolute, request.value))
-    print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
+    #self.NoisyLog("Reading request: %s at 0x%x, value 0x%x" % (str(request.type), request.absolute, request.value))
+    #print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
 
     if int(request.absolute) >= DLA_ADDR:
         request.value = dla.get_register(request.offset, 0, 32)
     else:
         tmp = dla.handle_bank_read(request)
-        print(tmp)
         request.value = tmp
 
 
@@ -1191,7 +1246,6 @@ else:
         print("%s initialized" % NAME)
         self.NoisyLog("%s initialized" % NAME)
     elif request.isRead:
-        print("isRead")
         read(request, dla)
     elif request.isWrite:
         write(request, dla)

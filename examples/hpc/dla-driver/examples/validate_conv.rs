@@ -8,7 +8,7 @@ use headsail_bsp::{init_alloc, rt::entry, sprint, sprintln};
 use panic_halt as _;
 
 mod test_data;
-use test_data::{conv_16x16x16_3x3_din, conv_16x16x16_3x3_dout, conv_16x16x16_3x3_wgt};
+use test_data::{conv_16x16x16_3x3_din_by_column, conv_16x16x16_3x3_dout_by_column, conv_16x16x16_3x3_wgt_by_column};
 
 use alloc::vec::Vec;
 
@@ -27,28 +27,28 @@ fn calculate_conv2d_out_param_dim(
 fn validate_conv2d() {
     let mut dla = Dla::new();
 
-    let mut din: Vec<i8> = conv_16x16x16_3x3_din::DATA
+    let mut din: Vec<i8> = conv_16x16x16_3x3_din_by_column::DATA
         .iter()
         .map(|&x| x as i8)
         .collect();
-    let mut dout: Vec<i32> = conv_16x16x16_3x3_dout::DATA
+    let mut dout: Vec<i32> = conv_16x16x16_3x3_dout_by_column::DATA
         .iter()
         .map(|&x| x as i32)
         .collect();
-    let mut wgt: Vec<i8> = conv_16x16x16_3x3_wgt::DATA
+    let mut wgt: Vec<i8> = conv_16x16x16_3x3_wgt_by_column::DATA
         .iter()
         .map(|&x| x as i8)
         .collect();
 
     // Calculate output size
     let (output_width, output_height) =
-        calculate_conv2d_out_param_dim((16, 16), (16, 16), (0, 0), (1, 1), (1, 1));
+        calculate_conv2d_out_param_dim((16, 16), (3, 3), (0, 0), (1, 1), (1, 1));
 
     // Initalize layer
     let config = LayerConfig {
-        input_bank: Some(MemoryBank::Bank14), // b
+        input_bank: Some(MemoryBank::Bank8),  // b
         kernel_bank: Some(MemoryBank::Bank0), // a
-        output_bank: Some(MemoryBank::Bank15),
+        output_bank: Some(MemoryBank::Bank10),
         bias_addr: Some(0),
         pp_enabled: false,
         relu_enabled: false,
@@ -72,7 +72,7 @@ fn validate_conv2d() {
             padding_value: 0,
         }),
         stride: Some(StrideConfig { x: 1, y: 1 }),
-        mac_clip: Some(8),
+        mac_clip: Some(0),
         pp_clip: Some(8),
         simd_mode: Some(SimdBitMode::EightBits),
     };
@@ -88,7 +88,28 @@ fn validate_conv2d() {
     dla.input_data_ready(true);
 
     while !dla.handle_handshake() {}
-    let output = dla.read_output(output_width as usize * output_height as usize);
+    let output = dla.read_output_i32(output_width as usize * output_height as usize * 16);
+
+    sprintln!(
+        "Target output of length: {}",
+        output_width * output_height * 16
+    );
+    sprintln!("Printing output of length: {}", output.len());
+    if output == dout {
+        sprintln!("Valid output");
+    } else {
+        sprintln!("Invalid output");
+    }
+
+    for (i, x) in output.iter().enumerate() {
+        sprintln!(
+            "First output difference as index {} : {} =/= {}",
+            i,
+            output[i],
+            dout[i]
+        );
+        return;
+    }
 }
 #[entry]
 fn main() -> ! {

@@ -42,7 +42,7 @@ const DEFAULT_PP_CLIP: u32 = 8;
 const DEFAULT_SIMD_MODE: SimdBitMode = SimdBitMode::EightBits;
 
 use alloc::vec::Vec;
-use core::ptr;
+use core::{ptr, result};
 use headsail_bsp::{sprint, sprintln};
 use mmap::*;
 
@@ -267,8 +267,8 @@ impl Dla {
     }
 
     /// Reads len number of bytes from DLA's memory banks, starting from bank given as parameter
-    fn read_data_bank(&self, bank: MemoryBank, len: usize) -> Vec<i8> {
-        let mut res: Vec<i8> = Vec::with_capacity(len);
+    fn read_data_bank(&self, bank: MemoryBank, len: usize) -> Vec<u8> {
+        let mut res: Vec<u8> = Vec::with_capacity(len);
 
         let mut next_bank_offset = 0;
         while res.len() < len {
@@ -278,7 +278,7 @@ impl Dla {
 
             // Copy everything from one 128-bit address
             for i in 0..bytes_to_copy {
-                let byte = ((data >> (i * 8)) & 0xFF) as i8;
+                let byte = ((data >> (i * 8)) & 0xFF) as u8;
                 res.push(byte)
             }
             next_bank_offset += 0x10;
@@ -286,31 +286,79 @@ impl Dla {
         res
     }
 
-    /// Reads len amount of bytes from DLA's output bank(s)
-    pub fn read_output(&self, len: usize) -> Vec<i8> {
-        // VP only support reading from banks
-        if cfg!(feature = "vp") {
-            return self.read_data_bank(self.get_output_bank(), len);
+    pub fn read_output_i32(&self, len: usize) -> Vec<i32> {
+        let bytes = self.read_data_bank(self.get_output_bank(), len * 4);
+        let mut result = Vec::with_capacity(bytes.len() / 4);
+
+        for pair in bytes.chunks_exact(4) {
+            let combined = ((pair[0] as i32) << 24)
+                | ((pair[1] as i32) << 16)
+                | ((pair[2] as i32) << 8)
+                | (pair[3] as i32);
+            result.push(combined);
         }
-        self.read_data_bank(MemoryBank::Bank0, len)
+        result
+    }
+
+    /// Reads len amount of bytes from DLA's output bank(s)
+    pub fn read_output_i16(&self, len: usize) -> Vec<i16> {
+        let bytes = self.read_data_bank(self.get_output_bank(), len * 2);
+        let mut result = Vec::with_capacity(bytes.len() / 2);
+
+        for pair in bytes.chunks_exact(2) {
+            let combined = ((pair[0] as i16) << 8) | (pair[1] as i16 & 0xFF);
+            result.push(combined);
+        }
+        result
+    }
+
+    pub fn read_output_i8(&self, len: usize) -> Vec<i8> {
+        let bytes = self.read_data_bank(self.get_output_bank(), len);
+        bytes.iter().map(|&x| x as i8).collect()
+    }
+
+    pub fn read_output_i4(&self, len: usize) -> Vec<i8> {
+        let bytes = self.read_data_bank(self.get_output_bank(), len);
+        let mut result = Vec::with_capacity(bytes.len() * 2);
+        for &byte in bytes.iter() {
+            // Extract the upper 4 bits and sign-extend to i8
+            let upper = (byte as u8 & 0xF0) >> 4;
+            let upper_sign_extended = if upper & 0x08 != 0 {
+                upper | 0xF0
+            } else {
+                upper
+            } as i8;
+
+            // Extract the lower 4 bits and sign-extend to i8
+            let lower = byte & 0x0F;
+            let lower_sign_extended = if lower & 0x08 != 0 {
+                (lower | 0xF0) as i8
+            } else {
+                lower as i8
+            } as i8;
+
+            result.push(upper_sign_extended);
+            result.push(lower_sign_extended);
+        }
+        result
     }
 
     /// Reads len amount of bytes from DLA's input bank(s)
     pub fn read_input_bank(&self, len: usize) -> Vec<i8> {
-        self.read_data_bank(self.get_input_bank(), len)
+        let bytes = self.read_data_bank(self.get_input_bank(), len);
+        bytes.iter().map(|&x| x as i8).collect()
     }
 
     /// Reads len amount of bytes from DLA's weight bank(s)
     pub fn read_weight_bank(&self, len: usize) -> Vec<i8> {
-        self.read_data_bank(self.get_kernel_bank(), len)
+        let bytes = self.read_data_bank(self.get_kernel_bank(), len);
+        bytes.iter().map(|&x| x as i8).collect()
     }
 
     /// Writes buffer to DLA's input bank(s)
     pub fn write_input(&self, input: &mut [i8]) {
         // TODO optimize memory bank logic
-        sprintln!("Get offset");
         let offset = self.get_input_bank().offset();
-        sprintln!("Offset: {}", offset);
         self.write_data_bank(offset, input)
     }
 
@@ -349,7 +397,7 @@ impl Dla {
     /// Sets one of the DLA's memory banks as starting bank for outputs
     fn set_output_bank(&self, bank: MemoryBank) {
         let mut reg = self.read_u32(DLA_PP_AXI_WRITE);
-        let b: usize = bank.into();
+        let b: usize = bank.offset();
         reg = set_bits!(
             DLA_PP_AXI_WRITE_ADDRESS_OFFSET,
             DLA_PP_AXI_WRITE_ADDRESS_BITMASK,
@@ -566,7 +614,6 @@ impl Dla {
         reg = get_bits!(reg, DLA_BUF_DATA_BANK_B_BITMASK);
         // Shift value back here
         reg = reg >> 16;
-        sprintln!("Reg:{:x}", reg);
         MemoryBank::try_from(reg).unwrap()
     }
 
@@ -768,7 +815,6 @@ impl Dla {
 
         self.set_input_size(config.input_size.unwrap_or(DEFAULT_INPUT_SIZE));
 
-        sprintln!("Here");
         // Set simd
         self.set_simd_mode(config.simd_mode.unwrap_or(DEFAULT_SIMD_MODE));
 

@@ -30,17 +30,41 @@ def convert_file(input_file, signed, bit_length=32):
             outfile.write(',\n')
         outfile.write('];')
 
+def convert_file_by_column(input_file, signed, bit_length=32):
+    """Convert hex values in a file to signed or unsigned integers column by column and save to a new file."""
+    output_file = input_file.replace(".mem", "_by_column.rs")
+    with open(input_file, 'r') as infile:
+        lines = infile.readlines()
+
+    hex_values = [line.split() for line in lines]
+    columns = list(zip(*hex_values))
+
+    with open(output_file, 'w') as outfile:
+        sign = "i" if signed else "u"
+        outfile.write(f'pub const DATA: &[{sign}{bit_length}] = &[\n')
+        for column in columns:
+            if signed:
+                ints = [hex_to_signed_int(hex_value, bit_length) for hex_value in column]
+            else:
+                ints = [hex_to_unsigned_int(hex_value, bit_length) for hex_value in column]
+            outfile.write(', '.join(map(str, ints)))
+            outfile.write(',\n')
+        outfile.write('];')
 
 def main():
     parser = argparse.ArgumentParser(description='Convert hexadecimal values in a file to signed decimal integers.')
     parser.add_argument('input_file', help='The input file containing hexadecimal values.')
     parser.add_argument('--signed', type=bool, default=False, action=argparse.BooleanOptionalAction, help='Interpreted values as signed (default: false).')
     parser.add_argument('--bit_length', type=int, default=32, help='The bit length of the signed integers (default: 32).')
+    parser.add_argument('--by_column', action=argparse.BooleanOptionalAction, default=False, help='Process the file column by column (default: false).')
 
     args = parser.parse_args()
     print(args)
 
-    convert_file(args.input_file, args.signed, args.bit_length)
+    if args.by_column:
+        convert_file_by_column(args.input_file, args.signed, args.bit_length)
+    else:
+        convert_file(args.input_file, args.signed, args.bit_length)
     print(f"Conversion complete. Signed decimal values saved to {args.input_file.replace(".mem", ".rs")}.")
 
 if __name__ == '__main__':
