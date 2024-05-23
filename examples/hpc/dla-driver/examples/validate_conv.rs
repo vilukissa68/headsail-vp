@@ -8,7 +8,7 @@ use headsail_bsp::{init_alloc, rt::entry, sprint, sprintln};
 use panic_halt as _;
 
 mod test_data;
-use test_data::{conv_16x16x16_3x3_din_by_column, conv_16x16x16_3x3_dout_by_column, conv_16x16x16_3x3_wgt_by_column};
+use test_data::{conv_16x16x16_3x3_din, conv_16x16x16_3x3_dout, conv_16x16x16_3x3_wgt};
 
 use alloc::vec::Vec;
 
@@ -27,15 +27,15 @@ fn calculate_conv2d_out_param_dim(
 fn validate_conv2d() {
     let mut dla = Dla::new();
 
-    let mut din: Vec<i8> = conv_16x16x16_3x3_din_by_column::DATA
+    let mut din: Vec<i8> = conv_16x16x16_3x3_din::DATA
         .iter()
         .map(|&x| x as i8)
         .collect();
-    let mut dout: Vec<i32> = conv_16x16x16_3x3_dout_by_column::DATA
+    let mut dout: Vec<i32> = conv_16x16x16_3x3_dout::DATA
         .iter()
         .map(|&x| x as i32)
         .collect();
-    let mut wgt: Vec<i8> = conv_16x16x16_3x3_wgt_by_column::DATA
+    let mut wgt: Vec<i8> = conv_16x16x16_3x3_wgt::DATA
         .iter()
         .map(|&x| x as i8)
         .collect();

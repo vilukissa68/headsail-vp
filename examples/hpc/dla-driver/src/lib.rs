@@ -240,8 +240,15 @@ impl Dla {
     /// Writes buffer DLA's data bank(s) based on offset
     pub fn write_data_bank(&self, offset: usize, buf: &mut [i8]) {
         //sprintln!("\nWrite to bank {:#x}, data: {:?}", offset, buf);
-        for (i, b) in buf.iter().enumerate() {
-            unsafe { ptr::write_volatile((MEMORY_BANK_BASE_ADDR + offset + i) as *mut _, *b) };
+        for (cidx, chunk) in buf.chunks(8).enumerate() {
+            for (i, b) in chunk.iter().rev().enumerate() {
+                unsafe {
+                    ptr::write_volatile(
+                        (MEMORY_BANK_BASE_ADDR + offset + cidx * 8 + i) as *mut _,
+                        *b,
+                    )
+                };
+            }
         }
     }
 

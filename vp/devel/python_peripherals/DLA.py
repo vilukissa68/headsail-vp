@@ -339,17 +339,27 @@ def separate_channels(data):
 def bit_not(n, numbits=32):
     return (1 << numbits) - 1 - n
 
-def print_matrix(A, name=""):
+def print_matrix(A, name="", pformat="decimal"):
     """Print matrix"""
     print(name)
 
     if not isinstance(A[0], list):
-        row = " ".join("{:4}".format(value) for value in A)
+        if pformat=="decimal":
+            row = " ".join("{:4}".format(value) for value in A)
+        elif pformat=="hexadecimal":
+            row = " ".join("{:4}".format(hex(value & 0xff)[2:-1]) for value in A)
+        else:
+            row = "invalid pformat {}".format(pformat)
         print(row)
         return
 
     for x in range(len(A)):
-        row = " ".join("{:4}".format(value) for value in A[x])
+        if pformat=="decimal":
+            row = " ".join("{:4}".format(value) for value in A[x])
+        elif pformat=="hexadecimal":
+            row = " ".join("{:4}".format(hex(value & 0xff)[2:-1]) for value in A[x])
+        else:
+            row = "invalid pformat {}".format(pformat)
         print(row)
 
 def memory_bank_to_offset(bank):
@@ -784,7 +794,10 @@ class Dla:
                 offset = 0
             data.append(bank.read(offset))
             offset += 1
+
+        print_matrix(data[:16], "data:", pformat="hexadecimal")
         data = reshape(data, (channels, width, height))
+        print_matrix(data[0], "flat:", pformat="hexadecimal")
         return channels, width, height, data
 
     # TODO: Finish this when external memory is figured out
@@ -995,18 +1008,16 @@ class DlaMac:
         # Find output size of single produced filter
         # Number of output filters is defined by the number of kernels
         # Each inputed kernel is applied for the whole input entry
+        h_out, w_out, h_middle_zero, w_middle_zero = self.conv2d_check_parameters(input_img[0], kernels[0][0], padding, dilation, stride)
         print("Kernels shape:", get_shape(kernels))
         print("Input shape:", get_shape(input_img))
-        h_out, w_out, h_middle_zero, w_middle_zero = self.conv2d_check_parameters(input_img[0], kernels[0][0], padding, dilation, stride)
-        print("output shape:", h_out, w_out)
+        print("Output shape:", h_out, w_out)
 
         # Initialize output filters
         output_filters = [[[ 0 for _ in range(w_out)] for _ in range(h_out) ] for _ in range(len(kernels)) ] # np.zeros(kernel_out, w_out, h_out)
 
         h_kernel_max_offset = len(kernels[0][0]) // 2 # Kernel height max offset
         w_kernel_max_offset = len(kernels[0][0][0]) // 2 # Kernel width max offset
-
-        print("h_out:", h_out, " w_out:", w_out)
 
         # Apply each kernel to input_img
         for (kernel_idx, kernel) in enumerate(kernels):
@@ -1020,22 +1031,23 @@ class DlaMac:
                 else:
                     center_y_0 = w_kernel_max_offset * dilation[1] - 1
 
-                for j in range(h_out):
-                    if h_middle_zero:
-                        center_y = center_y_0 + (j * stride[1])
-                        range_y = [center_y + k * dilation[1] for k in range(-h_kernel_max_offset, h_kernel_max_offset + 1)]
+                for w in range(w_out):
+                    if w_middle_zero:
+                        center_x = center_x_0 + (w * stride[0])
+                        range_x = [center_x + k * dilation[0] for k in range(-w_kernel_max_offset, w_kernel_max_offset + 1)]
                     else:
-                        center_y = center_y_0 + (j * stride[1]) # Calculate from top left of center
-                        range_y = [center_y + k * dilation[1] for k in range(0, h_kernel_max_offset + 1)]
+                        center_x = center_x_0 + (w * stride[0])
+                        range_x = [center_x + k * dilation[0] for k in range(0, w_kernel_max_offset + 1)]
 
-                    for i in range(w_out):
-                        if w_middle_zero:
-                            center_x = center_x_0 + (i * stride[0])
-                            range_x = [center_x + k * dilation[0] for k in range(-w_kernel_max_offset, w_kernel_max_offset + 1)]
+                    for h in range(h_out):
+                        if h_middle_zero:
+                            center_y = center_y_0 + (h * stride[1])
+                            range_y = [center_y + k * dilation[1] for k in range(-h_kernel_max_offset, h_kernel_max_offset + 1)]
                         else:
-                            center_x = center_x_0 + (i * stride[0])
-                            range_x = [center_x + k * dilation[0] for k in range(0, w_kernel_max_offset + 1)]
+                            center_y = center_y_0 + (h * stride[1]) # Calculate from top left of center
+                            range_y = [center_y + k * dilation[1] for k in range(0, h_kernel_max_offset + 1)]
 
+                        # Sum each channel with current kernel
                         channel_sum = 0
                         for (channel_idx, channel_data) in enumerate(input_img):
 
@@ -1050,11 +1062,15 @@ class DlaMac:
                                     mat_sub[mat_y][mat_x] = channel_data[range_y[mat_y]][range_x[mat_x]]
 
                             # print("mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
-                            # print_matrix(mat_sub, "sub_matrix")
-                            # print_matrix(kernel[channel_idx], "kernel")
-                            channel_sum = channel_sum + self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
+                            # print_matrix(mat_sub, "sub_matrix", "hexadecimal")
+                            # print_matrix(kernel[channel_idx], "kernel", "hexadecimal")
+                            channel_res = self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
+                            #print("Channel res:", channel_res, "\n")
+                            channel_sum += channel_res
 
-                        output_filters[kernel_idx][j][i] = channel_sum
+
+                        output_filters[kernel_idx][w][h] = channel_sum
+
 
         return output_filters
 
@@ -1145,7 +1161,7 @@ class DlaMac:
 
 def write(request, dla):
     #self.NoisyLog("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
-    #print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
+    print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
     if int(request.absolute) >= DLA_ADDR:
         dla.set_register(request.offset, 0, 32, request.value, preserve_register=False)
     else:
