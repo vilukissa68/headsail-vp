@@ -7,7 +7,6 @@ edition = "2021"
 
 [dependencies]
 panic-halt = "0.2.0"
-riscv-rt = "0.12.2"
 headsail-bsp = { version = "0.1.0", path = "../../headsail-bsp", features = [
     "hpc-rt",
     "vp",
