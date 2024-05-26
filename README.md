@@ -10,8 +10,8 @@
 ### Run UART example
 
 ```sh
-cd examples/hello-hpc
-cargo run --example uart0
+cd examples/headsail-bsp
+cargo run --example uart0 -Fhpc-rt -Fpanic-uart --target riscv64imac-unknown-none-elf
 ```
 
 ### Run DLA example
