@@ -1,2 +1,2 @@
-run:
-    cargo run
+run device:
+    DEVICE={{device}} cargo run
