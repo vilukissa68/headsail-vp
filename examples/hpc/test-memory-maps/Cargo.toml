@@ -12,6 +12,6 @@ bsp = { version = "0.1.0", path = "../../headsail-bsp", package = "headsail-bsp"
 
 [build-dependencies]
 fs-err = "2.11.0"
-keelhaul = { git = "ssh://git@github.com/soc-hub-fi/keelhaul", version = "0.1.0", features = [
+keelhaul = { git = "https://github.com/soc-hub-fi/keelhaul", version = "0.1.0", features = [
     "rustfmt",
 ] }
