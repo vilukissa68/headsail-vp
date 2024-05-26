@@ -5,7 +5,7 @@
  * This is the driver for the PULP timer unit. This driver is to
  * be used in the VIRTUAL PROTOTYPE ONLY.
  *
- * Documentation: https://github.com/pulp-platform/timer_unit/tree/master
+ * Documentation: <https://github.com/pulp-platform/timer_unit/tree/master>
  */
 use crate::{mmap::*, read_u32, write_u32};
 
