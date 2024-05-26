@@ -19,6 +19,7 @@ pub mod timer {
     #[cfg(feature = "vp")]
     pub use crate::timer_unit::*;
 }
+pub mod tb;
 
 mod apb_timer;
 mod timer_unit;
