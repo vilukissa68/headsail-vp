@@ -20,7 +20,7 @@ pub struct ApbTimer<const BASE_ADDRESS: usize>;
 impl<const BASE_ADDRESS: usize> ApbTimer<BASE_ADDRESS> {
     const TIMER_COUNTER_REG_OFFSET: usize = 0x0;
     const TIMER_CTRL_REG_OFFSET: usize = 0x4;
-    const TIMER_CMP_REG_OFFSET: usize = 0x8;
+    // const TIMER_CMP_REG_OFFSET: usize = 0x8;
     const TIMER_ENABLE_BIT: usize = 0b0;
 
     /**

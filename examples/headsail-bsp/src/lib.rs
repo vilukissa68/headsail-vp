@@ -21,7 +21,9 @@ pub mod timer {
 }
 pub mod tb;
 
+#[cfg(not(feature = "vp"))]
 mod apb_timer;
+#[cfg(feature = "vp")]
 mod timer_unit;
 
 #[cfg(feature = "hpc")]

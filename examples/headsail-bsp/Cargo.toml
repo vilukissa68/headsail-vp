@@ -61,3 +61,9 @@ required-features = ["panic-uart", "rt"]
 name = "interrupts"
 path = "examples/interrupts.rs"
 required-features = ["panic-uart", "hpc-rt"]
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
