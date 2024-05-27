@@ -1046,6 +1046,9 @@ class DlaMac:
 
         # Apply each kernel to input_img
         for (kernel_idx, kernel) in enumerate(kernels):
+                for (channel_idx, _) in enumerate(input_img):
+                    print("Channel:", channel_idx)
+                    print_matrix(kernel[channel_idx], "kernel {}".format(kernel_idx), "hexadecimal")
                 if w_middle_zero:
                     center_x_0 = h_kernel_max_offset * dilation[0]
                 else:
@@ -1087,16 +1090,16 @@ class DlaMac:
                                 for mat_y in range(len(range_y)):
                                     mat_sub[mat_x][mat_y] = channel_data[range_x[mat_x]][range_y[mat_y]]
 
-                            print("w:", w, "h:", h, "mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
-                            print_matrix(mat_sub, "sub_matrix")
-                            print_matrix(kernel[channel_idx], "kernel")
+                            # print("w:", w, "h:", h, "mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
+                            # print_matrix(mat_sub, "sub_matrix")
+                            # print_matrix(kernel[channel_idx], "kernel", "hexadecimal")
                             channel_res = self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
-                            print("Channel res:", channel_res, "\n")
+                            #print("Channel res:", channel_res, "\n")
                             channel_sum += channel_res
 
 
                         output_filters[kernel_idx][w][h] = channel_sum
-                        print("Output:", output_filters[kernel_idx][w][h])
+                        #print("Output:", output_filters[kernel_idx][w][h])
 
         return output_filters
 

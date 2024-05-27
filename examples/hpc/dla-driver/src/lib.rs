@@ -53,8 +53,8 @@ struct InvalidClip(u32);
 pub struct KernelSize {
     pub s_channels: u32,
     pub channels: u32,
-    pub width: u32,
     pub height: u32,
+    pub width: u32,
 }
 
 /// Dimensions of inputs

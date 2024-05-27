@@ -51,17 +51,47 @@ def convert_file_by_column(input_file, signed, bit_length=32):
             outfile.write(',\n')
         outfile.write('];')
 
+def convert_weight_file(input_file, signed, bit_length=8):
+    output_file = input_file.replace(".mem", ".rs")
+    with open(input_file, 'r') as infile:
+        lines = infile.readlines()
+
+    lines = [line.replace("\n", "").split("  ") for line in lines]
+    array = []
+    for j in range(16):
+        for (i, _) in enumerate(lines):
+            print(lines[i][j].split(" "))
+            array.append(lines[i][j].split(" "))
+    print(array)
+
+    with open(output_file, 'w') as outfile:
+        sign = "i" if signed else "u"
+        outfile.write(f'pub const DATA: &[{sign}{bit_length}] = &[\n')
+        for sub_row in array:
+            if signed:
+                ints = [hex_to_signed_int(hex_value, bit_length) for hex_value in sub_row]
+            else:
+                ints = [hex_to_unsigned_int(hex_value, bit_length) for hex_value in sub_row]
+            outfile.write(', '.join(map(str, ints)))
+            outfile.write(',\n')
+        outfile.write('];')
+
+
+
 def main():
     parser = argparse.ArgumentParser(description='Convert hexadecimal values in a file to signed decimal integers.')
     parser.add_argument('input_file', help='The input file containing hexadecimal values.')
     parser.add_argument('--signed', type=bool, default=False, action=argparse.BooleanOptionalAction, help='Interpreted values as signed (default: false).')
     parser.add_argument('--bit_length', type=int, default=32, help='The bit length of the signed integers (default: 32).')
     parser.add_argument('--by_column', action=argparse.BooleanOptionalAction, default=False, help='Process the file column by column (default: false).')
+    parser.add_argument('--weight', action=argparse.BooleanOptionalAction, default=False, help='Process a weight file (default: false).')
 
     args = parser.parse_args()
     print(args)
 
-    if args.by_column:
+    if args.weight:
+        convert_weight_file(args.input_file, args.signed)
+    elif args.by_column:
         convert_file_by_column(args.input_file, args.signed, args.bit_length)
     else:
         convert_file(args.input_file, args.signed, args.bit_length)
