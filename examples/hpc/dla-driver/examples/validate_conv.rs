@@ -68,7 +68,7 @@ fn validate_conv2d_tiny() -> bool {
         }),
         kernel_size: Some(KernelSize {
             s_channels: 1,
-            channels: 2,
+            kernels: 2,
             width: 3,
             height: 3,
         }),
@@ -158,7 +158,7 @@ fn validate_conv2d_small() {
         }),
         kernel_size: Some(KernelSize {
             s_channels: 1,
-            channels: 16,
+            kernels: 16,
             width: 3,
             height: 3,
         }),
@@ -246,7 +246,7 @@ fn validate_conv2d() {
         }),
         kernel_size: Some(KernelSize {
             s_channels: 1,
-            channels: 16,
+            kernels: 16,
             width: 3,
             height: 3,
         }),

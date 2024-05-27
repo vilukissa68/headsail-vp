@@ -20,7 +20,7 @@ const DEFAULT_OUTPUT_BANK: MemoryBank = MemoryBank::Bank12;
 const DEFAULT_BIAS_ADDR: u32 = 0x0;
 const DEFAULT_KERNEL_SIZE: KernelSize = KernelSize {
     s_channels: 1,
-    channels: 1,
+    kernels: 1,
     width: 2,
     height: 2,
 };
@@ -52,7 +52,7 @@ struct InvalidClip(u32);
 /// Dimensions of kernel
 pub struct KernelSize {
     pub s_channels: u32,
-    pub channels: u32,
+    pub kernels: u32,
     pub height: u32,
     pub width: u32,
 }
@@ -213,6 +213,29 @@ macro_rules! get_bits {
         ($reg & ($mask as u32)) as u32
     };
 }
+fn convert_to_ckwh(standard_layout: &[i8], num_kernels: usize, num_channels: usize, kernel_width: usize, kernel_height: usize) -> Vec<i8> {
+    let num_positions = kernel_width * kernel_height;
+    //let mut ckwh_layout = vec![0; num_kernels * num_channels * num_positions];
+    sprintln!("Kernels: {} channels: {} width: {} height: {}\n", num_kernels, num_channels, kernel_width, kernel_height);
+    let mut ckwh_layout = Vec::with_capacity(num_kernels * num_channels * num_positions);
+    for i in 0..(num_kernels * num_channels * num_positions) {
+        ckwh_layout.push(0);
+    }
+
+    for w in 0..kernel_height {
+        for h in 0..kernel_width {
+            for kernel in 0..num_kernels {
+                for channel in 0..num_channels {
+                    let standard_index = ((kernel * num_channels + channel) * kernel_height + h) * kernel_width + w;
+                    let ckwh_index = (((w * kernel_width + h) * num_kernels + kernel) * num_channels + channel);
+                    ckwh_layout[ckwh_index] = standard_layout[standard_index];
+                }
+            }
+        }
+    }
+
+    ckwh_layout
+}
 
 /// DLA driver struct
 pub struct Dla {}
@@ -372,7 +395,11 @@ impl Dla {
     /// Writes buffer to DLA's kernel bank(s)
     pub fn write_kernel(&self, kernel: &mut [i8]) {
         // TODO optimize memory bank logic
-        self.write_data_bank(self.get_kernel_bank().offset(), kernel)
+        // Write in CKWH format: (0,0,0,0), (0,1,0,0), (0,2,0,0), (1,0,0,0)
+        let kernels = self.get_kernel_size();
+        let inputs = self.get_input_size();
+        let mut ckwh = convert_to_ckwh(kernel, kernels.kernels as usize, inputs.channels as usize, kernels.width as usize, kernels.height as usize);
+        self.write_data_bank(self.get_kernel_bank().offset(), &mut ckwh)
     }
 
     /// Sets one of the DLA's memory banks as starting bank for inputs
@@ -467,7 +494,7 @@ impl Dla {
             DLA_BUF_KERNEL_1_NUM_OFFSET,
             DLA_BUF_KERNEL_1_NUM_BITMASK,
             buf_kernel_1,
-            kernel_size.channels - 1
+            kernel_size.kernels - 1
         );
         self.write_u32(DLA_BUF_KERNEL_1, buf_kernel_1);
     }
@@ -636,6 +663,26 @@ impl Dla {
         let reg = self.read_u32(DLA_PP_AXI_WRITE);
         let bank_idx: u32 = (reg - MEMORY_BANK_BASE_ADDR as u32) / MEMORY_BANK_SIZE as u32;
         MemoryBank::try_from(bank_idx).unwrap()
+    }
+
+    fn get_kernel_size(&self) -> KernelSize {
+        let reg0 = self.read_u32(DLA_BUF_KERNEL_0);
+        let reg1 = self.read_u32(DLA_BUF_KERNEL_1);
+        let width = get_bits!(reg0, DLA_BUF_KERNEL_0_WIDTH_BITMASK) + 1;
+        let height = (get_bits!(reg0, DLA_BUF_KERNEL_0_HEIGHT_BITMASK) >> DLA_BUF_KERNEL_0_HEIGHT_OFFSET) + 1;
+        let s_channels = get_bits!(reg0, DLA_BUF_KERNEL_0_S_CHANNELS_BITMASK) + 1;
+        let kernels = get_bits!(reg1, DLA_BUF_KERNEL_1_NUM_BITMASK) + 1;
+
+        KernelSize { s_channels, kernels, height, width }
+    }
+
+    fn get_input_size(&self) -> InputSize {
+        let reg = self.read_u32(DLA_BUF_INPUT);
+        let width = get_bits!(reg, DLA_BUF_INPUT_WIDTH_BITMASK) + 1;
+        let height = (get_bits!(reg, DLA_BUF_INPUT_HEIGHT_BITMASK) >> DLA_BUF_INPUT_HEIGHT_OFFSET) + 1;
+        let channels = (get_bits!(reg, DLA_BUF_INPUT_CHANNELS_BITMASK) >> DLA_BUF_INPUT_CHANNELS_OFFSET) + 1;
+
+        InputSize { channels, height, width }
     }
 
     /// Sets clipping after conv2d
