@@ -752,20 +752,34 @@ class Dla:
         bank_idx = self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_A_OFFSET, 4)
         bank = self.banks[bank_idx]
 
-        data = []
         offset = 0;
-        while len(data) < (filter_amount * input_channels * width * height):
+        data = []
+        chunk = []
+        while len(data) + len(chunk) < (filter_amount * input_channels * width * height):
             # Move to next bank
             if offset > bank.size:
                 bank_idx = bank_idx + 1
                 bank = self.banks[bank_idx]
                 offset = 0
-            data.append(bank.read(offset))
+
+            chunk.append(bank.read(offset))
+
+            # Chunk reversing
+            if len(chunk) == 8:
+                data = data + chunk[::-1]
+                print(chunk[::-1])
+                chunk = []
+
             offset += 1
+
+        # Append rest
+        remaining = (filter_amount * input_channels * width * height) - len(data)
+        data = data + chunk[remaining::-1][:remaining]
 
         data = reshape(data, (filter_amount, input_channels, width, height))
         print("Kernel:", get_shape(data))
         print("filter_amount:", filter_amount, "width:", width, "height:", height, "input_channels:", input_channels)
+        print_matrix(data[0][0], "flat kernel:", pformat="hexadecimal")
         return filter_amount, s_channels, width, height, data
 
     def get_input_data(self):
@@ -784,20 +798,32 @@ class Dla:
         bank_idx = self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_B_OFFSET, 4)
         bank = self.banks[bank_idx]
 
-        data = []
         offset = 0;
-        while len(data) < (channels * width * height):
+        data = []
+        chunk = []
+        while len(data) + len(chunk) < (channels * width * height):
             # Move to next bank
             if offset > bank.size:
                 bank_idx = bank_idx + 1
                 bank = self.banks[bank_idx]
                 offset = 0
-            data.append(bank.read(offset))
+            chunk.append(bank.read(offset))
+
+            # Chunk reversing
+            if len(chunk) == 8:
+                data = data + chunk[::-1]
+                print(chunk[::-1])
+                chunk = []
+
             offset += 1
 
+        # Append rest
+        remaining = (channels * width * height) - len(data)
+        data = data + chunk[remaining::-1][:remaining]
+        print(len(data))
         print_matrix(data[:16], "data:", pformat="hexadecimal")
         data = reshape(data, (channels, width, height))
-        print_matrix(data[0], "flat:", pformat="hexadecimal")
+        print_matrix(data[0], "flat input:", pformat="hexadecimal")
         return channels, width, height, data
 
     # TODO: Finish this when external memory is figured out
@@ -866,6 +892,7 @@ class Dla:
             return execute_for_all_elements(clip_signed, values, clip_amount, True)
         return values
 
+    # PROCESSJUMPTAG
     def process(self):
         """Runs next tick of the DLA state"""
 
@@ -974,23 +1001,21 @@ class DlaMac:
         Returns:
         A -- Matrix in form [[Int]] to be convolved
         kernel -- Matrix in form of [[Int]] to use ase convolution kernel
-        h_out -- Height of the conv2d result matrix
         w_out -- Width of the conv2d result matrix
-        h_middle_zero -- Bool signifying if conv2d has uneven height
+        h_out -- Height of the conv2d result matrix
         w_middle_zero -- Bool signifying if conv2d has uneven width
+        h_middle_zero -- Bool signifying if conv2d has uneven height
         """
 
-        h_in = len(A)
-        w_in = len(A[0])
-        h_kernel = len(kernel)
-        w_kernel = len(kernel[0])
-        h_out = math.floor((h_in + 2*padding[0] - dilation[0] * (h_kernel - 1) -1) / stride[0] +1)
-        w_out = math.floor((w_in + 2*padding[1] - dilation[1] * (w_kernel - 1) -1) / stride[1] +1)
+        w_in, h_in = get_shape(A)
+        w_kernel, h_kernel = get_shape(kernel)
+        w_out = math.floor((w_in + 2*padding[0] - dilation[0] * (w_kernel - 1) -1) / stride[0] +1)
+        h_out = math.floor((h_in + 2*padding[1] - dilation[1] * (h_kernel - 1) -1) / stride[1] +1)
 
-        h_middle_zero = h_kernel % 2 == 1
         w_middle_zero = w_kernel % 2 == 1
+        h_middle_zero = h_kernel % 2 == 1
 
-        return int(h_out), int(w_out), h_middle_zero, w_middle_zero
+        return int(w_out), int(h_out), w_middle_zero, h_middle_zero
 
     def pad_matrix(self, mat_in, padding, padding_value=0):
 
@@ -1008,16 +1033,16 @@ class DlaMac:
         # Find output size of single produced filter
         # Number of output filters is defined by the number of kernels
         # Each inputed kernel is applied for the whole input entry
-        h_out, w_out, h_middle_zero, w_middle_zero = self.conv2d_check_parameters(input_img[0], kernels[0][0], padding, dilation, stride)
+        w_out, h_out, w_middle_zero, h_middle_zero = self.conv2d_check_parameters(input_img[0], kernels[0][0], padding, dilation, stride)
         print("Kernels shape:", get_shape(kernels))
         print("Input shape:", get_shape(input_img))
-        print("Output shape:", h_out, w_out)
 
         # Initialize output filters
-        output_filters = [[[ 0 for _ in range(w_out)] for _ in range(h_out) ] for _ in range(len(kernels)) ] # np.zeros(kernel_out, w_out, h_out)
+        output_filters = [[[ 0 for _ in range(h_out)] for _ in range(w_out) ] for _ in range(len(kernels)) ] # np.zeros(kernel_out, w_out, h_out)
+        print("Output shape:", get_shape(output_filters))
 
-        h_kernel_max_offset = len(kernels[0][0]) // 2 # Kernel height max offset
-        w_kernel_max_offset = len(kernels[0][0][0]) // 2 # Kernel width max offset
+        w_kernel_max_offset = len(kernels[0][0]) // 2 # Kernel height max offset
+        h_kernel_max_offset = len(kernels[0][0][0]) // 2 # Kernel width max offset
 
         # Apply each kernel to input_img
         for (kernel_idx, kernel) in enumerate(kernels):
@@ -1055,22 +1080,23 @@ class DlaMac:
                             channel_data = self.pad_matrix(channel_data, padding, padding_value=padding_value)
 
                             # Constuct a sub matrix
-                            mat_sub = [[0 for _ in range_x ] for _ in range_y ] # np.zeros(w_out, h_out)
+                            # NOTE: Do not use zeroes here, for some reason IronPython can't correctly index nested lists produced by a recursive function. (20240527 vaino-waltteri.granat@tuni.fi)
+                            mat_sub = [[0 for _ in range_y ] for _ in range_x ] # np.zeros(w_out, h_out)
 
                             for mat_x in range(len(range_x)):
                                 for mat_y in range(len(range_y)):
-                                    mat_sub[mat_y][mat_x] = channel_data[range_y[mat_y]][range_x[mat_x]]
+                                    mat_sub[mat_x][mat_y] = channel_data[range_x[mat_x]][range_y[mat_y]]
 
-                            # print("mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
-                            # print_matrix(mat_sub, "sub_matrix", "hexadecimal")
-                            # print_matrix(kernel[channel_idx], "kernel", "hexadecimal")
+                            print("w:", w, "h:", h, "mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
+                            print_matrix(mat_sub, "sub_matrix")
+                            print_matrix(kernel[channel_idx], "kernel")
                             channel_res = self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
-                            #print("Channel res:", channel_res, "\n")
+                            print("Channel res:", channel_res, "\n")
                             channel_sum += channel_res
 
 
                         output_filters[kernel_idx][w][h] = channel_sum
-
+                        print("Output:", output_filters[kernel_idx][w][h])
 
         return output_filters
 
