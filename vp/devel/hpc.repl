@@ -18,8 +18,10 @@ cpu_hpc3: CPU.RiscV64 @ sysbus
     hartId: 3
     timeProvider: clint
 
-sdram: Memory.MappedMemory @ sysbus 0x10000000
-    size: 0x60000000
+sdram_hpc: Memory @ SingleRegisterationPoint {
+    0x100000000 @ cpu_hpc0, cpu_hpc1, cpu_hpc2, cpu_hpc3
+    size: 0x10000000
+}
 
 /*
  * CLINT [^1]

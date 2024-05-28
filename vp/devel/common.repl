@@ -25,6 +25,15 @@ apb_uart_0: UART.NS16550 @ sysbus 0xFFF00000
 apb_uart_1: UART.NS16550 @ sysbus 0xFFF01000
     wideRegisters: true
 
+sdram_truncated: Memory.MappedMemory @  {
+    sysbus new Bus.BusMultiRegistration {address: 0x10000000; cpu: cpu_sysctrl};
+    sysbus new Bus.BusMultiRegistration {address: 0x110000000; cpu: cpu_hpc0};
+    sysbus new Bus.BusMultiRegistration {address: 0x110000000; cpu: cpu_hpc1};
+    sysbus new Bus.BusMultiRegistration {address: 0x110000000; cpu: cpu_hpc2};
+    sysbus new Bus.BusMultiRegistration {address: 0x110000000; cpu: cpu_hpc3}
+    size: 0x60000000
+}
+
 dla: Python.PythonPeripheral @ {
     sysbus new Bus.BusMultiRegistration {address: 0xFF700000; size: 0x0068; region: "cfg"};
     sysbus new Bus.BusMultiRegistration {address: 0x70000000; size: 0x80000; region: "data"}
