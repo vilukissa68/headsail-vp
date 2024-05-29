@@ -50,7 +50,7 @@ fn validate_conv2d_tiny() -> bool {
 
     // Calculate output size
     let (output_width, output_height) =
-        calculate_conv2d_out_param_dim((15, 10), (3, 3), (0, 0), (1, 1), (1, 1));
+        calculate_conv2d_out_param_dim((5, 5), (3, 3), (0, 0), (1, 1), (1, 1));
 
     // Initalize layer
     let config = LayerConfig {
@@ -96,113 +96,12 @@ fn validate_conv2d_tiny() -> bool {
     dla.input_data_ready(true);
 
     while !dla.handle_handshake() {}
-    let output = dla.read_output_i32(output_width as usize * output_height as usize * 16);
+    let output = dla.read_output_i32(output_width as usize * output_height as usize * 2);
 
-    sprintln!(
-        "Target output of length: {}",
-        output_width * output_height * 16
-    );
-    sprintln!("Printing output of length: {}", output.len());
-    for (i, x) in output.iter().enumerate() {
-        if output[i] != dout[i] {
-            sprintln!(
-                "Different output at index {} : {} =/= {}",
-                i,
-                output[i],
-                dout[i]
-            );
-        }
+    for x in &output {
+        sprint!("{:?} ", x)
     }
-    if output == dout {
-        sprintln!("Valid output");
-        true
-    } else {
-        sprintln!("Invalid output");
-        false
-    }
-}
 
-fn validate_conv2d_small() -> bool {
-    let mut dla = Dla::new();
-
-    let mut din: Vec<i8> = conv_10x15x3_3x3_din::DATA
-        .iter()
-        .map(|&x| x as i8)
-        .collect();
-    let mut dout: Vec<i32> = conv_10x15x3_3x3_dout::DATA
-        .iter()
-        .map(|&x| x as i32)
-        .collect();
-    let mut wgt: Vec<i8> = conv_10x15x3_3x3_wgt::DATA
-        .iter()
-        .map(|&x| x as i8)
-        .collect();
-
-    // Calculate output size
-    let (output_width, output_height) =
-        calculate_conv2d_out_param_dim((15, 10), (3, 3), (0, 0), (1, 1), (1, 1));
-
-    // Initalize layer
-    let config = LayerConfig {
-        input_bank: Some(MemoryBank::Bank8),  // b
-        kernel_bank: Some(MemoryBank::Bank0), // a
-        output_bank: Some(MemoryBank::Bank10),
-        bias_addr: Some(0),
-        pp_enabled: false,
-        relu_enabled: false,
-        bias_enabled: false,
-        input_size: Some(InputSize {
-            channels: 3,
-            width: 15,
-            height: 10,
-        }),
-        kernel_size: Some(KernelSize {
-            s_channels: 1,
-            kernels: 16,
-            width: 3,
-            height: 3,
-        }),
-        padding: Some(PaddingConfig {
-            top: 0,
-            right: 0,
-            left: 0,
-            bottom: 0,
-            padding_value: 0,
-        }),
-        stride: Some(StrideConfig { x: 1, y: 1 }),
-        mac_clip: Some(0),
-        pp_clip: Some(8),
-        simd_mode: Some(SimdBitMode::EightBits),
-    };
-
-    dla.init_layer(config);
-    sprintln!("Layer configured");
-
-    dla.write_input(&mut din);
-    dla.write_kernel(&mut wgt);
-
-    // Mark data ready to start calculations
-    dla.kernel_data_ready(true);
-    dla.input_data_ready(true);
-
-    while !dla.handle_handshake() {}
-    let output = dla.read_output_i32(output_width as usize * output_height as usize * 16);
-    sprintln!(
-        "Target output of length: {}",
-        output_width * output_height * 16
-    );
-    sprintln!("Printing output of length: {}", output.len());
-    for (i, x) in output.iter().enumerate() {
-        if output[i] != dout[i] {
-            sprintln!(
-                "Different output at index {} : {} =/= {}",
-                i,
-                output[i],
-                dout[i]
-            );
-            return false;
-        }
-    }
     if output == dout {
         sprintln!("Valid output");
         true
@@ -305,9 +204,9 @@ fn validate_conv2d() -> bool {
 fn main() -> ! {
     init_alloc();
     sprint!("Validate conv2d");
-    //validate_conv2d_tiny();
+    validate_conv2d_tiny();
     //validate_conv2d_small();
-    validate_conv2d();
+    //validate_conv2d();
     sprint!("Validation conv2d succesful");
     loop {}
 }

@@ -657,7 +657,7 @@ class Dla:
             return
 
         for i in range(32):
-            print('{}:[{}]'.format(i+1,', '.join("{}".format(hex(x & 0xffffffff)[2:-1]) for x in data[i*14:14*i+14])))
+            print('{}:[{}]'.format(i+1,', '.join("{}".format(hex(x & 0xffffffff)[2:-1]) for x in data[i*width:width*i+width])))
 
         print("")
         print(len(data))
@@ -676,7 +676,7 @@ class Dla:
 
         # TODO remove this loop
         for i in range(32):
-            print('{}:[{}]'.format(i+1, ', '.join("{}".format(hex(x & 0xffffffff)[2:-1]) for x in column_wise[i*16:16*i+16])))
+            print('{}:[{}]'.format(i+1, ', '.join("{}".format(hex(x & 0xffffffff)[2:-1]) for x in column_wise[i*filter_amount:filter_amount*i+filter_amount])))
         data = column_wise
 
         addr = self.get_output_addr()
