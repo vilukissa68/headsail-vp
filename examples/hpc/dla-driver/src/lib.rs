@@ -410,16 +410,17 @@ impl Dla {
     pub fn write_kernel(&self, kernel: &mut [i8]) {
         // TODO optimize memory bank logic
         // Write in CKWH format: (0,0,0,0), (0,1,0,0), (0,2,0,0), (1,0,0,0)
-        let kernels = self.get_kernel_size();
-        let inputs = self.get_input_size();
-        let mut ckwh = convert_to_ckwh(
-            kernel,
-            kernels.kernels as usize,
-            inputs.channels as usize,
-            kernels.width as usize,
-            kernels.height as usize,
-        );
-        self.write_data_bank(self.get_kernel_bank().offset(), &mut ckwh)
+        // let kernels = self.get_kernel_size();
+        // let inputs = self.get_input_size();
+        // let mut ckwh = convert_to_ckwh(
+        //     kernel,
+        //     kernels.kernels as usize,
+        //     inputs.channels as usize,
+        //     kernels.width as usize,
+        //     kernels.height as usize,
+        // );
+        // self.write_data_bank(self.get_kernel_bank().offset(), &mut ckwh)
+        self.write_data_bank(self.get_kernel_bank().offset(), kernel)
     }
 
     /// Sets one of the DLA's memory banks as starting bank for inputs

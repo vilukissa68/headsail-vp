@@ -767,7 +767,6 @@ class Dla:
             # Chunk reversing
             if len(chunk) == 8:
                 data = data + chunk[::-1]
-                print(chunk[::-1])
                 chunk = []
 
             offset += 1
@@ -777,8 +776,6 @@ class Dla:
         data = data + chunk[remaining::-1][:remaining]
 
         data = reshape(data, (filter_amount, input_channels, width, height))
-        print("Kernel:", get_shape(data))
-        print("filter_amount:", filter_amount, "width:", width, "height:", height, "input_channels:", input_channels)
         print_matrix(data[0][0], "flat kernel:", pformat="hexadecimal")
         return filter_amount, s_channels, width, height, data
 
@@ -798,6 +795,8 @@ class Dla:
         bank_idx = self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_B_OFFSET, 4)
         bank = self.banks[bank_idx]
 
+        print("channels:", channels, "width:", width, "height:", height)
+
         offset = 0;
         data = []
         chunk = []
@@ -812,7 +811,6 @@ class Dla:
             # Chunk reversing
             if len(chunk) == 8:
                 data = data + chunk[::-1]
-                print(chunk[::-1])
                 chunk = []
 
             offset += 1
@@ -820,11 +818,22 @@ class Dla:
         # Append rest
         remaining = (channels * width * height) - len(data)
         data = data + chunk[remaining::-1][:remaining]
-        print(len(data))
-        print_matrix(data[:16], "data:", pformat="hexadecimal")
-        data = reshape(data, (channels, width, height))
-        print_matrix(data[0], "flat input:", pformat="hexadecimal")
-        return channels, width, height, data
+        print('[{}]'.format(', '.join("{:2}".format(hex(x & 0xff)[2:-1]) for x in data)))
+
+        # Column wise matrix formation
+        #data = reshape(data, (channels, width, height))
+        column_wise = []
+        print("")
+        for c in range(channels):
+            for h in range(height):
+                for w in range(width):
+                    idx = c + channels * w + (channels * width) * h
+                    column_wise.append(data[idx])
+        print('[{}]'.format(', '.join("{:2}".format(hex(x & 0xff)[2:-1]) for x in column_wise)))
+
+        column_wise = reshape(column_wise, (channels, height, width))
+        print_matrix(column_wise[0], "flat input:", pformat="hexadecimal")
+        return channels, width, height, column_wise
 
     # TODO: Finish this when external memory is figured out
     def get_bias(self):
@@ -1091,8 +1100,8 @@ class DlaMac:
                                     mat_sub[mat_x][mat_y] = channel_data[range_x[mat_x]][range_y[mat_y]]
 
                             # print("w:", w, "h:", h, "mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
-                            # print_matrix(mat_sub, "sub_matrix")
-                            # print_matrix(kernel[channel_idx], "kernel", "hexadecimal")
+                            print_matrix(mat_sub, "sub_matrix", "hexadecimal")
+                            #print_matrix(kernel[channel_idx], "kernel", "hexadecimal")
                             channel_res = self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
                             #print("Channel res:", channel_res, "\n")
                             channel_sum += channel_res
@@ -1100,6 +1109,7 @@ class DlaMac:
 
                         output_filters[kernel_idx][w][h] = channel_sum
                         #print("Output:", output_filters[kernel_idx][w][h])
+                        return
 
         return output_filters
 
