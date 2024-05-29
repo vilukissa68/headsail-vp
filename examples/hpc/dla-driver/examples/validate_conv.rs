@@ -122,7 +122,7 @@ fn validate_conv2d_tiny() -> bool {
     }
 }
 
-fn validate_conv2d_small() {
+fn validate_conv2d_small() -> bool {
     let mut dla = Dla::new();
 
     let mut din: Vec<i8> = conv_10x15x3_3x3_din::DATA
@@ -187,30 +187,32 @@ fn validate_conv2d_small() {
 
     while !dla.handle_handshake() {}
     let output = dla.read_output_i32(output_width as usize * output_height as usize * 16);
-
     sprintln!(
         "Target output of length: {}",
         output_width * output_height * 16
     );
     sprintln!("Printing output of length: {}", output.len());
+    for (i, x) in output.iter().enumerate() {
+        if output[i] != dout[i] {
+            sprintln!(
+                "Different output at index {} : {} =/= {}",
+                i,
+                output[i],
+                dout[i]
+            );
+            return false;
+        }
+    }
     if output == dout {
         sprintln!("Valid output");
+        true
     } else {
         sprintln!("Invalid output");
-    }
-
-    for (i, x) in output.iter().enumerate() {
-        sprintln!(
-            "First output difference as index {} : {} =/= {}",
-            i,
-            output[i],
-            dout[i]
-        );
-        return;
+        false
     }
 }
 
-fn validate_conv2d() {
+fn validate_conv2d() -> bool {
     let mut dla = Dla::new();
 
     let mut din: Vec<i8> = conv_16x16x16_3x3_din::DATA
@@ -281,20 +283,22 @@ fn validate_conv2d() {
         output_width * output_height * 16
     );
     sprintln!("Printing output of length: {}", output.len());
+    for (i, x) in output.iter().enumerate() {
+        if output[i] != dout[i] {
+            sprintln!(
+                "Different output at index {} : {} =/= {}",
+                i,
+                output[i],
+                dout[i]
+            );
+        }
+    }
     if output == dout {
         sprintln!("Valid output");
+        true
     } else {
         sprintln!("Invalid output");
-    }
-
-    for (i, x) in output.iter().enumerate() {
-        sprintln!(
-            "First output difference as index {} : {} =/= {}",
-            i,
-            output[i],
-            dout[i]
-        );
-        return;
+        false
     }
 }
 #[entry]
@@ -302,8 +306,8 @@ fn main() -> ! {
     init_alloc();
     sprint!("Validate conv2d");
     //validate_conv2d_tiny();
-    validate_conv2d_small();
-    //validate_conv2d();
+    //validate_conv2d_small();
+    validate_conv2d();
     sprint!("Validation conv2d succesful");
     loop {}
 }

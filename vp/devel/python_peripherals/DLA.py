@@ -642,15 +642,42 @@ class Dla:
         """
         return self.get_register(PP_AXI_WRITE, PP_AXI_WRITE_ADDRESS_OFFSET, 32) & 0xFFFFFFFF
 
-    def write_output(self, data, width=8):
+    def write_output(self, data, bit_width=8):
         """Writes output to arbitrary memory address
 
         Params:
         data -- [Int] data to write
         """
+
+        print(get_shape(data))
+        filter_amount, height, width = get_shape(data)
+        data = flatten(data)
         if data == []:
             print("WARN: output was empty.")
             return
+
+        for i in range(32):
+            print('{}:[{}]'.format(i+1,', '.join("{}".format(hex(x & 0xffffffff)[2:-1]) for x in data[i*14:14*i+14])))
+
+        print("")
+        print(len(data))
+        # Format data to KCWH
+        column_wise = []
+
+        for h in range(height):
+            for w in range(width):
+                for f in range(filter_amount):
+                    idx = (f * height * width) + w + (h * width)
+
+                    if idx >= len(data):
+                        print("Too big index:", idx)
+                    else:
+                        column_wise.append(data[idx])
+
+        # TODO remove this loop
+        for i in range(32):
+            print('{}:[{}]'.format(i+1, ', '.join("{}".format(hex(x & 0xffffffff)[2:-1]) for x in column_wise[i*16:16*i+16])))
+        data = column_wise
 
         addr = self.get_output_addr()
         print("Writing output to:{:x}".format(addr))
@@ -670,7 +697,7 @@ class Dla:
                     offset = 0
 
                 # Write chunk
-                if width == 32:
+                if bit_width == 32:
                     byte_3 = (data[values_written] & 0xFF000000) >> 24
                     byte_2 = (data[values_written] & 0x00FF0000) >> 16
                     byte_1 = (data[values_written] & 0x0000FF00) >> 8
@@ -681,25 +708,25 @@ class Dla:
                     bank.write(offset + 3, byte_0)
                     values_written += 1
                     offset += 4
-                elif width == 16:
+                elif bit_width == 16:
                     upper = (data[values_written] & 0xFF00) >> 8
                     lower = data[values_written] & 0x00FF
                     bank.write(offset, upper)
                     bank.write(offset + 1, lower)
                     values_written += 1
                     offset += 2
-                elif width == 8:
+                elif bit_width == 8:
                     bank.write(offset, data[values_written])
                     offset += 1
                     values_written += 1
-                elif width == 4:
+                elif bit_width == 4:
                     fst = (data[values_written] & 0xF) << 4
                     snd = (data[values_written + 1] & 0xF)
                     combined = fst + snd
                     bank.write(offset, combined)
                     offset += 1
                     values_written += 2
-                elif width == 2:
+                elif bit_width == 2:
                     fst = (data[values_written] & 0x3) << 6
                     snd = (data[values_written + 1] & 0x3) << 4
                     thrd = (data[values_written + 2] & 0x3) << 2
@@ -775,9 +802,22 @@ class Dla:
         remaining = (filter_amount * input_channels * width * height) - len(data)
         data = data + chunk[remaining::-1][:remaining]
 
-        data = reshape(data, (filter_amount, input_channels, width, height))
-        print_matrix(data[0][0], "flat kernel:", pformat="hexadecimal")
-        return filter_amount, s_channels, width, height, data
+        # Column wise matrix formation
+        column_wise = []
+        print("")
+
+        for f in range(filter_amount):
+            for c in range(input_channels):
+                for h in range(height):
+                    for w in range(width):
+                        idx = c + (f * input_channels) + (input_channels*filter_amount) * w + (input_channels * filter_amount * width) * h
+                        column_wise.append(data[idx])
+        print('[{}]'.format(', '.join("{:2}".format(hex(x & 0xff)[2:-1]) for x in column_wise)))
+
+        column_wise = reshape(column_wise, (filter_amount, input_channels, height, width))
+
+        print_matrix(column_wise[0][0], "flat kernel:", pformat="hexadecimal")
+        return filter_amount, s_channels, width, height, column_wise
 
     def get_input_data(self):
         # TODO: Only read as much data as is needed to fill input layer (C* W * H)
@@ -940,8 +980,8 @@ class Dla:
 
 
         # Pack output according to clipping
-        output_width = self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) if self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) > 0 else 32
-        print("output_width:", output_width)
+        output_bit_width = self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) if self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) > 0 else 32
+        print("output_width:", output_bit_width)
 
         if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1):
             print("Mac not enabled")
@@ -969,7 +1009,7 @@ class Dla:
                 for (i, r) in enumerate(res):
                     print_matrix(r, "{} ReLU:".format(i))
 
-            output_width = self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5) # Pack output according to clipping
+            output_bit_width = self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5) # Pack output according to clipping
 
             # Clipping and rounding
             res = dla.pp_clip(res)
@@ -980,7 +1020,7 @@ class Dla:
 
         # After calculating one layer the device needs new configuration
 
-        self.write_output(flatten_tensor(res), output_width)
+        self.write_output(res, output_bit_width)
 
         # Set Done status
         self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 1)
@@ -1055,9 +1095,6 @@ class DlaMac:
 
         # Apply each kernel to input_img
         for (kernel_idx, kernel) in enumerate(kernels):
-                for (channel_idx, _) in enumerate(input_img):
-                    print("Channel:", channel_idx)
-                    print_matrix(kernel[channel_idx], "kernel {}".format(kernel_idx), "hexadecimal")
                 if w_middle_zero:
                     center_x_0 = h_kernel_max_offset * dilation[0]
                 else:
@@ -1100,16 +1137,15 @@ class DlaMac:
                                     mat_sub[mat_x][mat_y] = channel_data[range_x[mat_x]][range_y[mat_y]]
 
                             # print("w:", w, "h:", h, "mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
-                            print_matrix(mat_sub, "sub_matrix", "hexadecimal")
-                            #print_matrix(kernel[channel_idx], "kernel", "hexadecimal")
+                            # print_matrix(mat_sub, "sub_matrix", "hexadecimal")
+                            # print_matrix(kernel[channel_idx], "kernel", "hexadecimal")
                             channel_res = self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
                             #print("Channel res:", channel_res, "\n")
                             channel_sum += channel_res
 
 
                         output_filters[kernel_idx][w][h] = channel_sum
-                        #print("Output:", output_filters[kernel_idx][w][h])
-                        return
+                        # print("Output:", output_filters[kernel_idx][w][h])
 
         return output_filters
 
