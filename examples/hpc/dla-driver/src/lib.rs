@@ -776,13 +776,16 @@ impl Dla {
     pub fn handle_handshake(&self) -> bool {
         // Handshake only if dla status is done
         if !self.is_ready() {
+            sprintln!("Result not ready");
             return false;
         }
 
         if self.is_enabled() {
+            sprintln!("DLA still enabled");
             self.handshake_disable_hw();
             return false;
         }
+        sprintln!("Finishing handshake");
 
         let mut handshake_reg = self.read_u32(DLA_HANDSHAKE);
         handshake_reg = set_bits!(
