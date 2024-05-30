@@ -1,7 +1,7 @@
 use good_memory_allocator::SpinLockedAllocator;
 
-const HEAP_START: usize = 0x30000000;
-const HEAP_SIZE: usize = 0x10000000;
+const HEAP_START: usize = 0x1_3000_0000;
+const HEAP_SIZE: usize = 0x1000_0000;
 
 #[global_allocator]
 static ALLOCATOR: SpinLockedAllocator = SpinLockedAllocator::empty();

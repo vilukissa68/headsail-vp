@@ -1,3 +1,77 @@
+cpu_hpc0: CPU.RiscV64 @ sysbus
+    cpuType: "rv64imac"
+    hartId: 0
+    timeProvider: clint
+
+cpu_hpc1: CPU.RiscV64 @ sysbus
+    cpuType: "rv64imac"
+    hartId: 1
+    timeProvider: clint
+
+cpu_hpc2: CPU.RiscV64 @ sysbus
+    cpuType: "rv64imac"
+    hartId: 2
+    timeProvider: clint
+
+cpu_hpc3: CPU.RiscV64 @ sysbus
+    cpuType: "rv64imac"
+    hartId: 3
+    timeProvider: clint
+
+cpu_sysctrl: CPU.IbexRiscV32 @ sysbus
+    // CPU ISA is actually rv32em but SW & VP support for that is sketchy
+    cpuType: "rv32imc"
+    timeProvider: empty
+    allowUnalignedAccesses: false
+
+
+/*
+ * CLINT [^1]
+ *
+ * [IP](https://gitlab.tuni.fi/soc-hub/common/hw/cva6/-/tree/master/corev_apu/clint)
+ * [Specification](https://github.com/pulp-platform/clint) (unconfirmed)
+ */
+clint: IRQControllers.CoreLevelInterruptor  @ sysbus 0x60000
+    [0, 1] -> cpu_hpc0@[3, 7] // msoft, mtimer
+    [2, 3] -> cpu_hpc1@[3, 7] // msoft, mtimer
+    [4, 5] -> cpu_hpc2@[3, 7] // msoft, mtimer
+    [6, 7] -> cpu_hpc3@[3, 7] // msoft, mtimer
+    numberOfTargets: 4
+    frequency: 32768 // we guess the usual RTC freq. of 32.768 kHz
+
+/*
+ * PLIC [^1]
+ * * [IP](https://github.com/pulp-platform/rv_plic)
+ * [Specification](https://github.com/riscv/riscv-plic-spec/blob/master/riscv-plic.adoc)
+ *
+ * Some addresses were tightened to save space -> ASIC impl will differ from sim.
+ */
+plic: IRQControllers.PlatformLevelInterruptController @ sysbus 0x80000
+    [0, 1] -> cpu_hpc0@[11, 9] // mext, sext
+    [2, 3] -> cpu_hpc1@[11, 9] // mext, sext
+    [4, 5] -> cpu_hpc2@[11, 9] // mext, sext
+    [6, 7] -> cpu_hpc3@[11, 9] // mext, sext
+    numberOfSources: 23
+    numberOfContexts: 8
+
+/*
+ * PULP APB timer [^1]
+ * [IP](https://github.com/pulp-platform/apb_timer)
+ *
+ * Interrupts are controlled by PLIC.
+ */
+timer: Timers.PULP_Timer @ sysbus <0x50000, +0x1000>
+    /* Renode currently hardcodes the number of timers to 2, while Headsail specifies 4
+     * See also: https://github.com/renode/renode-infrastructure/blob/579687e750c3da24a362e899d312f4e738209ae7/src/Emulator/Peripherals/Peripherals/Timers/PULP_Timer.cs#L146
+    // [ovf, cmp, ovf, cmp, ...]
+    [0, 1, 2, 3, 4, 5, 6, 7] -> plic@[1, 2, 3, 4, 5, 6, 7, 8]
+    */
+    // [ovf, cmp]
+    [0, 1] -> plic@[1, 2]
+    frequency: 100000 // we guess board reference frequency
+
+
+
 mem_dsp_0: Memory.MappedMemory @ sysbus 0xFF810000
     size: 0x10000
 
@@ -19,20 +93,31 @@ ram_2: Memory.MappedMemory @ sysbus 0x90480000
 ram_3: Memory.MappedMemory @ sysbus 0x90680000
     size: 0x8000
 
-apb_uart_0: UART.NS16550 @ sysbus 0xFFF00000
+apb_uart_0: UART.NS16550 @ {
+    sysbus new Bus.BusMultiRegistration {address: 0x1FFF00000; region: "hpc"};
+    sysbus new Bus.BusMultiRegistration {address: 0xFFF00000; region: "sysctrl"}
+    }
     wideRegisters: true
 
 apb_uart_1: UART.NS16550 @ sysbus 0xFFF01000
     wideRegisters: true
 
+sdram_hpc: Memory.MappedMemory @  {
+    sysbus new Bus.BusPointRegistration {address: 0x100000000; cpu: cpu_hpc0};
+    sysbus new Bus.BusPointRegistration {address: 0x100000000; cpu: cpu_hpc1};
+    sysbus new Bus.BusPointRegistration {address: 0x100000000; cpu: cpu_hpc2};
+    sysbus new Bus.BusPointRegistration {address: 0x100000000; cpu: cpu_hpc3}
+    }
+    size: 0x10000000
+
 sdram_truncated: Memory.MappedMemory @  {
-    sysbus new Bus.BusMultiRegistration {address: 0x10000000; cpu: cpu_sysctrl};
-    sysbus new Bus.BusMultiRegistration {address: 0x110000000; cpu: cpu_hpc0};
-    sysbus new Bus.BusMultiRegistration {address: 0x110000000; cpu: cpu_hpc1};
-    sysbus new Bus.BusMultiRegistration {address: 0x110000000; cpu: cpu_hpc2};
-    sysbus new Bus.BusMultiRegistration {address: 0x110000000; cpu: cpu_hpc3}
+    sysbus new Bus.BusPointRegistration {address: 0x10000000; cpu: cpu_sysctrl};
+    sysbus new Bus.BusPointRegistration {address: 0x110000000; cpu: cpu_hpc0};
+    sysbus new Bus.BusPointRegistration {address: 0x110000000; cpu: cpu_hpc1};
+    sysbus new Bus.BusPointRegistration {address: 0x110000000; cpu: cpu_hpc2};
+    sysbus new Bus.BusPointRegistration {address: 0x110000000; cpu: cpu_hpc3}
+    }
     size: 0x60000000
-}
 
 dla: Python.PythonPeripheral @ {
     sysbus new Bus.BusMultiRegistration {address: 0xFF700000; size: 0x0068; region: "cfg"};

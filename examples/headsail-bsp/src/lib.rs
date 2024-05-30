@@ -38,6 +38,7 @@ pub mod alloc;
 #[cfg(feature = "hpc")]
 mod hpc;
 mod mmap;
+const EXTERNAL_BIT: usize = 1_0000_0000;
 #[cfg(feature = "sysctrl")]
 mod sysctrl;
 #[cfg(feature = "panic-uart")]
@@ -48,7 +49,11 @@ mod ufmt_panic;
 /// Unaligned reads may fail to produce expected results on RISC-V.
 #[inline(always)]
 pub unsafe fn read_u8(addr: usize) -> u8 {
-    core::ptr::read_volatile(addr as *const _)
+    #[cfg(feature = "hpc")]
+    let address: usize = addr + EXTERNAL_BIT;
+    #[cfg(feature = "sysctrl")]
+    let address: usize = addr;
+    core::ptr::read_volatile(address as *const _)
 }
 
 /// # Safety
@@ -56,17 +61,32 @@ pub unsafe fn read_u8(addr: usize) -> u8 {
 /// Unaligned writes may fail to produce expected results on RISC-V.
 #[inline(always)]
 pub unsafe fn write_u8(addr: usize, val: u8) {
-    core::ptr::write_volatile(addr as *mut _, val)
+    #[cfg(feature = "hpc")]
+    let address: usize = addr + EXTERNAL_BIT;
+    #[cfg(feature = "sysctrl")]
+    let address: usize = addr;
+
+    core::ptr::write_volatile(address as *mut _, val)
 }
 
 #[inline(always)]
 pub fn read_u32(addr: usize) -> u32 {
-    unsafe { core::ptr::read_volatile(addr as *const _) }
+    #[cfg(feature = "hpc")]
+    let address: usize = addr + EXTERNAL_BIT;
+    #[cfg(feature = "sysctrl")]
+    let address: usize = addr;
+
+    unsafe { core::ptr::read_volatile(address as *const _) }
 }
 
 #[inline(always)]
 pub fn write_u32(addr: usize, val: u32) {
-    unsafe { core::ptr::write_volatile(addr as *mut _, val) }
+    #[cfg(feature = "hpc")]
+    let address: usize = addr + EXTERNAL_BIT;
+    #[cfg(feature = "sysctrl")]
+    let address: usize = addr;
+
+    unsafe { core::ptr::write_volatile(address as *mut _, val) }
 }
 
 #[cfg(feature = "alloc")]
