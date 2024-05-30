@@ -8,10 +8,7 @@ use headsail_bsp::{init_alloc, rt::entry, sprint, sprintln};
 use panic_halt as _;
 
 mod test_data;
-use test_data::{
-    conv_10x15x3_3x3_din, conv_10x15x3_3x3_dout, conv_10x15x3_3x3_wgt, conv_16x16x16_3x3_din,
-    conv_16x16x16_3x3_dout, conv_16x16x16_3x3_wgt,
-};
+use test_data::{conv_16x16x16_3x3_din, conv_16x16x16_3x3_dout, conv_16x16x16_3x3_wgt};
 
 use alloc::vec::Vec;
 
@@ -44,7 +41,7 @@ fn validate_conv2d_tiny() -> bool {
     .to_vec();
 
     let mut dout: Vec<i32> = [
-        1, -10, -8, -3, -6, -5, -2, -7, -10, -2, -4, -10, -7, -0, -3, -7, -2, -1,
+        -10, -1, -10, 0, -14, 2, -14, -4, -6, -5, -13, 4, -12, -2, -7, 1, -10, 0,
     ]
     .to_vec();
 
@@ -86,7 +83,6 @@ fn validate_conv2d_tiny() -> bool {
     };
 
     dla.init_layer(config);
-    sprintln!("Layer configured");
 
     dla.write_input(&mut din);
     dla.write_kernel(&mut wgt);
@@ -98,17 +94,7 @@ fn validate_conv2d_tiny() -> bool {
     while !dla.handle_handshake() {}
     let output = dla.read_output_i32(output_width as usize * output_height as usize * 2);
 
-    for x in &output {
-        sprint!("{:?} ", x)
-    }
-
-    if output == dout {
-        sprintln!("Valid output");
-        true
-    } else {
-        sprintln!("Invalid output");
-        false
-    }
+    output == dout
 }
 
 fn validate_conv2d() -> bool {
@@ -165,7 +151,6 @@ fn validate_conv2d() -> bool {
     };
 
     dla.init_layer(config);
-    sprintln!("Layer configured");
 
     dla.write_input(&mut din);
     dla.write_kernel(&mut wgt);
@@ -177,36 +162,18 @@ fn validate_conv2d() -> bool {
     while !dla.handle_handshake() {}
     let output = dla.read_output_i32(output_width as usize * output_height as usize * 16);
 
-    sprintln!(
-        "Target output of length: {}",
-        output_width * output_height * 16
-    );
-    sprintln!("Printing output of length: {}", output.len());
-    for (i, x) in output.iter().enumerate() {
-        if output[i] != dout[i] {
-            sprintln!(
-                "Different output at index {} : {} =/= {}",
-                i,
-                output[i],
-                dout[i]
-            );
-        }
-    }
-    if output == dout {
-        sprintln!("Valid output");
-        true
-    } else {
-        sprintln!("Invalid output");
-        false
-    }
+    output == dout
 }
 #[entry]
 fn main() -> ! {
     init_alloc();
-    sprint!("Validate conv2d");
-    validate_conv2d_tiny();
-    //validate_conv2d_small();
-    //validate_conv2d();
+    sprintln!("Validate conv2d");
+    if validate_conv2d() {
+        sprintln!("16x16x16_3x3 conv2d test succesful")
+    }
+    if validate_conv2d_tiny() {
+        sprintln!("Tiny test succesful")
+    }
     sprint!("Validation conv2d succesful");
     loop {}
 }

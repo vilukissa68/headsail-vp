@@ -213,43 +213,6 @@ macro_rules! get_bits {
         ($reg & ($mask as u32)) as u32
     };
 }
-fn convert_to_ckwh(
-    standard_layout: &[i8],
-    num_kernels: usize,
-    num_channels: usize,
-    kernel_width: usize,
-    kernel_height: usize,
-) -> Vec<i8> {
-    let num_positions = kernel_width * kernel_height;
-    //let mut ckwh_layout = vec![0; num_kernels * num_channels * num_positions];
-    sprintln!(
-        "Kernels: {} channels: {} width: {} height: {}\n",
-        num_kernels,
-        num_channels,
-        kernel_width,
-        kernel_height
-    );
-    let mut ckwh_layout = Vec::with_capacity(num_kernels * num_channels * num_positions);
-    for _ in 0..(num_kernels * num_channels * num_positions) {
-        ckwh_layout.push(0);
-    }
-
-    for w in 0..kernel_height {
-        for h in 0..kernel_width {
-            for kernel in 0..num_kernels {
-                for channel in 0..num_channels {
-                    let standard_index =
-                        ((kernel * num_channels + channel) * kernel_height + h) * kernel_width + w;
-                    let ckwh_index =
-                        (((w * kernel_width + h) * num_kernels + kernel) * num_channels + channel);
-                    ckwh_layout[ckwh_index] = standard_layout[standard_index];
-                }
-            }
-        }
-    }
-
-    ckwh_layout
-}
 
 /// DLA driver struct
 pub struct Dla {}
@@ -772,7 +735,7 @@ impl Dla {
         let buf_enabled = get_bits!(handshake_reg, DLA_HANDSHAKE_BUFFER_ENABLE_BITMASK) != 0;
         let mac_enabled = get_bits!(handshake_reg, DLA_HANDSHAKE_MAC_ENABLE_BITMASK) != 0;
         let active_enabled = get_bits!(handshake_reg, DLA_HANDSHAKE_ACTIVE_ENABLE_BITMASK) != 0;
-        buf_enabled && mac_enabled && active_enabled
+        buf_enabled || mac_enabled || active_enabled
     }
 
     /// Responds to DLA handshake by disabling hardware
@@ -816,13 +779,16 @@ impl Dla {
     pub fn handle_handshake(&self) -> bool {
         // Handshake only if dla status is done
         if !self.is_ready() {
+            sprintln!("Result not ready");
             return false;
         }
 
         if self.is_enabled() {
+            sprintln!("DLA still enabled");
             self.handshake_disable_hw();
             return false;
         }
+        sprintln!("Finishing handshake");
 
         let mut handshake_reg = self.read_u32(DLA_HANDSHAKE);
         handshake_reg = set_bits!(

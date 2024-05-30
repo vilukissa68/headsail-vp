@@ -735,7 +735,6 @@ class Dla:
                     bank.write(offset, combined)
                     offset += 1
                     values_written += 4
-            print("First value -71798?:", bank.mem[0], bank.mem[1], bank.mem[2], bank.mem[3])
 
         else:
             print("WARNING: output written outside VP memory region")
@@ -901,26 +900,6 @@ class Dla:
 
        return (pad_x, pad_y), (dilation_x, dilation_y), (stride_x, stride_y)
 
-    def handle_handshake(self):
-        """Resets handshake registers correctly after succesful calculation"""
-        # Buffer
-        if self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1) == 0:
-            if self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1) == 1:
-                self.set_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1, 0)
-                self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 0x0)
-
-        # Mac
-        if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1) == 0:
-            if self.get_register(HANDSHAKE, HANDSHAKE_MAC_VALID_OFFSET, 1) == 1:
-                self.set_register(HANDSHAKE, HANDSHAKE_MAC_VALID_OFFSET, 1, 0)
-                self.set_register(STATUS_ADDR, MAC_DONE_OFFSET, 1, 0x0)
-
-        # Post Processor
-        if self.get_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1) == 0:
-            if self.get_register(HANDSHAKE, HANDSHAKE_ACTIVE_VALID_OFFSET, 1) == 1:
-                self.set_register(HANDSHAKE, HANDSHAKE_ACTIVE_VALID_OFFSET, 1, 0)
-                self.set_register(STATUS_ADDR, PP_DONE_OFFSET, 1, 0x0)
-
     def round(self, values):
         """Round values if register is set"""
         if self.get_register(PP_CTRL, ROUNDING_OFFSET, 1) == 1:
@@ -941,7 +920,29 @@ class Dla:
             return execute_for_all_elements(clip_signed, values, clip_amount, True)
         return values
 
-    # PROCESSJUMPTAG
+    def handle_handshake(self):
+        """Resets handshake registers correctly after succesful calculation"""
+        # Buffer
+        print("Buffer Enable:", self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1))
+        print("Buffer Valid:", self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1))
+        if self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1) == 0:
+            if self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1) == 1:
+                self.set_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1, 0)
+                self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 0)
+
+        # Mac
+        if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1) == 0:
+            if self.get_register(HANDSHAKE, HANDSHAKE_MAC_VALID_OFFSET, 1) == 1:
+                self.set_register(HANDSHAKE, HANDSHAKE_MAC_VALID_OFFSET, 1, 0)
+                self.set_register(STATUS_ADDR, MAC_DONE_OFFSET, 1, 0)
+
+        # Post Processor
+        if self.get_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1) == 0:
+            if self.get_register(HANDSHAKE, HANDSHAKE_ACTIVE_VALID_OFFSET, 1) == 1:
+                self.set_register(HANDSHAKE, HANDSHAKE_ACTIVE_VALID_OFFSET, 1, 0)
+                self.set_register(STATUS_ADDR, PP_DONE_OFFSET, 1, 0)
+
+        # PROCESSJUMPTAG
     def process(self):
         """Runs next tick of the DLA state"""
 
@@ -952,13 +953,14 @@ class Dla:
         if self.get_register(STATUS_ADDR, BUF_DONE_OFFSET, 1) or \
                 self.get_register(STATUS_ADDR, MAC_DONE_OFFSET, 1) or \
                 self.get_register(STATUS_ADDR, PP_DONE_OFFSET, 1):
+            self.print_register(STATUS_ADDR)
             print("Status not cleared")
             return
 
         # Check if buffer is enabled
-        if not self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1):
-            print("Buffer not enabled")
-            return
+        # if not self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1):
+        #     print("Buffer not enabled")
+        #     return
 
         # Check if data is ready
         if not self.get_register(BUF_CTRL, READ_A_VALID_OFFSET, 1) or not self.get_register(BUF_CTRL, READ_B_VALID_OFFSET, 1):
@@ -1028,8 +1030,8 @@ class Dla:
         self.set_register(STATUS_ADDR, PP_DONE_OFFSET, 1, 1)
 
         # Set data not ready
-        self.set_register(BUF_CTRL, READ_A_VALID_OFFSET, 1, 0x0)
-        self.set_register(BUF_CTRL, READ_B_VALID_OFFSET, 1, 0x0)
+        self.set_register(BUF_CTRL, READ_A_VALID_OFFSET, 1, 0)
+        self.set_register(BUF_CTRL, READ_B_VALID_OFFSET, 1, 0)
 
 
 class DlaMac:
