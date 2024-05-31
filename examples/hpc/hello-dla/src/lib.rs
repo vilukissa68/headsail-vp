@@ -3,7 +3,7 @@
 mod mmap;
 
 use core::ptr;
-use mmap::{UART0_ADDR, DLA0_ADDR};
+use mmap::{DLA0_ADDR, UART0_ADDR};
 
 pub fn uart_write(s: &str) {
     for b in s.as_bytes() {
@@ -18,10 +18,10 @@ pub fn dla_write(s: &str) {
 }
 
 pub fn dla_read(buf: &mut [u8], len: usize, offset: usize) {
-    for i in 0..len {
-        unsafe { buf[i] = ptr::read_volatile((DLA0_ADDR + offset + i) as *mut u8)} 
-    }
+    buf.iter_mut()
+        .take(len)
+        .enumerate()
+        .for_each(|(i, byte)| unsafe {
+            *byte = ptr::read_volatile((DLA0_ADDR + offset + i) as *const u8);
+        });
 }
-
-
-
