@@ -38,7 +38,7 @@ pub mod alloc;
 #[cfg(feature = "hpc")]
 mod hpc;
 mod mmap;
-const EXTERNAL_BIT: usize = 1_0000_0000;
+const EXTERNAL_BIT: usize = 0x1_0000_0000;
 #[cfg(feature = "sysctrl")]
 mod sysctrl;
 #[cfg(feature = "panic-uart")]
