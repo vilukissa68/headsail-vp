@@ -656,11 +656,9 @@ class Dla:
             print("WARN: output was empty.")
             return
 
-        for i in range(32):
-            print('{}:[{}]'.format(i+1,', '.join("{}".format(hex(x & 0xffffffff)[2:-1]) for x in data[i*width:width*i+width])))
+        # for i in range(32):
+        #     print('{}:[{}]'.format(i+1,', '.join("{}".format(hex(x & 0xffffffff)[2:-1]) for x in data[i*width:width*i+width])))
 
-        print("")
-        print(len(data))
         # Format data to KCWH
         column_wise = []
 
@@ -675,8 +673,8 @@ class Dla:
                         column_wise.append(data[idx])
 
         # TODO remove this loop
-        for i in range(32):
-            print('{}:[{}]'.format(i+1, ', '.join("{}".format(hex(x & 0xffffffff)[2:-1]) for x in column_wise[i*filter_amount:filter_amount*i+filter_amount])))
+        # for i in range(32):
+        #     print('{}:[{}]'.format(i+1, ', '.join("{}".format(hex(x & 0xffffffff)[2:-1]) for x in column_wise[i*filter_amount:filter_amount*i+filter_amount])))
         data = column_wise
 
         addr = self.get_output_addr()
@@ -857,18 +855,18 @@ class Dla:
         # Append rest
         remaining = (channels * width * height) - len(data)
         data = data + chunk[remaining::-1][:remaining]
-        print('[{}]'.format(', '.join("{:2}".format(hex(x & 0xff)[2:-1]) for x in data)))
+        #print('[{}]'.format(', '.join("{:2}".format(hex(x & 0xff)[2:-1]) for x in data)))
 
         # Column wise matrix formation
         #data = reshape(data, (channels, width, height))
         column_wise = []
-        print("")
+        #print("")
         for c in range(channels):
             for h in range(height):
                 for w in range(width):
                     idx = c + channels * w + (channels * width) * h
                     column_wise.append(data[idx])
-        print('[{}]'.format(', '.join("{:2}".format(hex(x & 0xff)[2:-1]) for x in column_wise)))
+        #print('[{}]'.format(', '.join("{:2}".format(hex(x & 0xff)[2:-1]) for x in column_wise)))
 
         column_wise = reshape(column_wise, (channels, height, width))
         print_matrix(column_wise[0], "flat input:", pformat="hexadecimal")
@@ -923,8 +921,6 @@ class Dla:
     def handle_handshake(self):
         """Resets handshake registers correctly after succesful calculation"""
         # Buffer
-        print("Buffer Enable:", self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1))
-        print("Buffer Valid:", self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1))
         if self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1) == 0:
             if self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1) == 1:
                 self.set_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1, 0)
