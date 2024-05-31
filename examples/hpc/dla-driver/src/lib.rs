@@ -146,9 +146,9 @@ impl TryFrom<u32> for MemoryBank {
     }
 }
 
-impl Into<usize> for MemoryBank {
-    fn into(self) -> usize {
-        match self {
+impl From<MemoryBank> for usize {
+    fn from(val: MemoryBank) -> Self {
+        match val {
             MemoryBank::Bank0 => 0,
             MemoryBank::Bank1 => 1,
             MemoryBank::Bank2 => 2,
@@ -215,6 +215,12 @@ macro_rules! get_bits {
 /// DLA driver struct
 pub struct Dla {}
 
+impl Default for Dla {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Dla {
     pub fn new() -> Self {
         Dla {}
@@ -273,7 +279,7 @@ impl Dla {
                 let byte = ((data >> (i * 8)) & 0xFF) as i8;
                 res.push(byte)
             }
-            next_bank_offset = next_bank_offset + 0x10;
+            next_bank_offset += 0x10;
         }
         res
     }
@@ -512,7 +518,7 @@ impl Dla {
 
     /// Get status of calculation from DLA
     pub fn get_status(&self) -> u32 {
-        return self.read_u32(DLA_STATUS_ADDR);
+        self.read_u32(DLA_STATUS_ADDR)
     }
 
     /// Sets simd mode for conv2d
@@ -599,7 +605,7 @@ impl Dla {
     /// Checks if calculations are ready in DLA
     pub fn is_ready(&self) -> bool {
         let status = self.read_u32(DLA_STATUS_ADDR);
-        return !get_bits!(status, DLA_BUF_DONE_BITMASK) != 0;
+        !get_bits!(status, DLA_BUF_DONE_BITMASK) != 0
     }
 
     /// Sets external memory address containing bias data for post-processing
@@ -686,7 +692,7 @@ impl Dla {
         );
 
         self.write_u32(DLA_HANDSHAKE, handshake_reg);
-        return true;
+        true
     }
 
     /// Prepares DLA for receiveing configuration for next layer
