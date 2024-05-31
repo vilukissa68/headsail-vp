@@ -229,13 +229,14 @@ impl Dla {
         Dla {}
     }
     /// Writes u32 to dla configuration registers at offset
-    fn write_u32(&self, offset: usize, value: u32) {
-        unsafe { ptr::write_volatile((DLA0_ADDR + offset) as *mut _, value) }
+    fn dla_write_u32(&self, offset: usize, value: u32) {
+        let addr = DLA0_ADDR + offset;
+        headsail_bsp::write_u32(addr, value)
     }
 
     /// Reads u32 from dla configuration registers at offset
-    fn read_u32(&self, offset: usize) -> u32 {
-        unsafe { ptr::read_volatile((DLA0_ADDR + offset) as *const _) }
+    fn dla_read_u32(&self, offset: usize) -> u32 {
+        headsail_bsp::read_u32(DLA0_ADDR + offset)
     }
 
     /// Writes buffer DLA's data bank(s) based on offset
@@ -261,11 +262,9 @@ impl Dla {
         if cfg!(feature = "vp") {
             let mut result: u128 = 0;
             for i in 0..4 {
-                result |= (unsafe {
-                    ptr::read_volatile(
-                        (MEMORY_BANK_BASE_ADDR + bank.offset() + offset + (i * 4)) as *mut u32,
-                    )
-                } as u128)
+                result |= (headsail_bsp::read_u32(
+                    MEMORY_BANK_BASE_ADDR + bank.offset() + offset + (i * 4),
+                ) as u128)
                     << (32 * i)
             }
             result
@@ -383,7 +382,7 @@ impl Dla {
 
     /// Sets one of the DLA's memory banks as starting bank for inputs
     fn set_input_data_bank(&self, bank: MemoryBank) {
-        let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
+        let mut reg = self.dla_read_u32(DLA_BUF_DATA_BANK);
         let b: usize = bank.into();
         reg = set_bits!(
             DLA_BUF_DATA_BANK_B_OFFSET,
@@ -391,12 +390,12 @@ impl Dla {
             reg,
             b
         );
-        self.write_u32(DLA_BUF_DATA_BANK, reg);
+        self.dla_write_u32(DLA_BUF_DATA_BANK, reg);
     }
 
     /// Sets one of the DLA's memory banks as starting bank for kernels
     fn set_kernel_data_bank(&self, bank: MemoryBank) {
-        let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
+        let mut reg = self.dla_read_u32(DLA_BUF_DATA_BANK);
         let b: usize = bank.into();
         reg = set_bits!(
             DLA_BUF_DATA_BANK_A_OFFSET,
@@ -404,20 +403,20 @@ impl Dla {
             reg,
             b
         );
-        self.write_u32(DLA_BUF_DATA_BANK, reg);
+        self.dla_write_u32(DLA_BUF_DATA_BANK, reg);
     }
 
     /// Sets one of the DLA's memory banks as starting bank for outputs
     fn set_output_bank(&self, bank: MemoryBank) {
-        let mut reg = self.read_u32(DLA_PP_AXI_WRITE);
-        let b: usize = bank.offset();
+        let mut reg = self.dla_read_u32(DLA_PP_AXI_WRITE);
+        let b: usize = bank.into();
         reg = set_bits!(
             DLA_PP_AXI_WRITE_ADDRESS_OFFSET,
             DLA_PP_AXI_WRITE_ADDRESS_BITMASK,
             reg,
             b + MEMORY_BANK_BASE_ADDR
         );
-        self.write_u32(DLA_PP_AXI_WRITE, reg);
+        self.dla_write_u32(DLA_PP_AXI_WRITE, reg);
     }
 
     /// Sets dimensions for inputs in convolution
@@ -441,7 +440,7 @@ impl Dla {
             reg,
             input_size.height - 1
         );
-        self.write_u32(DLA_BUF_INPUT, reg);
+        self.dla_write_u32(DLA_BUF_INPUT, reg);
     }
 
     /// Sets dimensions for filters in convolution
@@ -480,62 +479,62 @@ impl Dla {
 
     /// Signals to DLA that all input data has been set
     pub fn input_data_ready(&self, ready: bool) {
-        let mut reg = self.read_u32(DLA_BUF_CTRL);
+        let mut reg = self.dla_read_u32(DLA_BUF_CTRL);
         reg = set_bits!(
             DLA_READ_B_VALID_OFFSET,
             DLA_READ_B_VALID_BITMASK,
             reg,
             ready as usize
         );
-        self.write_u32(DLA_BUF_CTRL, reg);
+        self.dla_write_u32(DLA_BUF_CTRL, reg);
     }
 
     /// Signals to DLA that all kernel/filter/weight data has been set
     pub fn kernel_data_ready(&self, ready: bool) {
-        let mut reg = self.read_u32(DLA_BUF_CTRL);
+        let mut reg = self.dla_read_u32(DLA_BUF_CTRL);
         reg = set_bits!(
             DLA_READ_A_VALID_OFFSET,
             DLA_READ_A_VALID_BITMASK,
             reg,
             ready as usize
         );
-        self.write_u32(DLA_BUF_CTRL, reg);
+        self.dla_write_u32(DLA_BUF_CTRL, reg);
     }
 
     /// Enables post-processing
     fn enable_pp(&self, enable: bool) {
-        let mut reg = self.read_u32(DLA_HANDSHAKE);
+        let mut reg = self.dla_read_u32(DLA_HANDSHAKE);
         reg = set_bits!(
             DLA_HANDSHAKE_BYPASS_ENABLE_OFFSET,
             DLA_HANDSHAKE_BYPASS_ENABLE_BITMASK,
             reg,
             enable as usize
         );
-        self.write_u32(DLA_HANDSHAKE, reg);
+        self.dla_write_u32(DLA_HANDSHAKE, reg);
     }
 
     /// Enables ReLU in post-processing. Post-processing needs to be enabled
     fn enable_relu(&self, enable: bool) {
-        let mut reg = self.read_u32(DLA_HANDSHAKE);
+        let mut reg = self.dla_read_u32(DLA_HANDSHAKE);
         reg = set_bits!(
             DLA_HANDSHAKE_ACTIVE_ENABLE_OFFSET,
             DLA_HANDSHAKE_ACTIVE_ENABLE_BITMASK,
             reg,
             enable as usize
         );
-        self.write_u32(DLA_HANDSHAKE, reg);
+        self.dla_write_u32(DLA_HANDSHAKE, reg);
     }
 
     /// Enables bias in post-processing. Post-processing needs to be enabled
     fn enable_bias(&self, enable: bool) {
-        let mut reg = self.read_u32(DLA_HANDSHAKE);
+        let mut reg = self.dla_read_u32(DLA_HANDSHAKE);
         reg = set_bits!(
             DLA_HANDSHAKE_BIAS_ENABLE_OFFSET,
             DLA_HANDSHAKE_BIAS_ENABLE_BITMASK,
             reg,
             enable as usize
         );
-        self.write_u32(DLA_HANDSHAKE, reg);
+        self.dla_write_u32(DLA_HANDSHAKE, reg);
     }
 
     /// Sets padding paramters for convolution
@@ -571,7 +570,7 @@ impl Dla {
             reg,
             padding.padding_value
         );
-        self.write_u32(DLA_BUF_PAD, reg);
+        self.dla_write_u32(DLA_BUF_PAD, reg);
     }
 
     /// Sets stride paramters for convolution
@@ -589,29 +588,29 @@ impl Dla {
             reg,
             stride.y - 1
         );
-        self.write_u32(DLA_BUF_STRIDE, reg);
+        self.dla_write_u32(DLA_BUF_STRIDE, reg);
     }
 
     /// Get status of calculation from DLA
     pub fn get_status(&self) -> u32 {
-        self.read_u32(DLA_STATUS_ADDR)
+        return self.dla_read_u32(DLA_STATUS_ADDR);
     }
 
     /// Sets simd mode for conv2d
     fn set_simd_mode(&self, mode: SimdBitMode) {
-        let mut reg = self.read_u32(DLA_MAC_CTRL);
+        let mut reg = self.dla_read_u32(DLA_MAC_CTRL);
         reg = set_bits!(
             DLA_SIMD_SELECT_OFFSET,
             DLA_SIMD_SELECT_BITMASK,
             reg,
             mode as usize
         );
-        self.write_u32(DLA_MAC_CTRL, reg)
+        self.dla_write_u32(DLA_MAC_CTRL, reg)
     }
 
     /// Gets simd mode for conv2d
     fn get_simd_mode(&self) -> SimdBitMode {
-        let mut reg = self.read_u32(DLA_MAC_CTRL);
+        let mut reg = self.dla_read_u32(DLA_MAC_CTRL);
         reg = get_bits!(reg, DLA_SIMD_SELECT_BITMASK);
         match reg {
             0 => SimdBitMode::EightBits,
@@ -623,7 +622,7 @@ impl Dla {
 
     /// Reads index of the first input bank
     fn get_input_bank(&self) -> MemoryBank {
-        let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
+        let mut reg = self.dla_read_u32(DLA_BUF_DATA_BANK);
         reg = get_bits!(reg, DLA_BUF_DATA_BANK_B_BITMASK);
         // Shift value back here
         reg >>= 16;
@@ -632,14 +631,14 @@ impl Dla {
 
     /// Reads index of the first kernel bank
     fn get_kernel_bank(&self) -> MemoryBank {
-        let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
+        let mut reg = self.dla_read_u32(DLA_BUF_DATA_BANK);
         reg = get_bits!(reg, DLA_BUF_DATA_BANK_A_BITMASK);
         MemoryBank::try_from(reg).unwrap()
     }
 
     /// Reads index of the first output bank
     fn get_output_bank(&self) -> MemoryBank {
-        let reg = self.read_u32(DLA_PP_AXI_WRITE);
+        let reg = self.dla_read_u32(DLA_PP_AXI_WRITE);
         let bank_idx: u32 = (reg - MEMORY_BANK_BASE_ADDR as u32) / MEMORY_BANK_SIZE as u32;
         MemoryBank::try_from(bank_idx).unwrap()
     }
@@ -685,9 +684,9 @@ impl Dla {
         if clip_amount > 21 {
             return Err(InvalidClip(clip_amount));
         }
-        let mut reg = self.read_u32(DLA_MAC_CTRL);
+        let mut reg = self.dla_read_u32(DLA_MAC_CTRL);
         reg = set_bits!(DLA_MAC_CLIP_OFFSET, DLA_MAC_CLIP_BITMASK, reg, clip_amount);
-        self.write_u32(DLA_MAC_CTRL, reg);
+        self.dla_write_u32(DLA_MAC_CTRL, reg);
         Ok(())
     }
 
@@ -697,38 +696,38 @@ impl Dla {
         if clip_amount > 0x1F {
             return Err(InvalidClip(clip_amount));
         }
-        let mut reg = self.read_u32(DLA_PP_CTRL);
+        let mut reg = self.dla_read_u32(DLA_PP_CTRL);
         reg = set_bits!(DLA_PP_CLIP_OFFSET, DLA_PP_CLIP_BITMASK, reg, clip_amount);
-        self.write_u32(DLA_PP_CTRL, reg);
+        self.dla_write_u32(DLA_PP_CTRL, reg);
         Ok(())
     }
 
     /// Sets rounding after post-processing
     fn set_pp_rounding(&self, enable: bool) {
-        let mut reg = self.read_u32(DLA_PP_CTRL);
+        let mut reg = self.dla_read_u32(DLA_PP_CTRL);
         reg = set_bits!(
             DLA_ROUNDING_OFFSET,
             DLA_ROUNDING_BITMASK,
             reg,
             enable as usize
         );
-        self.write_u32(DLA_PP_CTRL, reg);
+        self.dla_write_u32(DLA_PP_CTRL, reg);
     }
 
     /// Checks if calculations are ready in DLA
     pub fn is_ready(&self) -> bool {
-        let status = self.read_u32(DLA_STATUS_ADDR);
-        !get_bits!(status, DLA_BUF_DONE_BITMASK) != 0
+        let status = self.dla_read_u32(DLA_STATUS_ADDR);
+        return !get_bits!(status, DLA_BUF_DONE_BITMASK) != 0;
     }
 
     /// Sets external memory address containing bias data for post-processing
     fn set_bias_addr(&self, addr: u32) {
-        self.write_u32(DLA_PP_AXI_READ, addr);
+        self.dla_write_u32(DLA_PP_AXI_READ, addr);
     }
 
     /// Checks if all functions have been enabled
     pub fn is_enabled(&self) -> bool {
-        let handshake_reg = self.read_u32(DLA_HANDSHAKE);
+        let handshake_reg = self.dla_read_u32(DLA_HANDSHAKE);
         let buf_enabled = get_bits!(handshake_reg, DLA_HANDSHAKE_BUFFER_ENABLE_BITMASK) != 0;
         let mac_enabled = get_bits!(handshake_reg, DLA_HANDSHAKE_MAC_ENABLE_BITMASK) != 0;
         let active_enabled = get_bits!(handshake_reg, DLA_HANDSHAKE_ACTIVE_ENABLE_BITMASK) != 0;
@@ -737,7 +736,7 @@ impl Dla {
 
     /// Responds to DLA handshake by disabling hardware
     fn handshake_disable_hw(&self) {
-        let mut handshake_reg = self.read_u32(DLA_HANDSHAKE);
+        let mut handshake_reg = self.dla_read_u32(DLA_HANDSHAKE);
         handshake_reg = set_bits!(
             DLA_HANDSHAKE_BUFFER_ENABLE_OFFSET,
             DLA_HANDSHAKE_BUFFER_ENABLE_BITMASK,
@@ -769,7 +768,7 @@ impl Dla {
             0
         );
 
-        self.write_u32(DLA_HANDSHAKE, handshake_reg);
+        self.dla_write_u32(DLA_HANDSHAKE, handshake_reg);
     }
 
     /// Performs handshake with DLA
@@ -784,7 +783,7 @@ impl Dla {
             return false;
         }
 
-        let mut handshake_reg = self.read_u32(DLA_HANDSHAKE);
+        let mut handshake_reg = self.dla_read_u32(DLA_HANDSHAKE);
         handshake_reg = set_bits!(
             DLA_HANDSHAKE_BUFFER_VALID_OFFSET,
             DLA_HANDSHAKE_BUFFER_VALID_BITMASK,
@@ -804,13 +803,13 @@ impl Dla {
             1
         );
 
-        self.write_u32(DLA_HANDSHAKE, handshake_reg);
-        true
+        self.dla_write_u32(DLA_HANDSHAKE, handshake_reg);
+        return true;
     }
 
     /// Prepares DLA for receiveing configuration for next layer
     fn handshake_next_layer(&self) {
-        let mut reg = self.read_u32(DLA_HANDSHAKE);
+        let mut reg = self.dla_read_u32(DLA_HANDSHAKE);
         reg = set_bits!(
             DLA_HANDSHAKE_BUFFER_ENABLE_OFFSET,
             DLA_HANDSHAKE_BUFFER_ENABLE_BITMASK,
@@ -829,7 +828,7 @@ impl Dla {
             reg,
             1
         );
-        self.write_u32(DLA_HANDSHAKE, reg);
+        self.dla_write_u32(DLA_HANDSHAKE, reg);
     }
 
     /// Configures the next layer in dla
