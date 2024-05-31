@@ -60,8 +60,8 @@ jobs:
     - name: Install requirements
       run: rustup target add riscv64imac-unknown-none-elf
     - name: Run linter
-      working-directory: ./examples/hpc/hello-dla
-      run: cargo clippy --all-targets -- -D clippy::suspicious
+      working-directory: ./examples/hpc/
+      run: cargo clippy -- -D clippy::suspicious
     - name: Build examples
       working-directory: ./examples/hpc/hello-dla
       run: cargo build --example dla
