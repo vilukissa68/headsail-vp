@@ -38,7 +38,8 @@ pub mod alloc;
 #[cfg(feature = "hpc")]
 mod hpc;
 mod mmap;
-const EXTERNAL_BIT: usize = 0x1_0000_0000;
+//const EXTERNAL_BIT: usize = 0x1_0000_0000;
+const EXTERNAL_BIT: usize = 0;
 #[cfg(feature = "sysctrl")]
 mod sysctrl;
 #[cfg(feature = "panic-uart")]
@@ -50,7 +51,7 @@ mod ufmt_panic;
 #[inline(always)]
 pub unsafe fn read_u8(addr: usize) -> u8 {
     #[cfg(feature = "hpc")]
-    let address: usize = addr + EXTERNAL_BIT;
+    let address: usize = addr | EXTERNAL_BIT;
     #[cfg(feature = "sysctrl")]
     let address: usize = addr;
     core::ptr::read_volatile(address as *const _)
@@ -62,7 +63,7 @@ pub unsafe fn read_u8(addr: usize) -> u8 {
 #[inline(always)]
 pub unsafe fn write_u8(addr: usize, val: u8) {
     #[cfg(feature = "hpc")]
-    let address: usize = addr + EXTERNAL_BIT;
+    let address: usize = addr | EXTERNAL_BIT;
     #[cfg(feature = "sysctrl")]
     let address: usize = addr;
 
@@ -72,7 +73,7 @@ pub unsafe fn write_u8(addr: usize, val: u8) {
 #[inline(always)]
 pub fn read_u32(addr: usize) -> u32 {
     #[cfg(feature = "hpc")]
-    let address: usize = addr + EXTERNAL_BIT;
+    let address: usize = addr | EXTERNAL_BIT;
     #[cfg(feature = "sysctrl")]
     let address: usize = addr;
 
@@ -82,7 +83,27 @@ pub fn read_u32(addr: usize) -> u32 {
 #[inline(always)]
 pub fn write_u32(addr: usize, val: u32) {
     #[cfg(feature = "hpc")]
-    let address: usize = addr + EXTERNAL_BIT;
+    let address: usize = addr | EXTERNAL_BIT;
+    #[cfg(feature = "sysctrl")]
+    let address: usize = addr;
+
+    unsafe { core::ptr::write_volatile(address as *mut _, val) }
+}
+
+#[inline(always)]
+pub fn read_u64(addr: usize) -> u64 {
+    #[cfg(feature = "hpc")]
+    let address: usize = addr | EXTERNAL_BIT;
+    #[cfg(feature = "sysctrl")]
+    let address: usize = addr;
+
+    unsafe { core::ptr::read_volatile(address as *const _) }
+}
+
+#[inline(always)]
+pub fn write_u64(addr: usize, val: u64) {
+    #[cfg(feature = "hpc")]
+    let address: usize = addr | EXTERNAL_BIT;
     #[cfg(feature = "sysctrl")]
     let address: usize = addr;
 

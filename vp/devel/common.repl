@@ -99,10 +99,10 @@ hpc_bootram: Memory.MappedMemory @ {
 
 ram_0: Memory.MappedMemory @ {
     sysbus new Bus.BusPointRegistration {address: 0x90080000; cpu: cpu_sysctrl};
-    sysbus new Bus.BusPointRegistration {address: 0x1900800000; cpu: cpu_hpc0};
-    sysbus new Bus.BusPointRegistration {address: 0x1900800000; cpu: cpu_hpc1};
-    sysbus new Bus.BusPointRegistration {address: 0x1900800000; cpu: cpu_hpc2};
-    sysbus new Bus.BusPointRegistration {address: 0x1900800000; cpu: cpu_hpc3}
+    sysbus new Bus.BusPointRegistration {address: 0x190080000; cpu: cpu_hpc0};
+    sysbus new Bus.BusPointRegistration {address: 0x190080000; cpu: cpu_hpc1};
+    sysbus new Bus.BusPointRegistration {address: 0x190080000; cpu: cpu_hpc2};
+    sysbus new Bus.BusPointRegistration {address: 0x190080000; cpu: cpu_hpc3}
     }
     size: 0x8000
 
