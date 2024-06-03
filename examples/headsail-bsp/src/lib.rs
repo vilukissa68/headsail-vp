@@ -38,12 +38,13 @@ pub mod alloc;
 #[cfg(feature = "hpc")]
 mod hpc;
 mod mmap;
-const EXTERNAL_BIT: usize = 0x1_0000_0000;
-//const EXTERNAL_BIT: usize = 0;
 #[cfg(feature = "sysctrl")]
 mod sysctrl;
 #[cfg(feature = "panic-uart")]
 mod ufmt_panic;
+
+#[cfg(feature = "hpc")]
+const EXTERNAL_BIT: usize = 0x1_0000_0000;
 
 /// # Safety
 ///
@@ -51,10 +52,9 @@ mod ufmt_panic;
 #[inline(always)]
 pub unsafe fn read_u8(addr: usize) -> u8 {
     #[cfg(feature = "hpc")]
-    let address: usize = addr | EXTERNAL_BIT;
+    return core::ptr::read_volatile((addr | EXTERNAL_BIT) as *const _);
     #[cfg(feature = "sysctrl")]
-    let address: usize = addr;
-    core::ptr::read_volatile(address as *const _)
+    core::ptr::read_volatile(addr as *const _)
 }
 
 /// # Safety
@@ -63,31 +63,31 @@ pub unsafe fn read_u8(addr: usize) -> u8 {
 #[inline(always)]
 pub unsafe fn write_u8(addr: usize, val: u8) {
     #[cfg(feature = "hpc")]
-    let address: usize = addr | EXTERNAL_BIT;
+    core::ptr::write_volatile((addr | EXTERNAL_BIT) as *mut _, val);
     #[cfg(feature = "sysctrl")]
-    let address: usize = addr;
-
-    core::ptr::write_volatile(address as *mut _, val)
+    core::ptr::write_volatile(addr as *mut _, val)
 }
 
 #[inline(always)]
 pub fn read_u32(addr: usize) -> u32 {
     #[cfg(feature = "hpc")]
-    let address: usize = addr | EXTERNAL_BIT;
+    return unsafe { core::ptr::read_volatile((addr | EXTERNAL_BIT) as *const _) };
     #[cfg(feature = "sysctrl")]
-    let address: usize = addr;
-
-    unsafe { core::ptr::read_volatile(address as *const _) }
+    unsafe {
+        core::ptr::read_volatile(addr as *const _)
+    }
 }
 
 #[inline(always)]
 pub fn write_u32(addr: usize, val: u32) {
     #[cfg(feature = "hpc")]
-    let address: usize = addr | EXTERNAL_BIT;
+    unsafe {
+        core::ptr::write_volatile((addr | EXTERNAL_BIT) as *mut _, val)
+    };
     #[cfg(feature = "sysctrl")]
-    let address: usize = addr;
-
-    unsafe { core::ptr::write_volatile(address as *mut _, val) }
+    unsafe {
+        core::ptr::write_volatile(addr as *mut _, val)
+    }
 }
 
 #[cfg(feature = "alloc")]
