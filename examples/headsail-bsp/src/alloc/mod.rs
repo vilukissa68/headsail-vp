@@ -1,12 +1,9 @@
 use good_memory_allocator::SpinLockedAllocator;
 
-const HEAP_START: usize = 0x1_3000_0000;
-const HEAP_SIZE: usize = 0x1000_0000;
-
 #[global_allocator]
 static ALLOCATOR: SpinLockedAllocator = SpinLockedAllocator::empty();
 
 #[inline]
-pub unsafe fn init_heap() {
-    ALLOCATOR.init(HEAP_START, HEAP_SIZE);
+pub unsafe fn init_heap(heap_start: usize, heap_size: usize) {
+    ALLOCATOR.init(heap_start, heap_size);
 }
