@@ -3,16 +3,21 @@
 
 extern crate alloc;
 
-use alloc::vec;
+use alloc::vec::Vec;
 use headsail_bsp::{init_alloc, rt::entry, sprintln};
 
 #[entry]
 fn main() -> ! {
     sprintln!("Hello sprintln!");
     init_alloc();
-    let v = vec![1, 2, 3];
-    for x in v {
-        sprintln!("{:?}", x);
+    let mut v = Vec::new();
+    for x in 0..200 {
+        sprintln!("Pushing {:?}", x);
+        v.push(x)
     }
+    for x in &v {
+        sprintln!("Reading {:?}", x);
+    }
+    sprintln!("len: {}", v.len());
     loop {}
 }
