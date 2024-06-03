@@ -39,11 +39,7 @@ fn generate_random_matrix(height: u32, width: u32, seed: u64) -> Vec<i8> {
     let mut res: Vec<i8> = Vec::with_capacity((height * width) as usize);
     let mut rng = SmallRng::seed_from_u64(seed);
     for _ in 0..(height * width) {
-        sprint!(" {}", res.len());
         res.push((rng.next_u64() & 0xFF) as i8);
-    }
-    for i in 0..(height * width) {
-        sprint!("res: {} ", res[i as usize]);
     }
     res
 }
@@ -66,10 +62,8 @@ fn run_random_layer(
     seed: u64,
 ) -> Vec<i8> {
     let mut input = generate_random_matrix(input_width, input_height, seed);
-    sprintln!("Init layer");
     let mut kernel = generate_random_matrix_small(kernel_width, kernel_height, seed * 2);
 
-    sprintln!("Init layer");
     // Calculate output size
     let (output_width, output_height) = calculate_conv2d_out_param_dim(
         (input_width, input_height),
@@ -79,7 +73,6 @@ fn run_random_layer(
         (1, 1),
     );
 
-    sprintln!("Init layer");
     // Initalize layer
     let config = LayerConfig {
         input_bank: Some(MemoryBank::Bank0),
@@ -113,17 +106,19 @@ fn run_random_layer(
         simd_mode: Some(SimdBitMode::EightBits),
     };
 
-    sprintln!("Init layer");
     dla.init_layer(config);
-    sprintln!("Init layer");
+    sprintln!("Layer initialized");
 
     // Write input and kernel to buffer
     dla.write_input(&mut input);
+    sprintln!("Input written");
     dla.write_kernel(&mut kernel);
+    sprintln!("Kernel written");
 
     // Mark data ready to start calculations
     dla.kernel_data_ready(true);
     dla.input_data_ready(true);
+    sprintln!("Data ready");
 
     // Print the matrix
     sprintln!("Waiting for calculation");
