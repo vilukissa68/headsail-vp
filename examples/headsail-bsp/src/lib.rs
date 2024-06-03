@@ -38,8 +38,8 @@ pub mod alloc;
 #[cfg(feature = "hpc")]
 mod hpc;
 mod mmap;
-//const EXTERNAL_BIT: usize = 0x1_0000_0000;
-const EXTERNAL_BIT: usize = 0;
+const EXTERNAL_BIT: usize = 0x1_0000_0000;
+//const EXTERNAL_BIT: usize = 0;
 #[cfg(feature = "sysctrl")]
 mod sysctrl;
 #[cfg(feature = "panic-uart")]
@@ -90,27 +90,7 @@ pub fn write_u32(addr: usize, val: u32) {
     unsafe { core::ptr::write_volatile(address as *mut _, val) }
 }
 
-#[inline(always)]
-pub fn read_u64(addr: usize) -> u64 {
-    #[cfg(feature = "hpc")]
-    let address: usize = addr | EXTERNAL_BIT;
-    #[cfg(feature = "sysctrl")]
-    let address: usize = addr;
-
-    unsafe { core::ptr::read_volatile(address as *const _) }
-}
-
-#[inline(always)]
-pub fn write_u64(addr: usize, val: u64) {
-    #[cfg(feature = "hpc")]
-    let address: usize = addr | EXTERNAL_BIT;
-    #[cfg(feature = "sysctrl")]
-    let address: usize = addr;
-
-    unsafe { core::ptr::write_volatile(address as *mut _, val) }
-}
-
 #[cfg(feature = "alloc")]
-pub fn init_alloc() {
-    unsafe { alloc::init_heap() };
+pub fn init_alloc(heap_start: usize, heap_size: usize) {
+    unsafe { alloc::init_heap(heap_start, heap_size) };
 }

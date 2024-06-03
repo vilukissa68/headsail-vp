@@ -35,7 +35,7 @@ unsafe impl PriorityNumber for Priority {
 }
 
 riscv_peripheral::clint_codegen!(
-    base 0x1_0006_0000,
+    base 0x6_0000,
     freq 32_768,
     mtimecmps [
         mtimecmp0 = (HartId::H0, "`H0`"),
@@ -57,7 +57,7 @@ riscv_peripheral::clint_codegen!(
 // different from the sim, and that this `riscv_peripheral` provided driver won't work as-is on
 // ASIC, while it works perfectly well with the sim.
 riscv_peripheral::plic_codegen!(
-    base 0x1_0008_0000,
+    base 0x8_0000,
     ctxs [
         ctx0 = (HartId::H0, "`H0M`"),
         ctx1 = (HartId::H0, "`H0S`"),

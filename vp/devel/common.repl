@@ -153,13 +153,14 @@ apb_uart_1: UART.NS16550 @ {
  *   }
  *   size: 0x10000000
  */
+
 sdram_truncated: Memory.MappedMemory @  {
-    sysbus new Bus.BusPointRegistration {address: 0x10000000; cpu: cpu_sysctrl};
     sysbus new Bus.BusPointRegistration {address: 0x110000000; cpu: cpu_hpc0};
     sysbus new Bus.BusPointRegistration {address: 0x110000000; cpu: cpu_hpc1};
     sysbus new Bus.BusPointRegistration {address: 0x110000000; cpu: cpu_hpc2};
-    sysbus new Bus.BusPointRegistration {address: 0x110000000; cpu: cpu_hpc3}
-    }
+    sysbus new Bus.BusPointRegistration {address: 0x110000000; cpu: cpu_hpc3};
+    sysbus new Bus.BusPointRegistration {address: 0x10000000; cpu: cpu_sysctrl}
+        }
     size: 0x60000000
 
 dla: Python.PythonPeripheral @ {
