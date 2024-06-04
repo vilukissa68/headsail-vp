@@ -50,7 +50,7 @@ impl<const BASE_ADDRESS: usize> ApbTimer<BASE_ADDRESS> {
      */
     #[inline]
     pub fn get_count() -> u32 {
-        return read_u32(BASE_ADDRESS + Self::TIMER_COUNTER_REG_OFFSET);
+        read_u32(BASE_ADDRESS + Self::TIMER_COUNTER_REG_OFFSET)
     }
 
     /**
@@ -59,7 +59,7 @@ impl<const BASE_ADDRESS: usize> ApbTimer<BASE_ADDRESS> {
     #[inline]
     #[cfg(debug_assertions)]
     pub fn get_ctrl_reg() -> u32 {
-        return read_u32(BASE_ADDRESS + Self::TIMER_CTRL_REG_OFFSET);
+        read_u32(BASE_ADDRESS + Self::TIMER_CTRL_REG_OFFSET)
     }
 }
 

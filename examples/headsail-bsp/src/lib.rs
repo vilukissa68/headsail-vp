@@ -40,7 +40,7 @@ mod hpc;
 mod mmap;
 #[cfg(feature = "sysctrl")]
 mod sysctrl;
-#[cfg(any(feature = "panic-uart"))]
+#[cfg(feature = "panic-uart")]
 mod ufmt_panic;
 
 /// # Safety
