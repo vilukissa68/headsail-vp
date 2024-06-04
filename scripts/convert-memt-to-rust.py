@@ -1,3 +1,13 @@
+#!/usr/bin/env python3
+
+"""
+(20240604 vaino-waltteri.granat@tuni.fi)
+Convert SocHub's DLA RTL test data file (.mem files) to rust files with data objects
+Usage:
+$ python convert-mem-to-rust.py ../examples/hpc/dla-driver/examples/test_data/conv_10x15x3_3x3_wgt.mem --bit_length 8 --signed --weight
+$ python convert-mem-to-rust.py ../examples/hpc/dla-driver/examples/test_data/conv_10x15x3_3x3_din.mem --bit_length 8 --signed
+$ python convert-mem-to-rust.py ../examples/hpc/dla-driver/examples/test_data/conv_10x15x3_3x3_dout.mem --bit_length 32 --signed
+"""
 import argparse
 
 def hex_to_signed_int(hex_str, bit_length=32):
@@ -75,8 +85,6 @@ def convert_weight_file(input_file, signed, bit_length=8):
             outfile.write(', '.join(map(str, ints)))
             outfile.write(',\n')
         outfile.write('];')
-
-
 
 def main():
     parser = argparse.ArgumentParser(description='Convert hexadecimal values in a file to signed decimal integers.')
