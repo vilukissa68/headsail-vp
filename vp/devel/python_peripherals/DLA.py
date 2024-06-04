@@ -249,6 +249,14 @@ def flatten(tensor, order='C'):
     return output
 
 def transpose(tensor):
+    """Swaps rows and column in a 2d matrix
+
+    Params:
+    tensor -- 2 dimensional matrix to perform transpose on
+
+    Retuns:
+    output -- transposed 2d tensor
+    """
     return [list(x) for x in zip(*tensor)]
 
 def reshape(tensor, shape):
@@ -337,6 +345,15 @@ def separate_channels(data):
     return channel_matrices
 
 def bit_not(n, numbits=32):
+    """Reverses bits in a Python integer/long
+
+    Params:
+    n -- number to reverse
+    numbits -- bit width of the number
+
+    Returns:
+    !n -- n with bits reversed
+    """
     return (1 << numbits) - 1 - n
 
 def print_matrix(A, name="", pformat="decimal"):
@@ -363,6 +380,14 @@ def print_matrix(A, name="", pformat="decimal"):
         print(row)
 
 def memory_bank_to_offset(bank):
+    """ Converts memory bank index to memory offset
+
+    Params:
+    bank -- Bank index
+
+    Returns:
+    offset -- offset of bank with given index
+    """
     return bank * MEMORY_BANK_SIZE
 
 def execute_for_all_elements(f, tensor, *args):
@@ -563,6 +588,11 @@ class Dla:
                                                               self.mem[register]))
 
     def get_simd_mask(self):
+        """Reads current simd mode and returns corresponding bitmask
+
+        Returns:
+        bitmask -- bitmask corresponding to the current simd mode
+        """
         simd = self.get_register(MAC_CTRL, SIMD_SELECT_OFFSET, 2)
         if simd == 0:
             return 0xFF
@@ -601,9 +631,23 @@ class Dla:
             self.banks[target_bank].write(offset + byte, value)
 
     def write_bank(self, bank, data):
+        """Writes data to bank by index
+
+        Params:
+        bank -- index of bank to write to
+        data -- [Int] data buffer to write to bank
+        """
         self.banks[bank].write_buffer(0, data)
 
     def handle_bank_read(self, request):
+        """Handle renode request of writing to bank address space
+
+        Params:
+        request -- renode request object
+
+        Returns:
+        value -- 32-bit clipped value of renode request
+        """
         # NOTE: Renode can't handle over 32bit reads so 128-bit alignment isn't strictly enforced
         target_bank = (request.absolute - MEMORY_BANK_ADDR) // MEMORY_BANK_SIZE
         offset = request.absolute - MEMORY_BANK_ADDR - memory_bank_to_offset(target_bank)
@@ -646,22 +690,19 @@ class Dla:
         """Writes output to arbitrary memory address
 
         Params:
-        data -- [Int] data to write
+        data -- [[[Int]]] data to write
+        data_wisth -- Int width of data being written
         """
 
-        print(get_shape(data))
+        # Read wanted output format and flatten
         filter_amount, height, width = get_shape(data)
         data = flatten(data)
         if data == []:
             print("WARN: output was empty.")
             return
 
-        # for i in range(32):
-        #     print('{}:[{}]'.format(i+1,', '.join("{}".format(hex(x & 0xffffffff)[2:-1]) for x in data[i*width:width*i+width])))
-
-        # Format data to KCWH
+        # Transform to 1d column-wise order while keeping the filters separate
         column_wise = []
-
         for h in range(height):
             for w in range(width):
                 for f in range(filter_amount):
@@ -672,14 +713,12 @@ class Dla:
                     else:
                         column_wise.append(data[idx])
 
-        # TODO remove this loop
-        # for i in range(32):
-        #     print('{}:[{}]'.format(i+1, ', '.join("{}".format(hex(x & 0xffffffff)[2:-1]) for x in column_wise[i*filter_amount:filter_amount*i+filter_amount])))
         data = column_wise
 
         addr = self.get_output_addr()
         print("Writing output to:{:x}".format(addr))
-        # If addr is bank
+
+        # Allow writing to memory space of data banks
         if MEMORY_BANK_ADDR <= addr and addr < (MEMORY_BANK_ADDR + (NO_MEMORY_BANKS * MEMORY_BANK_SIZE)):
             bank_idx = (addr - MEMORY_BANK_ADDR) // MEMORY_BANK_SIZE
             bank = self.banks[bank_idx]
@@ -687,6 +726,7 @@ class Dla:
             values_written = 0
             offset = 0
             while values_written < len(data): # Data packing
+
                 # Bank switching when current bank is filled
                 if offset > bank.size:
                     bank_idx = bank_idx + 1
@@ -694,7 +734,7 @@ class Dla:
                     bank = self.banks[bank_idx]
                     offset = 0
 
-                # Write chunk
+                # Write chunk of data with correct simd width
                 if bit_width == 32:
                     byte_3 = (data[values_written] & 0xFF000000) >> 24
                     byte_2 = (data[values_written] & 0x00FF0000) >> 16
@@ -728,7 +768,7 @@ class Dla:
                     fst = (data[values_written] & 0x3) << 6
                     snd = (data[values_written + 1] & 0x3) << 4
                     thrd = (data[values_written + 2] & 0x3) << 2
-                    frth=  (data[values_written + 3] & 0x3)
+                    frth =  (data[values_written + 3] & 0x3)
                     combined = fst + snd + thrd + frth
                     bank.write(offset, combined)
                     offset += 1
@@ -855,18 +895,14 @@ class Dla:
         # Append rest
         remaining = (channels * width * height) - len(data)
         data = data + chunk[remaining::-1][:remaining]
-        #print('[{}]'.format(', '.join("{:2}".format(hex(x & 0xff)[2:-1]) for x in data)))
 
         # Column wise matrix formation
-        #data = reshape(data, (channels, width, height))
         column_wise = []
-        #print("")
         for c in range(channels):
             for h in range(height):
                 for w in range(width):
                     idx = c + channels * w + (channels * width) * h
                     column_wise.append(data[idx])
-        #print('[{}]'.format(', '.join("{:2}".format(hex(x & 0xff)[2:-1]) for x in column_wise)))
 
         column_wise = reshape(column_wise, (channels, height, width))
         print_matrix(column_wise[0], "flat input:", pformat="hexadecimal")
@@ -953,11 +989,6 @@ class Dla:
             print("Status not cleared")
             return
 
-        # Check if buffer is enabled
-        # if not self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1):
-        #     print("Buffer not enabled")
-        #     return
-
         # Check if data is ready
         if not self.get_register(BUF_CTRL, READ_A_VALID_OFFSET, 1) or not self.get_register(BUF_CTRL, READ_B_VALID_OFFSET, 1):
             return
@@ -1017,7 +1048,6 @@ class Dla:
                 print_matrix(r, "{} PP:".format(i))
 
         # After calculating one layer the device needs new configuration
-
         self.write_output(res, output_bit_width)
 
         # Set Done status
