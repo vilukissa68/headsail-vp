@@ -12,8 +12,6 @@ const HEAP_SIZE: usize = 0x1000_0000;
 fn main() -> ! {
     sprintln!("Hello sprintln!");
     init_alloc(HEAP_START, HEAP_SIZE);
-    let address: usize = 0x1000_0000;
-    let s = unsafe { core::ptr::read_volatile(address as *const u32) };
     sprintln!("Illeageal {:?}", s);
 
     let mut v = Vec::new();

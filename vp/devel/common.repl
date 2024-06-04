@@ -24,7 +24,6 @@ cpu_sysctrl: CPU.IbexRiscV32 @ sysbus
     timeProvider: empty
     allowUnalignedAccesses: false
 
-
 /*
  * CLINT [^1]
  *
@@ -45,6 +44,9 @@ clint: IRQControllers.CoreLevelInterruptor @ sysbus 0x100060000
  * [Specification](https://github.com/riscv/riscv-plic-spec/blob/master/riscv-plic.adoc)
  *
  * Some addresses were tightened to save space -> ASIC impl will differ from sim.
+ * Length on AISC: 0x1_0000
+ * Length on VP: 0x4000_000
+ * This takes memory from HPC_SDRAM
  */
 plic: IRQControllers.PlatformLevelInterruptController @ sysbus 0x100080000
     [0, 1] -> cpu_hpc0@[11, 9] // mext, sext
@@ -88,6 +90,9 @@ mem_dsp_1: Memory.MappedMemory @ {
     }
     size: 0x10000
 
+/*
+ * NOTE: Boot ram is included in SDRAM hpc
+ */
 hpc_bootram: Memory.MappedMemory @ {
     sysbus new Bus.BusPointRegistration {address: 0x10000; cpu: cpu_sysctrl};
     sysbus new Bus.BusPointRegistration {address: 0x100010000; cpu: cpu_hpc0};
@@ -133,6 +138,19 @@ ram_3: Memory.MappedMemory @ {
     }
     size: 0x8000
 
+/*
+ * NOTE: These memory are included in SDRAM_TRUNCATED
+ * sysctrl_bank_0: Memory.MappedMemory @ {
+ *     sysbus new Bus.BusPointRegistration {address: 0x1c000000; cpu: cpu_sysctrl}
+ *     }
+ *     size: 0x8000
+ *
+ * sysctrl_bank_1: Memory.MappedMemory @ {
+ *     sysbus new Bus.BusPointRegistration {address: 0x1c008000; cpu: cpu_sysctrl}
+ *     }
+ *     size: 0x8000
+ */
+
 apb_uart_0: UART.NS16550 @ {
     sysbus 0xFFF00000;
     sysbus 0x1FFF00000
@@ -145,14 +163,16 @@ apb_uart_1: UART.NS16550 @ {
     }
     wideRegisters: true
 
-/*sdram_hpc: Memory.MappedMemory @  {
- *   sysbus new Bus.BusPointRegistration {address: 0x100000000; cpu: cpu_hpc0};
- *   sysbus new Bus.BusPointRegistration {address: 0x100000000; cpu: cpu_hpc1};
- *   sysbus new Bus.BusPointRegistration {address: 0x100000000; cpu: cpu_hpc2};
- *   sysbus new Bus.BusPointRegistration {address: 0x100000000; cpu: cpu_hpc3}
- *   }
- *   size: 0x10000000
+/*
+ * This area of memory if only accessible to HPC and not for Sysctrl
  */
+sdram_hpc: Memory.MappedMemory @  {
+    sysbus new Bus.BusPointRegistration {address: 0x104080000; cpu: cpu_hpc0};
+    sysbus new Bus.BusPointRegistration {address: 0x104080000; cpu: cpu_hpc1};
+    sysbus new Bus.BusPointRegistration {address: 0x104080000; cpu: cpu_hpc2};
+    sysbus new Bus.BusPointRegistration {address: 0x104080000; cpu: cpu_hpc3}
+    }
+    size: 0xbf80000
 
 sdram_truncated: Memory.MappedMemory @  {
     sysbus new Bus.BusPointRegistration {address: 0x110000000; cpu: cpu_hpc0};
@@ -160,7 +180,7 @@ sdram_truncated: Memory.MappedMemory @  {
     sysbus new Bus.BusPointRegistration {address: 0x110000000; cpu: cpu_hpc2};
     sysbus new Bus.BusPointRegistration {address: 0x110000000; cpu: cpu_hpc3};
     sysbus new Bus.BusPointRegistration {address: 0x10000000; cpu: cpu_sysctrl}
-        }
+    }
     size: 0x60000000
 
 dla: Python.PythonPeripheral @ {
@@ -225,6 +245,9 @@ sysbus:
         Tag <0xFA180000 0x2008> "frtc_1"
         Tag <0xFC190000 0x2008> "frtc_2"
         Tag <0xFC180000 0x2008> "frtc_3"
+        Tag <0x100000000 0x1000> "hpc debug" // [^1]
+        Tag <0x100052000 0x1000> "hpc l2 cache config" // [^1]
+        Tag <0x100054000 0x1000> "hpc cluster config" // [^1]
         Tag <0x1FF800000 0x0354> "dsp_0"
         Tag <0x1FF820000 0x10000> "dsp_1"
         Tag <0x1FB000200 0x200> "rgmii_adapter_registers_0"
@@ -249,3 +272,6 @@ sysbus:
         Tag <0x1FA180000 0x2008> "frtc_1"
         Tag <0x1FC190000 0x2008> "frtc_2"
         Tag <0x1FC180000 0x2008> "frtc_3"
+
+
+// [^1]: [HPC SS (GitLab Pages)](https://soc-hub.gitlab-pages.tuni.fi/headsail/hw/hpc-ss/)
