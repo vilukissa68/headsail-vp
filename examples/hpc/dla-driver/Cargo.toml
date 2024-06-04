@@ -17,3 +17,11 @@ headsail-bsp = { version = "0.1.0", path = "../../headsail-bsp", features = [
 
 
 rand = { version = "0.8.3", features = ["small_rng"], default-features = false }
+
+[[example]]
+name = "mac_benchmark"
+path = "examples/mac_benchmark.rs"
+
+[[example]]
+name = "validate"
+path = "examples/validate_conv.rs"

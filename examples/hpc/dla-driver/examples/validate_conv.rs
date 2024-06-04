@@ -168,12 +168,22 @@ fn validate_conv2d() -> bool {
 fn main() -> ! {
     init_alloc();
     sprintln!("Validate conv2d");
-    if validate_conv2d() {
-        sprintln!("16x16x16_3x3 conv2d test succesful")
-    }
+    let mut succesful_test = 0;
     if validate_conv2d_tiny() {
+        sprintln!("Tiny test succesful");
+        succesful_test += 1;
+    } else {
         sprintln!("Tiny test succesful")
     }
-    sprint!("Validation conv2d succesful");
+    if validate_conv2d() {
+        sprintln!("16x16x16_3x3 conv2d test succesful");
+        succesful_test += 1;
+    } else {
+        sprintln!("16x16x16_3x3 conv2d test failed")
+    }
+
+    if succesful_test == 2 {
+        sprint!("All tests succesful!");
+    }
     loop {}
 }
