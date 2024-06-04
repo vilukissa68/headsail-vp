@@ -1263,7 +1263,7 @@ class DlaMac:
 #     API     #
 
 def write(request, dla):
-    #self.NoisyLog("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
+    self.NoisyLog("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
     print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
     if int(request.absolute) >= DLA_ADDR:
         dla.set_register(request.offset, 0, 32, request.value, preserve_register=False)
@@ -1272,8 +1272,8 @@ def write(request, dla):
     dla.process()
 
 def read(request, dla):
-    #self.NoisyLog("Reading request: %s at 0x%x, value 0x%x" % (str(request.type), request.absolute, request.value))
-    #print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
+    self.NoisyLog("Reading request: %s at 0x%x, value 0x%x" % (str(request.type), request.absolute, request.value))
+    print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
 
     if int(request.absolute) >= DLA_ADDR:
         request.value = dla.get_register(request.offset, 0, 32)
