@@ -164,6 +164,7 @@ fn validate_conv2d() -> bool {
 
     output == dout
 }
+
 #[entry]
 fn main() -> ! {
     init_alloc();
@@ -183,7 +184,10 @@ fn main() -> ! {
     }
 
     if succesful_test == 2 {
-        sprint!("All tests succesful!");
+        sprintln!("All tests succesful!\r\n");
+    } else {
+        sprintln!("Not all tests succesful!");
     }
+
     loop {}
 }
