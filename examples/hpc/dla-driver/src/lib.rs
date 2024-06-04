@@ -6,6 +6,7 @@
 extern crate alloc;
 
 mod mmap;
+
 pub use mmap::{
     DLA0_ADDR, MEMORY_BANK_0_OFFSET, MEMORY_BANK_10_OFFSET, MEMORY_BANK_11_OFFSET,
     MEMORY_BANK_12_OFFSET, MEMORY_BANK_13_OFFSET, MEMORY_BANK_14_OFFSET, MEMORY_BANK_15_OFFSET,
@@ -239,7 +240,10 @@ impl Dla {
 
     /// Writes buffer DLA's data bank(s) based on offset
     pub fn write_data_bank(&self, offset: usize, buf: &mut [i8]) {
-        //sprintln!("\nWrite to bank {:#x}, data: {:?}", offset, buf);
+        /* NOTE:(20240604 vaino-waltteri.granat@tuni.fi)
+         * After RTL test examination, it was found that DLA needs to
+         * be written by reversing the order of bytes in each 64-bit chunk
+         */
         for (cidx, chunk) in buf.chunks(8).enumerate() {
             for (i, b) in chunk.iter().rev().enumerate() {
                 unsafe {
@@ -254,7 +258,6 @@ impl Dla {
 
     /// Read register from one of the DLA's data banks
     fn read_data_bank_offset(&self, bank: MemoryBank, offset: usize) -> u128 {
-        // NOTE: this function enforces the 128-bit addressing
         if cfg!(feature = "vp") {
             let mut result: u128 = 0;
             for i in 0..4 {
@@ -293,6 +296,7 @@ impl Dla {
         res
     }
 
+    /// Reads len amount of bytes from DLA's output bank(s)
     pub fn read_output_i32(&self, len: usize) -> Vec<i32> {
         let bytes = self.read_data_bank(self.get_output_bank(), len * 4);
         let mut result = Vec::with_capacity(bytes.len() / 4);
@@ -319,11 +323,13 @@ impl Dla {
         result
     }
 
+    /// Reads len amount of bytes from DLA's output bank(s)
     pub fn read_output_i8(&self, len: usize) -> Vec<i8> {
         let bytes = self.read_data_bank(self.get_output_bank(), len);
         bytes.iter().map(|&x| x as i8).collect()
     }
 
+    /// Reads len amount of bytes from DLA's output bank(s)
     pub fn read_output_i4(&self, len: usize) -> Vec<i8> {
         let bytes = self.read_data_bank(self.get_output_bank(), len);
         let mut result = Vec::with_capacity(bytes.len() * 2);
@@ -372,17 +378,6 @@ impl Dla {
     /// Writes buffer to DLA's kernel bank(s)
     pub fn write_kernel(&self, kernel: &mut [i8]) {
         // TODO optimize memory bank logic
-        // Write in CKWH format: (0,0,0,0), (0,1,0,0), (0,2,0,0), (1,0,0,0)
-        // let kernels = self.get_kernel_size();
-        // let inputs = self.get_input_size();
-        // let mut ckwh = convert_to_ckwh(
-        //     kernel,
-        //     kernels.kernels as usize,
-        //     inputs.channels as usize,
-        //     kernels.width as usize,
-        //     kernels.height as usize,
-        // );
-        // self.write_data_bank(self.get_kernel_bank().offset(), &mut ckwh)
         self.write_data_bank(self.get_kernel_bank().offset(), kernel)
     }
 
@@ -649,6 +644,7 @@ impl Dla {
         MemoryBank::try_from(bank_idx).unwrap()
     }
 
+    /// Reads kernel parameters from DLA
     fn get_kernel_size(&self) -> KernelSize {
         let reg0 = self.read_u32(DLA_BUF_KERNEL_0);
         let reg1 = self.read_u32(DLA_BUF_KERNEL_1);
@@ -667,6 +663,7 @@ impl Dla {
         }
     }
 
+    /// Reads input parameters from DLA
     fn get_input_size(&self) -> InputSize {
         let reg = self.read_u32(DLA_BUF_INPUT);
         let width = get_bits!(reg, DLA_BUF_INPUT_WIDTH_BITMASK) + 1;
