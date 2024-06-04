@@ -348,7 +348,7 @@ impl Dla {
                 (lower | 0xF0) as i8
             } else {
                 lower as i8
-            } as i8;
+            };
 
             result.push(upper_sign_extended);
             result.push(lower_sign_extended);
@@ -626,7 +626,7 @@ impl Dla {
         let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
         reg = get_bits!(reg, DLA_BUF_DATA_BANK_B_BITMASK);
         // Shift value back here
-        reg = reg >> 16;
+        reg >>= 16;
         MemoryBank::try_from(reg).unwrap()
     }
 
