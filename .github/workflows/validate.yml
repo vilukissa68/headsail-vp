@@ -13,6 +13,7 @@ env:
   # Used by renode-test to generate snapshots of failed tests
   RENODE_CI_MODE: YES
   DLA_BIN: dla
+  DLA_VALIDATE_BIN: validate
 
 jobs:
   check-bsp:
