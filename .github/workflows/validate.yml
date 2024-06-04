@@ -95,7 +95,7 @@ jobs:
     - name: Create Renode peripheral symlinks
       run: ln -s $(readlink -f "./vp/devel/python_peripherals/DLA.py") "$RENODE_DIR/scripts/pydev/DLA.py"
     - name: Run example
-      run: renode-test scripts/robot/dla_validate.robot --variable BIN:"$(readlink -f $DLA_VALIDATE_BIN)"
+      run: renode-test scripts/robot/is_hello.robot --variable BIN:"$(readlink -f $DLA_BIN)"
     - name: Upload snapshots
       if: failure()
       uses: actions/upload-artifact@v4
@@ -110,7 +110,7 @@ jobs:
     - name: Install requirements
       run: rustup target add riscv64imac-unknown-none-elf
     - name: Build validation
-      working-directory: ./examples/hpc/hello-dla
+      working-directory: ./examples/hpc/dla-driver
       run: cargo build --example validate -Fvp --target riscv64imac-unknown-none-elf
     - name: Upload artifact
       uses: actions/upload-artifact@v4
@@ -136,8 +136,8 @@ jobs:
         name: $DLA_VALIDATION_BIN
     - name: Create Renode peripheral symlinks
       run: ln -s $(readlink -f "./vp/devel/python_peripherals/DLA.py") "$RENODE_DIR/scripts/pydev/DLA.py"
-    - name: Run example
-      run: renode-test scripts/robot/is_hello.robot --variable BIN:"$(readlink -f $DLA_VALIDATION_BIN)"
+    - name: Run dla validation
+      run: renode-test scripts/robot/dla_validate.robot --variable BIN:"$(readlink -f $DLA_VALIDATION_BIN)"
     - name: Upload snapshots
       if: failure()
       uses: actions/upload-artifact@v4
