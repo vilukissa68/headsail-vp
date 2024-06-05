@@ -1,7 +1,0 @@
-sysbus:
-    init:
-        Tag <0x100000000 0x1000> "debug" // [^1]
-        Tag <0x100052000 0x1000> "l2 cache config" // [^1]
-        Tag <0x100054000 0x1000> "cluster config" // [^1]
-
-// [^1]: [HPC SS (GitLab Pages)](https://soc-hub.gitlab-pages.tuni.fi/headsail/hw/hpc-ss/)

@@ -12,7 +12,6 @@ const HEAP_SIZE: usize = 0x1000_0000;
 fn main() -> ! {
     sprintln!("Hello sprintln!");
     init_alloc(HEAP_START, HEAP_SIZE);
-    sprintln!("Illeageal {:?}", s);
 
     let mut v = Vec::new();
     for x in 0..200 {
