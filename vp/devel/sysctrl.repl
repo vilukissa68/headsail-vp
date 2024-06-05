@@ -1,5 +1,0 @@
-sysctrl_bank_0: Memory.MappedMemory @ sysbus 0x1c000000
-    size: 0x8000
-
-sysctrl_bank_1: Memory.MappedMemory @ sysbus 0x1c008000
-    size: 0x8000
