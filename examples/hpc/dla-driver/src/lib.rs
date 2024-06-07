@@ -359,7 +359,7 @@ impl Dla {
     /// Reads len amount of bytes from DLA's input bank(s)
     pub fn read_input_bank(&self, len: usize) -> Vec<i8> {
         let bytes = self.read_data_bank(self.get_input_bank(), len);
-        bytes.iter().map(|&x| i8::try_from(x).unwrap()).collect()
+        bytes.iter().map(|&x| x as i8).collect()
     }
 
     /// Reads len amount of bytes from DLA's weight bank(s)
