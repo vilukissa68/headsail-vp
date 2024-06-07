@@ -31,6 +31,7 @@ impl Order3 {
 pub struct Tensor3<T> {
     data: Array3<T>,
     order: Order3,
+    internal_order: Order3,
 }
 
 impl<T: Clone> Tensor3<T> {
