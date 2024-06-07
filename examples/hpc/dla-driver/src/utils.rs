@@ -1,6 +1,6 @@
 #![no_std]
 
-use dla::mmap::MEMORY_BANK_SIZE;
+use crate::mmap::MEMORY_BANK_SIZE;
 
 pub fn calculate_conv2d_out_param_dim(
     input: (u32, u32),
