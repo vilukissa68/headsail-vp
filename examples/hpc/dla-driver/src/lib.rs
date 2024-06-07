@@ -3,9 +3,12 @@
 //! Implements driver for sochub headsail SoC's deep learning accelerator.
 #![no_std]
 
+#[macro_use]
 extern crate alloc;
 
 mod mmap;
+pub mod tensor3;
+pub mod tensor4;
 
 pub use mmap::{
     DLA0_ADDR, MEMORY_BANK_0_OFFSET, MEMORY_BANK_10_OFFSET, MEMORY_BANK_11_OFFSET,
@@ -148,7 +151,6 @@ impl TryFrom<u32> for MemoryBank {
         }
     }
 }
-
 impl From<MemoryBank> for usize {
     fn from(val: MemoryBank) -> Self {
         match val {
