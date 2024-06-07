@@ -9,6 +9,7 @@ extern crate alloc;
 mod mmap;
 pub mod tensor3;
 pub mod tensor4;
+pub mod utils;
 
 pub use mmap::{
     DLA0_ADDR, MEMORY_BANK_0_OFFSET, MEMORY_BANK_10_OFFSET, MEMORY_BANK_11_OFFSET,
@@ -33,14 +34,14 @@ const DEFAULT_INPUT_SIZE: InputSize = InputSize {
     width: 8,
     height: 8,
 };
-const DEFAULT_PADDING: PaddingConfig = PaddingConfig {
+const DEFAULT_PADDING: Padding = Padding {
     top: 0,
     right: 0,
     left: 0,
     bottom: 0,
     padding_value: 0,
 };
-const DEFAULT_STRIDE: StrideConfig = StrideConfig { x: 1, y: 1 };
+const DEFAULT_STRIDE: Stride = Stride { x: 1, y: 1 };
 const DEFAULT_MAC_CLIP: u32 = 8;
 const DEFAULT_PP_CLIP: u32 = 8;
 const DEFAULT_SIMD_MODE: SimdBitMode = SimdBitMode::EightBits;
@@ -75,7 +76,7 @@ pub struct InputSize {
 ///
 /// Non functional example, padding is done in hardware
 /// ```
-/// let padding = PaddingConfig {top:1, right:1, left:1, bottom:1, padding_value: 7};
+/// let padding = Padding {top:1, right:1, left:1, bottom:1, padding_value: 7};
 /// matrix = [[1,2], [3,4]];
 /// pretty_print_matrix(matrix)
 /// 1 2
@@ -87,7 +88,7 @@ pub struct InputSize {
 /// 7 3 4 7
 /// 7 7 7 7
 /// ```
-pub struct PaddingConfig {
+pub struct Padding {
     pub top: u32,
     pub right: u32,
     pub left: u32,
@@ -96,7 +97,7 @@ pub struct PaddingConfig {
 }
 
 /// Conv2d stride
-pub struct StrideConfig {
+pub struct Stride {
     pub x: u32,
     pub y: u32,
 }
@@ -112,8 +113,8 @@ pub struct LayerConfig {
     pub bias_enabled: bool,
     pub input_size: Option<InputSize>,
     pub kernel_size: Option<KernelSize>,
-    pub padding: Option<PaddingConfig>,
-    pub stride: Option<StrideConfig>,
+    pub padding: Option<Padding>,
+    pub stride: Option<Stride>,
     pub mac_clip: Option<u32>,
     pub pp_clip: Option<u32>,
     pub simd_mode: Option<SimdBitMode>,
@@ -171,6 +172,15 @@ impl From<MemoryBank> for usize {
             MemoryBank::Bank14 => 14,
             MemoryBank::Bank15 => 15,
         }
+    }
+}
+
+impl core::ops::Add<usize> for MemoryBank {
+    type Output = MemoryBank;
+
+    fn add(self, other: usize) -> Self::Output {
+        let value: usize = self.into();
+        MemoryBank::try_from(value + other).unwrap()
     }
 }
 
@@ -541,7 +551,7 @@ impl Dla {
     }
 
     /// Sets padding paramters for convolution
-    fn set_input_padding(&self, padding: PaddingConfig) {
+    fn set_input_padding(&self, padding: Padding) {
         let mut reg = 0;
         reg = set_bits!(
             DLA_BUF_PAD_TOP_OFFSET,
@@ -577,7 +587,7 @@ impl Dla {
     }
 
     /// Sets stride paramters for convolution
-    fn set_stride(&self, stride: StrideConfig) {
+    fn set_stride(&self, stride: Stride) {
         let mut reg = 0;
         reg = set_bits!(
             DLA_BUF_STRIDE_X_OFFSET,
