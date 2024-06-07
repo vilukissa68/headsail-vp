@@ -4,7 +4,7 @@
 use alloc::vec::*;
 use ndarray::{Array, Array3};
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug)]
 pub enum Order3 {
     CHW,
     CWH,
@@ -89,6 +89,11 @@ impl<T: Clone> Tensor3<T> {
             .map_err(|_| "Failed to create array from data buffer")?;
 
         Ok(Tensor3 { data, order })
+    }
+
+    /// Get the number of element in ndarray
+    pub fn get_size(&self) -> usize {
+        self.data.len()
     }
 
     /// Get the number of element in ndarray
