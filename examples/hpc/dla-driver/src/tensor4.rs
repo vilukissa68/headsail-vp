@@ -115,6 +115,11 @@ impl<T: Clone> Tensor4<T> {
         self.data.len()
     }
 
+    /// Get the number of element in ndarray
+    pub fn get_size(&self) -> usize {
+        self.data.len()
+    }
+
     /// Creates a new Tensor4 from a data buffer with the specified order
     pub fn from_data_buffer(
         kernels: usize,
