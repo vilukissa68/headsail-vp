@@ -216,6 +216,13 @@ fn run_layers<T: DlaOutput + Clone>(
         bias_size,
     );
 
+    let no_input_banks = calculate_number_of_banks_needed(input_size);
+    let no_kernel_banks = calculate_number_of_banks_needed(kernels_size);
+
+    let input_bank = MemoryBank::Bank0;
+    let kernel_bank = input_bank + no_input_banks;
+    let output_bank = kernel_bank + no_kernel_banks;
+
     // Initalize layer
     let config = LayerConfig {
         input_bank: Some(banks.0),  // b
@@ -245,8 +252,11 @@ fn run_layers<T: DlaOutput + Clone>(
 
     dla.init_layer(config);
 
+    input.print_tensor();
+    kernels.print_tensor();
+
     dla.write_input(&mut input.to_buffer_with_order(Order3::HWC));
-    dla.write_kernel(&mut kernels.to_buffer_with_order(Order4::HWKC));
+    dla.write_kernel(&mut kernels.to_buffer_with_order(Order4::HWCK));
 
     if let Some(bias) = bias {
         dla.write_bias(&bias)

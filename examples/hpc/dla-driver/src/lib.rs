@@ -6,11 +6,12 @@
 #[macro_use]
 extern crate alloc;
 
-mod mmap;
+pub mod layers;
 pub mod tensor3;
 pub mod tensor4;
 pub mod utils;
 
+mod mmap;
 pub use mmap::{
     DLA0_ADDR, MEMORY_BANK_0_OFFSET, MEMORY_BANK_10_OFFSET, MEMORY_BANK_11_OFFSET,
     MEMORY_BANK_12_OFFSET, MEMORY_BANK_13_OFFSET, MEMORY_BANK_14_OFFSET, MEMORY_BANK_15_OFFSET,
@@ -152,6 +153,7 @@ impl TryFrom<u32> for MemoryBank {
         }
     }
 }
+
 impl From<MemoryBank> for usize {
     fn from(val: MemoryBank) -> Self {
         match val {
@@ -180,7 +182,7 @@ impl core::ops::Add<usize> for MemoryBank {
 
     fn add(self, other: usize) -> Self::Output {
         let value: usize = self.into();
-        MemoryBank::try_from(value + other).unwrap()
+        MemoryBank::try_from((value + other) as u32).unwrap()
     }
 }
 
