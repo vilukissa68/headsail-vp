@@ -95,7 +95,27 @@ impl<T: Clone + uDisplay> Tensor4<T> {
         }
     }
 
-    // Creates a new Tensor4 from a data buffer with the specified order
+    /// Creates a new Tensor4 from a data buffer with the specified order
+    pub fn from_array4(data: Array4<T>, order: Order4) -> Self {
+        let shape = data.shape();
+
+        let dim_order: [usize; 4] = order.into();
+        let kernels = shape[dim_order.iter().position(|&r| r == 0).unwrap()];
+        let channels = shape[dim_order.iter().position(|&r| r == 1).unwrap()];
+        let height = shape[dim_order.iter().position(|&r| r == 2).unwrap()];
+        let width = shape[dim_order.iter().position(|&r| r == 3).unwrap()];
+
+        Tensor4 {
+            data,
+            kernels,
+            channels,
+            height,
+            width,
+            order,
+        }
+    }
+
+    /// Creates a new Tensor4 from a data buffer with the specified order
     pub fn from_data_buffer(
         kernels: usize,
         channels: usize,
@@ -108,8 +128,23 @@ impl<T: Clone + uDisplay> Tensor4<T> {
             return Err("Data buffer size does not match specified dimensions");
         }
 
-        let data = Array::from_shape_vec((kernels, channels, height, width), data_buffer)
-            .map_err(|_| "Failed to create array from data buffer")?;
+        let standard_shape = [kernels, channels, height, width];
+        let dim_order: [usize; 4] = order.into();
+        let kernels_ordered = standard_shape[dim_order.iter().position(|&r| r == 0).unwrap()];
+        let channels_ordered = standard_shape[dim_order.iter().position(|&r| r == 1).unwrap()];
+        let height_ordered = standard_shape[dim_order.iter().position(|&r| r == 2).unwrap()];
+        let width_ordered = standard_shape[dim_order.iter().position(|&r| r == 3).unwrap()];
+
+        let data = Array::from_shape_vec(
+            (
+                kernels_ordered,
+                channels_ordered,
+                height_ordered,
+                width_ordered,
+            ),
+            data_buffer,
+        )
+        .map_err(|_| "Failed to create array from data buffer")?;
 
         Ok(Tensor4 {
             data,
@@ -122,9 +157,15 @@ impl<T: Clone + uDisplay> Tensor4<T> {
     }
 
     /// Matches order field value to height, width, channels and kernels parameters
-    fn get_dimension_order_values(&self) -> [usize; 4] {
+    fn get_dimension_order_values(&self, order: Option<Order4>) -> [usize; 4] {
         let mut out = [0; 4];
-        let order: [usize; 4] = self.order.into();
+
+        // Use self value if no order was given
+        let order: [usize; 4] = match order {
+            Some(order) => order.into(),
+            None => self.order.into(),
+        };
+
         for (i, x) in order.into_iter().enumerate() {
             let param = match x {
                 0 => self.kernels,
@@ -138,12 +179,12 @@ impl<T: Clone + uDisplay> Tensor4<T> {
         out
     }
 
-    // Returns a reference to the element at the specified position
+    /// Returns a reference to the element at the specified position
     pub fn get(&self, kernel: usize, channel: usize, row: usize, col: usize) -> Option<&T> {
         self.data.get((kernel, channel, row, col))
     }
 
-    // Returns a mutable reference to the element at the specified position
+    /// Returns a mutable reference to the element at the specified position
     pub fn get_mut(
         &mut self,
         kernel: usize,
@@ -154,7 +195,7 @@ impl<T: Clone + uDisplay> Tensor4<T> {
         self.data.get_mut((kernel, channel, row, col))
     }
 
-    // Sets the element at the specified position
+    /// Sets the element at the specified position
     pub fn set(
         &mut self,
         kernel: usize,
@@ -171,51 +212,42 @@ impl<T: Clone + uDisplay> Tensor4<T> {
         }
     }
 
-    // Returns the dimensions of the array
+    /// Returns the dimensions of the array
     pub fn dimensions(&self) -> (usize, usize, usize, usize) {
         (self.kernels, self.channels, self.height, self.width)
     }
 
-    // Sets a new order for the array
+    /// Sets a new order for the array
     pub fn set_order(&mut self, order: Order4) {
         self.order = order;
     }
 
+    /// Transforms data to standard format
     fn to_kchw_buffer(&self) -> Vec<T> {
         let mut buffer =
             Vec::with_capacity(self.kernels * self.channels * self.height * self.width);
-        sprint!("This1");
 
-        let dim_order_values: [usize; 4] = self.get_dimension_order_values();
+        let dim_order: [usize; 4] = Order4::KCHW.into();
+        let dim_order_values = self.get_dimension_order_values(Some(Order4::KCHW));
 
-        for x in dim_order_values {
-            sprint!("{}", x)
-        }
-
-        sprint!("\nThis2");
         for i in 0..dim_order_values[0] {
             for j in 0..dim_order_values[1] {
                 for k in 0..dim_order_values[2] {
                     for l in 0..dim_order_values[3] {
                         buffer.push(self.data[(i, j, k, l)].clone());
                     }
-                    sprint!("This3");
                 }
-
-                sprint!("This4");
             }
-            sprint!("This5");
         }
-        sprint!("This6");
         buffer
     }
 
-    // Converts the 4D array to a linear buffer according to the current order
+    /// Converts the 4D array to a linear buffer according to the current order
     pub fn to_buffer(&self) -> Vec<T> {
         self.to_buffer_with_order(self.order)
     }
 
-    // Converts the 4D array to a linear buffer according to the specified order
+    /// Converts the 4D array to a linear buffer according to the specified order
     pub fn to_buffer_with_order(&self, order: Order4) -> Vec<T> {
         // Convert current matrix to standard ordered vector
         let kchw_buffer = self.to_kchw_buffer();
@@ -228,7 +260,7 @@ impl<T: Clone + uDisplay> Tensor4<T> {
         let mut buffer =
             Vec::with_capacity(self.kernels * self.channels * self.height * self.width);
 
-        let dim_order_values = self.get_dimension_order_values();
+        let dim_order_values = self.get_dimension_order_values(None);
         let dim_order: [usize; 4] = self.order.into();
 
         for i in 0..dim_order_values[0] {
@@ -247,26 +279,22 @@ impl<T: Clone + uDisplay> Tensor4<T> {
         buffer
     }
 
+    /// Prints tensor in current order
     pub fn print_tensor(&self) {
         // Convert current matrix to standard ordered vector
-        sprint!("Here 0");
         let kchw_buffer = self.to_kchw_buffer();
-        sprint!("Here 1");
         let data = Array::from_shape_vec(
             (self.kernels, self.channels, self.height, self.width),
             kchw_buffer,
         )
         .expect("Failed to reshape buffer to KCHW order");
 
-        sprint!("Here 2");
-        let dim_order_values = self.get_dimension_order_values();
-        sprint!("Here 3");
+        let dim_order_values = self.get_dimension_order_values(None);
         let dim_order: [usize; 4] = self.order.into();
 
-        sprint!("Here 4");
-        for x in dim_order_values {
-            sprint!("{} ", x)
-        }
+        // for x in dim_order_values {
+        //     sprint!("{} ", x)
+        // }
 
         for i in 0..dim_order_values[0] {
             for j in 0..dim_order_values[1] {
