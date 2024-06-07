@@ -85,7 +85,8 @@ fn run_random_layer(
             height: input_height,
         }),
         kernel_size: Some(KernelSize {
-            channels: 1,
+            s_channels: 1,
+            kernels: 1,
             width: kernel_width,
             height: kernel_height,
         }),
@@ -116,7 +117,7 @@ fn run_random_layer(
     sprintln!("Waiting for calculation");
     while !dla.handle_handshake() {}
     sprintln!("Calculation ready");
-    dla.read_output(output_width as usize * output_height as usize)
+    dla.read_output_i8(output_width as usize * output_height as usize * 16)
 }
 
 #[entry]

@@ -1,5 +1,7 @@
 import math
 import random
+import os
+import sys
 
 NAME = "DLA"
 
@@ -249,6 +251,14 @@ def flatten(tensor, order='C'):
     return output
 
 def transpose(tensor):
+    """Swaps rows and column in a 2d matrix
+
+    Params:
+    tensor -- 2 dimensional matrix to perform transpose on
+
+    Retuns:
+    output -- transposed 2d tensor
+    """
     return [list(x) for x in zip(*tensor)]
 
 def reshape(tensor, shape):
@@ -337,22 +347,49 @@ def separate_channels(data):
     return channel_matrices
 
 def bit_not(n, numbits=32):
+    """Reverses bits in a Python integer/long
+
+    Params:
+    n -- number to reverse
+    numbits -- bit width of the number
+
+    Returns:
+    !n -- n with bits reversed
+    """
     return (1 << numbits) - 1 - n
 
-def print_matrix(A, name=""):
+def print_matrix(A, name="", pformat="decimal"):
     """Print matrix"""
     print(name)
 
     if not isinstance(A[0], list):
-        row = " ".join("{:4}".format(value) for value in A)
+        if pformat=="decimal":
+            row = " ".join("{:4}".format(value) for value in A)
+        elif pformat=="hexadecimal":
+            row = " ".join("{:4}".format(hex(value & 0xff)[2:-1]) for value in A)
+        else:
+            row = "invalid pformat {}".format(pformat)
         print(row)
         return
 
     for x in range(len(A)):
-        row = " ".join("{:4}".format(value) for value in A[x])
+        if pformat=="decimal":
+            row = " ".join("{:4}".format(value) for value in A[x])
+        elif pformat=="hexadecimal":
+            row = " ".join("{:4}".format(hex(value & 0xff)[2:-1]) for value in A[x])
+        else:
+            row = "invalid pformat {}".format(pformat)
         print(row)
 
 def memory_bank_to_offset(bank):
+    """ Converts memory bank index to memory offset
+
+    Params:
+    bank -- Bank index
+
+    Returns:
+    offset -- offset of bank with given index
+    """
     return bank * MEMORY_BANK_SIZE
 
 def execute_for_all_elements(f, tensor, *args):
@@ -553,6 +590,11 @@ class Dla:
                                                               self.mem[register]))
 
     def get_simd_mask(self):
+        """Reads current simd mode and returns corresponding bitmask
+
+        Returns:
+        bitmask -- bitmask corresponding to the current simd mode
+        """
         simd = self.get_register(MAC_CTRL, SIMD_SELECT_OFFSET, 2)
         if simd == 0:
             return 0xFF
@@ -591,9 +633,23 @@ class Dla:
             self.banks[target_bank].write(offset + byte, value)
 
     def write_bank(self, bank, data):
+        """Writes data to bank by index
+
+        Params:
+        bank -- index of bank to write to
+        data -- [Int] data buffer to write to bank
+        """
         self.banks[bank].write_buffer(0, data)
 
     def handle_bank_read(self, request):
+        """Handle renode request of writing to bank address space
+
+        Params:
+        request -- renode request object
+
+        Returns:
+        value -- 32-bit clipped value of renode request
+        """
         # NOTE: Renode can't handle over 32bit reads so 128-bit alignment isn't strictly enforced
         target_bank = (request.absolute - MEMORY_BANK_ADDR) // MEMORY_BANK_SIZE
         offset = request.absolute - MEMORY_BANK_ADDR - memory_bank_to_offset(target_bank)
@@ -632,36 +688,96 @@ class Dla:
         """
         return self.get_register(PP_AXI_WRITE, PP_AXI_WRITE_ADDRESS_OFFSET, 32) & 0xFFFFFFFF
 
-    def write_output(self, data):
+    def write_output(self, data, bit_width=8):
         """Writes output to arbitrary memory address
 
         Params:
-        data -- [Int] data to write
+        data -- [[[Int]]] data to write
+        data_wisth -- Int width of data being written
         """
+
+        # Read wanted output format and flatten
+        filter_amount, height, width = get_shape(data)
+        data = flatten(data)
         if data == []:
             print("WARN: output was empty.")
             return
 
+        # Transform to 1d column-wise order while keeping the filters separate
+        column_wise = []
+        for h in range(height):
+            for w in range(width):
+                for f in range(filter_amount):
+                    idx = (f * height * width) + w + (h * width)
+
+                    if idx >= len(data):
+                        print("Too big index:", idx)
+                    else:
+                        column_wise.append(data[idx])
+
+        data = column_wise
+
         addr = self.get_output_addr()
-        print("addr:", addr)
-        # If addr is bank
-        if MEMORY_BANK_ADDR <= addr and addr < MEMORY_BANK_ADDR + (NO_MEMORY_BANKS * MEMORY_BANK_SIZE):
+        print("Writing output to:{:x}".format(addr))
+
+        # Allow writing to memory space of data banks
+        if MEMORY_BANK_ADDR <= addr and addr < (MEMORY_BANK_ADDR + (NO_MEMORY_BANKS * MEMORY_BANK_SIZE)):
             bank_idx = (addr - MEMORY_BANK_ADDR) // MEMORY_BANK_SIZE
             bank = self.banks[bank_idx]
 
-            bytes_written = 0
+            values_written = 0
             offset = 0
-            while bytes_written < len(data):
+            while values_written < len(data): # Data packing
+
+                # Bank switching when current bank is filled
                 if offset > bank.size:
                     bank_idx = bank_idx + 1
                     assert(bank_idx < len(self.banks))
                     bank = self.banks[bank_idx]
                     offset = 0
-                bank.write(offset, data[bytes_written])
-                bytes_written += 1
-                offset += 1
-            else:
-                print("WARNING: output written outside VP memory region")
+
+                # Write chunk of data with correct simd width
+                if bit_width == 32:
+                    byte_3 = (data[values_written] & 0xFF000000) >> 24
+                    byte_2 = (data[values_written] & 0x00FF0000) >> 16
+                    byte_1 = (data[values_written] & 0x0000FF00) >> 8
+                    byte_0 = data[values_written] & 0x000000FF
+                    bank.write(offset, byte_3)
+                    bank.write(offset + 1, byte_2)
+                    bank.write(offset + 2, byte_1)
+                    bank.write(offset + 3, byte_0)
+                    values_written += 1
+                    offset += 4
+                elif bit_width == 16:
+                    upper = (data[values_written] & 0xFF00) >> 8
+                    lower = data[values_written] & 0x00FF
+                    bank.write(offset, upper)
+                    bank.write(offset + 1, lower)
+                    values_written += 1
+                    offset += 2
+                elif bit_width == 8:
+                    bank.write(offset, data[values_written])
+                    offset += 1
+                    values_written += 1
+                elif bit_width == 4:
+                    fst = (data[values_written] & 0xF) << 4
+                    snd = (data[values_written + 1] & 0xF)
+                    combined = fst + snd
+                    bank.write(offset, combined)
+                    offset += 1
+                    values_written += 2
+                elif bit_width == 2:
+                    fst = (data[values_written] & 0x3) << 6
+                    snd = (data[values_written + 1] & 0x3) << 4
+                    thrd = (data[values_written + 2] & 0x3) << 2
+                    frth =  (data[values_written + 3] & 0x3)
+                    combined = fst + snd + thrd + frth
+                    bank.write(offset, combined)
+                    offset += 1
+                    values_written += 4
+
+        else:
+            print("WARNING: output written outside VP memory region")
 
 
     def set_input_data(self, data):
@@ -696,26 +812,51 @@ class Dla:
         """
         width = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_WIDTH_OFFSET, 4) + 1
         height = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_HEIGHT_OFFSET, 4) + 1
-        filter_amount = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_S_CHANNELS_OFFSET, 4) + 1
+        s_channels = self.get_register(BUF_KERNEL_0, BUF_KERNEL_0_S_CHANNELS_OFFSET, 4) + 1
+        filter_amount = self.get_register(BUF_KERNEL_1, BUF_KERNEL_1_NUM_OFFSET, 12) + 1
         input_channels = self.get_register(BUF_INPUT, BUF_CHANNELS_OFFSET, 12) + 1
         bank_idx = self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_A_OFFSET, 4)
         bank = self.banks[bank_idx]
 
-        data = []
         offset = 0;
-        while len(data) < (filter_amount * input_channels * width * height):
+        data = []
+        chunk = []
+        while len(data) + len(chunk) < (filter_amount * input_channels * width * height):
             # Move to next bank
             if offset > bank.size:
                 bank_idx = bank_idx + 1
                 bank = self.banks[bank_idx]
                 offset = 0
-            data.append(bank.read(offset))
+
+            chunk.append(bank.read(offset))
+
+            # Chunk reversing
+            if len(chunk) == 8:
+                data = data + chunk[::-1]
+                chunk = []
+
             offset += 1
 
-        data = reshape(data, (filter_amount, input_channels, width, height))
-        print("Kernel:", get_shape(data))
-        print("filter_amount:", filter_amount, "width:", width, "height:", height, "input_channels:", input_channels)
-        return filter_amount, width, height, data
+        # Append rest
+        remaining = (filter_amount * input_channels * width * height) - len(data)
+        data = data + chunk[remaining::-1][:remaining]
+
+        # Column wise matrix formation
+        column_wise = []
+        print("")
+
+        for f in range(filter_amount):
+            for c in range(input_channels):
+                for h in range(height):
+                    for w in range(width):
+                        idx = c + (f * input_channels) + (input_channels*filter_amount) * w + (input_channels * filter_amount * width) * h
+                        column_wise.append(data[idx])
+        print('[{}]'.format(', '.join("{:2}".format(hex(x & 0xff)[2:-1]) for x in column_wise)))
+
+        column_wise = reshape(column_wise, (filter_amount, input_channels, height, width))
+
+        print_matrix(column_wise[0][0], "flat kernel:", pformat="hexadecimal")
+        return filter_amount, s_channels, width, height, column_wise
 
     def get_input_data(self):
         # TODO: Only read as much data as is needed to fill input layer (C* W * H)
@@ -733,18 +874,41 @@ class Dla:
         bank_idx = self.get_register(BUF_DATA_BANK, BUF_DATA_BANK_B_OFFSET, 4)
         bank = self.banks[bank_idx]
 
-        data = []
+        print("channels:", channels, "width:", width, "height:", height)
+
         offset = 0;
-        while len(data) < (channels * width * height):
+        data = []
+        chunk = []
+        while len(data) + len(chunk) < (channels * width * height):
             # Move to next bank
             if offset > bank.size:
                 bank_idx = bank_idx + 1
                 bank = self.banks[bank_idx]
                 offset = 0
-            data.append(bank.read(offset))
+            chunk.append(bank.read(offset))
+
+            # Chunk reversing
+            if len(chunk) == 8:
+                data = data + chunk[::-1]
+                chunk = []
+
             offset += 1
-        data = reshape(data, (channels, width, height))
-        return channels, width, height, data
+
+        # Append rest
+        remaining = (channels * width * height) - len(data)
+        data = data + chunk[remaining::-1][:remaining]
+
+        # Column wise matrix formation
+        column_wise = []
+        for c in range(channels):
+            for h in range(height):
+                for w in range(width):
+                    idx = c + channels * w + (channels * width) * h
+                    column_wise.append(data[idx])
+
+        column_wise = reshape(column_wise, (channels, height, width))
+        print_matrix(column_wise[0], "flat input:", pformat="hexadecimal")
+        return channels, width, height, column_wise
 
     # TODO: Finish this when external memory is figured out
     def get_bias(self):
@@ -772,26 +936,6 @@ class Dla:
 
        return (pad_x, pad_y), (dilation_x, dilation_y), (stride_x, stride_y)
 
-    def handle_handshake(self):
-        """Resets handshake registers correctly after succesful calculation"""
-        # Buffer
-        if self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1) == 0:
-            if self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1) == 1:
-                self.set_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1, 0)
-                self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 0x0)
-
-        # Mac
-        if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1) == 0:
-            if self.get_register(HANDSHAKE, HANDSHAKE_MAC_VALID_OFFSET, 1) == 1:
-                self.set_register(HANDSHAKE, HANDSHAKE_MAC_VALID_OFFSET, 1, 0)
-                self.set_register(STATUS_ADDR, MAC_DONE_OFFSET, 1, 0x0)
-
-        # Post Processor
-        if self.get_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1) == 0:
-            if self.get_register(HANDSHAKE, HANDSHAKE_ACTIVE_VALID_OFFSET, 1) == 1:
-                self.set_register(HANDSHAKE, HANDSHAKE_ACTIVE_VALID_OFFSET, 1, 0)
-                self.set_register(STATUS_ADDR, PP_DONE_OFFSET, 1, 0x0)
-
     def round(self, values):
         """Round values if register is set"""
         if self.get_register(PP_CTRL, ROUNDING_OFFSET, 1) == 1:
@@ -812,6 +956,27 @@ class Dla:
             return execute_for_all_elements(clip_signed, values, clip_amount, True)
         return values
 
+    def handle_handshake(self):
+        """Resets handshake registers correctly after succesful calculation"""
+        # Buffer
+        if self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1) == 0:
+            if self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1) == 1:
+                self.set_register(HANDSHAKE, HANDSHAKE_BUFFER_VALID_OFFSET, 1, 0)
+                self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 0)
+
+        # Mac
+        if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1) == 0:
+            if self.get_register(HANDSHAKE, HANDSHAKE_MAC_VALID_OFFSET, 1) == 1:
+                self.set_register(HANDSHAKE, HANDSHAKE_MAC_VALID_OFFSET, 1, 0)
+                self.set_register(STATUS_ADDR, MAC_DONE_OFFSET, 1, 0)
+
+        # Post Processor
+        if self.get_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1) == 0:
+            if self.get_register(HANDSHAKE, HANDSHAKE_ACTIVE_VALID_OFFSET, 1) == 1:
+                self.set_register(HANDSHAKE, HANDSHAKE_ACTIVE_VALID_OFFSET, 1, 0)
+                self.set_register(STATUS_ADDR, PP_DONE_OFFSET, 1, 0)
+
+        # PROCESSJUMPTAG
     def process(self):
         """Runs next tick of the DLA state"""
 
@@ -822,12 +987,8 @@ class Dla:
         if self.get_register(STATUS_ADDR, BUF_DONE_OFFSET, 1) or \
                 self.get_register(STATUS_ADDR, MAC_DONE_OFFSET, 1) or \
                 self.get_register(STATUS_ADDR, PP_DONE_OFFSET, 1):
+            self.print_register(STATUS_ADDR)
             print("Status not cleared")
-            return
-
-        # Check if buffer is enabled
-        if not self.get_register(HANDSHAKE, HANDSHAKE_BUFFER_ENABLE_OFFSET, 1):
-            print("Buffer not enabled")
             return
 
         # Check if data is ready
@@ -836,18 +997,26 @@ class Dla:
 
         # Load data from memory banks and reshape
         input_ch, input_w, input_h, input_data = self.get_input_data()
-        #input_data = flat_to_CWH(input_data, input_ch, input_w, input_h)
 
-        kernel_amount, kernel_w, kernel_h, kernel_data = self.get_weight_data()
-        #kernel_data = flat_to_CWH(kernel_data, kernel_amount, kernel_w, kernel_h)
+        kernel_amount, s_channels, kernel_w, kernel_h, kernel_data = self.get_weight_data()
 
         # Convonlution
         padding, dilation, stride = self.get_conv_params()
 
+        print("input:", input_ch, input_w, input_h)
+        print("kernel:", kernel_amount, s_channels, kernel_w, kernel_h)
+        print("padding:", padding)
+        print("dilation:", dilation)
+        print("stride:", stride)
+
+
+        # Pack output according to clipping
+        output_bit_width = self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) if self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) > 0 else 32
+        print("output_width:", output_bit_width)
+
         if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1):
             print("Mac not enabled")
             # TODO: This might be not correct, make sure S_CHANNELS work like this
-            print("kernel_idx:", kernel_data)
             padding_value = self.get_register(BUF_PAD, BUF_PAD_VALUE_OFFSET, 8)
             res = self.mac.conv2d(input_data, kernel_data, padding, dilation, stride, padding_value=padding_value)
 
@@ -871,6 +1040,8 @@ class Dla:
                 for (i, r) in enumerate(res):
                     print_matrix(r, "{} ReLU:".format(i))
 
+            output_bit_width = self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5) # Pack output according to clipping
+
             # Clipping and rounding
             res = dla.pp_clip(res)
             res = dla.round(res)
@@ -879,7 +1050,7 @@ class Dla:
                 print_matrix(r, "{} PP:".format(i))
 
         # After calculating one layer the device needs new configuration
-        self.write_output(flatten_tensor(res))
+        self.write_output(res, output_bit_width)
 
         # Set Done status
         self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 1)
@@ -887,8 +1058,8 @@ class Dla:
         self.set_register(STATUS_ADDR, PP_DONE_OFFSET, 1, 1)
 
         # Set data not ready
-        self.set_register(BUF_CTRL, READ_A_VALID_OFFSET, 1, 0x0)
-        self.set_register(BUF_CTRL, READ_B_VALID_OFFSET, 1, 0x0)
+        self.set_register(BUF_CTRL, READ_A_VALID_OFFSET, 1, 0)
+        self.set_register(BUF_CTRL, READ_B_VALID_OFFSET, 1, 0)
 
 
 class DlaMac:
@@ -909,23 +1080,21 @@ class DlaMac:
         Returns:
         A -- Matrix in form [[Int]] to be convolved
         kernel -- Matrix in form of [[Int]] to use ase convolution kernel
-        h_out -- Height of the conv2d result matrix
         w_out -- Width of the conv2d result matrix
-        h_middle_zero -- Bool signifying if conv2d has uneven height
+        h_out -- Height of the conv2d result matrix
         w_middle_zero -- Bool signifying if conv2d has uneven width
+        h_middle_zero -- Bool signifying if conv2d has uneven height
         """
 
-        h_in = len(A)
-        w_in = len(A[0])
-        h_kernel = len(kernel)
-        w_kernel = len(kernel[0])
-        h_out = math.floor((h_in + 2*padding[0] - dilation[0] * (h_kernel - 1) -1) / stride[0] +1)
-        w_out = math.floor((w_in + 2*padding[1] - dilation[1] * (w_kernel - 1) -1) / stride[1] +1)
+        w_in, h_in = get_shape(A)
+        w_kernel, h_kernel = get_shape(kernel)
+        w_out = math.floor((w_in + 2*padding[0] - dilation[0] * (w_kernel - 1) -1) / stride[0] +1)
+        h_out = math.floor((h_in + 2*padding[1] - dilation[1] * (h_kernel - 1) -1) / stride[1] +1)
 
-        h_middle_zero = h_kernel % 2 == 1
         w_middle_zero = w_kernel % 2 == 1
+        h_middle_zero = h_kernel % 2 == 1
 
-        return int(h_out), int(w_out), h_middle_zero, w_middle_zero
+        return int(w_out), int(h_out), w_middle_zero, h_middle_zero
 
     def pad_matrix(self, mat_in, padding, padding_value=0):
 
@@ -943,17 +1112,16 @@ class DlaMac:
         # Find output size of single produced filter
         # Number of output filters is defined by the number of kernels
         # Each inputed kernel is applied for the whole input entry
+        w_out, h_out, w_middle_zero, h_middle_zero = self.conv2d_check_parameters(input_img[0], kernels[0][0], padding, dilation, stride)
         print("Kernels shape:", get_shape(kernels))
         print("Input shape:", get_shape(input_img))
-        h_out, w_out, h_middle_zero, w_middle_zero = self.conv2d_check_parameters(input_img[0], kernels[0][0], padding, dilation, stride)
 
         # Initialize output filters
-        output_filters = [[[ 0 for _ in range(w_out)] for _ in range(h_out) ] for _ in range(len(kernels)) ] # np.zeros(kernel_out, w_out, h_out)
+        output_filters = [[[ 0 for _ in range(h_out)] for _ in range(w_out) ] for _ in range(len(kernels)) ] # np.zeros(kernel_out, w_out, h_out)
+        print("Output shape:", get_shape(output_filters))
 
-        h_kernel_max_offset = len(kernels[0][0]) // 2 # Kernel height max offset
-        w_kernel_max_offset = len(kernels[0][0][0]) // 2 # Kernel width max offset
-
-        print("h_out:", h_out, " w_out:", w_out)
+        w_kernel_max_offset = len(kernels[0][0]) // 2 # Kernel height max offset
+        h_kernel_max_offset = len(kernels[0][0][0]) // 2 # Kernel width max offset
 
         # Apply each kernel to input_img
         for (kernel_idx, kernel) in enumerate(kernels):
@@ -967,22 +1135,23 @@ class DlaMac:
                 else:
                     center_y_0 = w_kernel_max_offset * dilation[1] - 1
 
-                for j in range(h_out):
-                    if h_middle_zero:
-                        center_y = center_y_0 + (j * stride[1])
-                        range_y = [center_y + k * dilation[1] for k in range(-h_kernel_max_offset, h_kernel_max_offset + 1)]
+                for w in range(w_out):
+                    if w_middle_zero:
+                        center_x = center_x_0 + (w * stride[0])
+                        range_x = [center_x + k * dilation[0] for k in range(-w_kernel_max_offset, w_kernel_max_offset + 1)]
                     else:
-                        center_y = center_y_0 + (j * stride[1]) # Calculate from top left of center
-                        range_y = [center_y + k * dilation[1] for k in range(0, h_kernel_max_offset + 1)]
+                        center_x = center_x_0 + (w * stride[0])
+                        range_x = [center_x + k * dilation[0] for k in range(0, w_kernel_max_offset + 1)]
 
-                    for i in range(w_out):
-                        if w_middle_zero:
-                            center_x = center_x_0 + (i * stride[0])
-                            range_x = [center_x + k * dilation[0] for k in range(-w_kernel_max_offset, w_kernel_max_offset + 1)]
+                    for h in range(h_out):
+                        if h_middle_zero:
+                            center_y = center_y_0 + (h * stride[1])
+                            range_y = [center_y + k * dilation[1] for k in range(-h_kernel_max_offset, h_kernel_max_offset + 1)]
                         else:
-                            center_x = center_x_0 + (i * stride[0])
-                            range_x = [center_x + k * dilation[0] for k in range(0, w_kernel_max_offset + 1)]
+                            center_y = center_y_0 + (h * stride[1]) # Calculate from top left of center
+                            range_y = [center_y + k * dilation[1] for k in range(0, h_kernel_max_offset + 1)]
 
+                        # Sum each channel with current kernel
                         channel_sum = 0
                         for (channel_idx, channel_data) in enumerate(input_img):
 
@@ -990,15 +1159,23 @@ class DlaMac:
                             channel_data = self.pad_matrix(channel_data, padding, padding_value=padding_value)
 
                             # Constuct a sub matrix
-                            mat_sub = [[0 for _ in range_x ] for _ in range_y ] # np.zeros(w_out, h_out)
+                            # NOTE: Do not use zeroes here, for some reason IronPython can't correctly index nested lists produced by a recursive function. (20240527 vaino-waltteri.granat@tuni.fi)
+                            mat_sub = [[0 for _ in range_y ] for _ in range_x ] # np.zeros(w_out, h_out)
 
                             for mat_x in range(len(range_x)):
                                 for mat_y in range(len(range_y)):
-                                    mat_sub[mat_y][mat_x] = channel_data[range_y[mat_y]][range_x[mat_x]]
+                                    mat_sub[mat_x][mat_y] = channel_data[range_x[mat_x]][range_y[mat_y]]
 
-                            channel_sum = channel_sum + self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
+                            # print("w:", w, "h:", h, "mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
+                            # print_matrix(mat_sub, "sub_matrix", "hexadecimal")
+                            # print_matrix(kernel[channel_idx], "kernel", "hexadecimal")
+                            channel_res = self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
+                            #print("Channel res:", channel_res, "\n")
+                            channel_sum += channel_res
 
-                        output_filters[kernel_idx][j][i] = channel_sum
+
+                        output_filters[kernel_idx][w][h] = channel_sum
+                        # print("Output:", output_filters[kernel_idx][w][h])
 
         return output_filters
 
@@ -1097,16 +1274,14 @@ def write(request, dla):
     dla.process()
 
 def read(request, dla):
-    self.NoisyLog("Reading request: %s at 0x%x, value 0x%x" % (str(request.type), request.absolute, request.value))
-    print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
-
     if int(request.absolute) >= DLA_ADDR:
         request.value = dla.get_register(request.offset, 0, 32)
     else:
         tmp = dla.handle_bank_read(request)
-        print(tmp)
         request.value = tmp
 
+    self.NoisyLog("Reading request: %s at 0x%x, value 0x%x" % (str(request.type), request.absolute, request.value))
+    print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
 
 if __name__ == "__main__":
     print("Running as independent module")
@@ -1186,12 +1361,18 @@ if __name__ == "__main__":
     dla.process()
 
 else:
+
     if request.isInit:
+        # Supress all python print in CI
+        is_ci = os.environ.get("CI")
+        if not is_ci == None:
+            sys.stdout = open(os.devnull, 'w')
+
+        # Initialized DLA
         dla = Dla()
         print("%s initialized" % NAME)
         self.NoisyLog("%s initialized" % NAME)
     elif request.isRead:
-        print("isRead")
         read(request, dla)
     elif request.isWrite:
         write(request, dla)

@@ -6,6 +6,7 @@
 extern crate alloc;
 
 mod mmap;
+
 pub use mmap::{
     DLA0_ADDR, MEMORY_BANK_0_OFFSET, MEMORY_BANK_10_OFFSET, MEMORY_BANK_11_OFFSET,
     MEMORY_BANK_12_OFFSET, MEMORY_BANK_13_OFFSET, MEMORY_BANK_14_OFFSET, MEMORY_BANK_15_OFFSET,
@@ -19,7 +20,8 @@ const DEFAULT_KERNEL_BANK: MemoryBank = MemoryBank::Bank8;
 const DEFAULT_OUTPUT_BANK: MemoryBank = MemoryBank::Bank12;
 const DEFAULT_BIAS_ADDR: u32 = 0x0;
 const DEFAULT_KERNEL_SIZE: KernelSize = KernelSize {
-    channels: 1,
+    s_channels: 1,
+    kernels: 1,
     width: 2,
     height: 2,
 };
@@ -41,7 +43,7 @@ const DEFAULT_PP_CLIP: u32 = 8;
 const DEFAULT_SIMD_MODE: SimdBitMode = SimdBitMode::EightBits;
 
 use alloc::vec::Vec;
-use core::ptr;
+use core::{ptr, result};
 use headsail_bsp::{sprint, sprintln};
 use mmap::*;
 
@@ -50,9 +52,10 @@ struct InvalidClip(u32);
 
 /// Dimensions of kernel
 pub struct KernelSize {
-    pub channels: u32,
-    pub width: u32,
+    pub s_channels: u32,
+    pub kernels: u32,
     pub height: u32,
+    pub width: u32,
 }
 
 /// Dimensions of inputs
@@ -237,15 +240,24 @@ impl Dla {
 
     /// Writes buffer DLA's data bank(s) based on offset
     pub fn write_data_bank(&self, offset: usize, buf: &mut [i8]) {
-        //sprintln!("\nWrite to bank {:#x}, data: {:?}", offset, buf);
-        for (i, b) in buf.iter().enumerate() {
-            unsafe { ptr::write_volatile((MEMORY_BANK_BASE_ADDR + offset + i) as *mut _, *b) };
+        /* NOTE:(20240604 vaino-waltteri.granat@tuni.fi)
+         * After RTL test examination, it was found that DLA needs to
+         * be written by reversing the order of bytes in each 64-bit chunk
+         */
+        for (cidx, chunk) in buf.chunks(8).enumerate() {
+            for (i, b) in chunk.iter().rev().enumerate() {
+                unsafe {
+                    ptr::write_volatile(
+                        (MEMORY_BANK_BASE_ADDR + offset + cidx * 8 + i) as *mut _,
+                        *b,
+                    )
+                };
+            }
         }
     }
 
     /// Read register from one of the DLA's data banks
     fn read_data_bank_offset(&self, bank: MemoryBank, offset: usize) -> u128 {
-        // NOTE: this function enforces the 128-bit addressing
         if cfg!(feature = "vp") {
             let mut result: u128 = 0;
             for i in 0..4 {
@@ -265,8 +277,8 @@ impl Dla {
     }
 
     /// Reads len number of bytes from DLA's memory banks, starting from bank given as parameter
-    fn read_data_bank(&self, bank: MemoryBank, len: usize) -> Vec<i8> {
-        let mut res: Vec<i8> = Vec::with_capacity(len);
+    fn read_data_bank(&self, bank: MemoryBank, len: usize) -> Vec<u8> {
+        let mut res: Vec<u8> = Vec::with_capacity(len);
 
         let mut next_bank_offset = 0;
         while res.len() < len {
@@ -276,7 +288,7 @@ impl Dla {
 
             // Copy everything from one 128-bit address
             for i in 0..bytes_to_copy {
-                let byte = ((data >> (i * 8)) & 0xFF) as i8;
+                let byte = ((data >> (i * 8)) & 0xFF) as u8;
                 res.push(byte)
             }
             next_bank_offset += 0x10;
@@ -285,28 +297,82 @@ impl Dla {
     }
 
     /// Reads len amount of bytes from DLA's output bank(s)
-    pub fn read_output(&self, len: usize) -> Vec<i8> {
-        // VP only support reading from banks
-        if cfg!(feature = "vp") {
-            return self.read_data_bank(self.get_output_bank(), len);
+    pub fn read_output_i32(&self, len: usize) -> Vec<i32> {
+        let bytes = self.read_data_bank(self.get_output_bank(), len * 4);
+        let mut result = Vec::with_capacity(bytes.len() / 4);
+
+        for pair in bytes.chunks_exact(4) {
+            let combined = ((pair[0] as i32) << 24)
+                | ((pair[1] as i32) << 16)
+                | ((pair[2] as i32) << 8)
+                | (pair[3] as i32);
+            result.push(combined);
         }
-        self.read_data_bank(MemoryBank::Bank0, len)
+        result
+    }
+
+    /// Reads len amount of bytes from DLA's output bank(s)
+    pub fn read_output_i16(&self, len: usize) -> Vec<i16> {
+        let bytes = self.read_data_bank(self.get_output_bank(), len * 2);
+        let mut result = Vec::with_capacity(bytes.len() / 2);
+
+        for pair in bytes.chunks_exact(2) {
+            let combined = ((pair[0] as i16) << 8) | (pair[1] as i16 & 0xFF);
+            result.push(combined);
+        }
+        result
+    }
+
+    /// Reads len amount of bytes from DLA's output bank(s)
+    pub fn read_output_i8(&self, len: usize) -> Vec<i8> {
+        let bytes = self.read_data_bank(self.get_output_bank(), len);
+        bytes.iter().map(|&x| x as i8).collect()
+    }
+
+    /// Reads len amount of bytes from DLA's output bank(s)
+    pub fn read_output_i4(&self, len: usize) -> Vec<i8> {
+        let bytes = self.read_data_bank(self.get_output_bank(), len);
+        let mut result = Vec::with_capacity(bytes.len() * 2);
+        for &byte in bytes.iter() {
+            // Extract the upper 4 bits and sign-extend to i8
+            let upper = (byte as u8 & 0xF0) >> 4;
+            let upper_sign_extended = if upper & 0x08 != 0 {
+                upper | 0xF0
+            } else {
+                upper
+            } as i8;
+
+            // Extract the lower 4 bits and sign-extend to i8
+            let lower = byte & 0x0F;
+            let lower_sign_extended = if lower & 0x08 != 0 {
+                (lower | 0xF0) as i8
+            } else {
+                lower as i8
+            };
+
+            result.push(upper_sign_extended);
+            result.push(lower_sign_extended);
+        }
+        result
     }
 
     /// Reads len amount of bytes from DLA's input bank(s)
     pub fn read_input_bank(&self, len: usize) -> Vec<i8> {
-        self.read_data_bank(self.get_input_bank(), len)
+        let bytes = self.read_data_bank(self.get_input_bank(), len);
+        bytes.iter().map(|&x| x as i8).collect()
     }
 
     /// Reads len amount of bytes from DLA's weight bank(s)
     pub fn read_weight_bank(&self, len: usize) -> Vec<i8> {
-        self.read_data_bank(self.get_kernel_bank(), len)
+        let bytes = self.read_data_bank(self.get_kernel_bank(), len);
+        bytes.iter().map(|&x| x as i8).collect()
     }
 
     /// Writes buffer to DLA's input bank(s)
     pub fn write_input(&self, input: &mut [i8]) {
         // TODO optimize memory bank logic
-        self.write_data_bank(self.get_input_bank().offset(), input)
+        let offset = self.get_input_bank().offset();
+        self.write_data_bank(offset, input)
     }
 
     /// Writes buffer to DLA's kernel bank(s)
@@ -344,7 +410,7 @@ impl Dla {
     /// Sets one of the DLA's memory banks as starting bank for outputs
     fn set_output_bank(&self, bank: MemoryBank) {
         let mut reg = self.read_u32(DLA_PP_AXI_WRITE);
-        let b: usize = bank.into();
+        let b: usize = bank.offset();
         reg = set_bits!(
             DLA_PP_AXI_WRITE_ADDRESS_OFFSET,
             DLA_PP_AXI_WRITE_ADDRESS_BITMASK,
@@ -380,26 +446,36 @@ impl Dla {
 
     /// Sets dimensions for filters in convolution
     fn set_kernel_size(&self, kernel_size: KernelSize) {
-        let mut reg = 0;
-        reg = set_bits!(
+        let mut buf_kernel_0 = 0;
+        // Set BUF_KERNEL_0
+        buf_kernel_0 = set_bits!(
             DLA_BUF_KERNEL_0_S_CHANNELS_OFFSET,
             DLA_BUF_KERNEL_0_S_CHANNELS_BITMASK,
-            reg,
-            kernel_size.channels - 1
+            buf_kernel_0,
+            kernel_size.s_channels - 1
         );
-        reg = set_bits!(
+        buf_kernel_0 = set_bits!(
             DLA_BUF_KERNEL_0_WIDTH_OFFSET,
             DLA_BUF_KERNEL_0_WIDTH_BITMASK,
-            reg,
+            buf_kernel_0,
             kernel_size.width - 1
         );
-        reg = set_bits!(
+        buf_kernel_0 = set_bits!(
             DLA_BUF_KERNEL_0_HEIGHT_OFFSET,
             DLA_BUF_KERNEL_0_HEIGHT_BITMASK,
-            reg,
+            buf_kernel_0,
             kernel_size.height - 1
         );
-        self.write_u32(DLA_BUF_KERNEL_0, reg);
+        self.write_u32(DLA_BUF_KERNEL_0, buf_kernel_0);
+        // Set BUF_KERNEL_1
+        let mut buf_kernel_1 = 0;
+        buf_kernel_1 = set_bits!(
+            DLA_BUF_KERNEL_1_NUM_OFFSET,
+            DLA_BUF_KERNEL_1_NUM_BITMASK,
+            buf_kernel_1,
+            kernel_size.kernels - 1
+        );
+        self.write_u32(DLA_BUF_KERNEL_1, buf_kernel_1);
     }
 
     /// Signals to DLA that all input data has been set
@@ -549,6 +625,8 @@ impl Dla {
     fn get_input_bank(&self) -> MemoryBank {
         let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
         reg = get_bits!(reg, DLA_BUF_DATA_BANK_B_BITMASK);
+        // Shift value back here
+        reg >>= 16;
         MemoryBank::try_from(reg).unwrap()
     }
 
@@ -564,6 +642,41 @@ impl Dla {
         let reg = self.read_u32(DLA_PP_AXI_WRITE);
         let bank_idx: u32 = (reg - MEMORY_BANK_BASE_ADDR as u32) / MEMORY_BANK_SIZE as u32;
         MemoryBank::try_from(bank_idx).unwrap()
+    }
+
+    /// Reads kernel parameters from DLA
+    fn get_kernel_size(&self) -> KernelSize {
+        let reg0 = self.read_u32(DLA_BUF_KERNEL_0);
+        let reg1 = self.read_u32(DLA_BUF_KERNEL_1);
+        let width = get_bits!(reg0, DLA_BUF_KERNEL_0_WIDTH_BITMASK) + 1;
+        let height = (get_bits!(reg0, DLA_BUF_KERNEL_0_HEIGHT_BITMASK)
+            >> DLA_BUF_KERNEL_0_HEIGHT_OFFSET)
+            + 1;
+        let s_channels = get_bits!(reg0, DLA_BUF_KERNEL_0_S_CHANNELS_BITMASK) + 1;
+        let kernels = get_bits!(reg1, DLA_BUF_KERNEL_1_NUM_BITMASK) + 1;
+
+        KernelSize {
+            s_channels,
+            kernels,
+            height,
+            width,
+        }
+    }
+
+    /// Reads input parameters from DLA
+    fn get_input_size(&self) -> InputSize {
+        let reg = self.read_u32(DLA_BUF_INPUT);
+        let width = get_bits!(reg, DLA_BUF_INPUT_WIDTH_BITMASK) + 1;
+        let height =
+            (get_bits!(reg, DLA_BUF_INPUT_HEIGHT_BITMASK) >> DLA_BUF_INPUT_HEIGHT_OFFSET) + 1;
+        let channels =
+            (get_bits!(reg, DLA_BUF_INPUT_CHANNELS_BITMASK) >> DLA_BUF_INPUT_CHANNELS_OFFSET) + 1;
+
+        InputSize {
+            channels,
+            height,
+            width,
+        }
     }
 
     /// Sets clipping after conv2d
@@ -619,7 +732,7 @@ impl Dla {
         let buf_enabled = get_bits!(handshake_reg, DLA_HANDSHAKE_BUFFER_ENABLE_BITMASK) != 0;
         let mac_enabled = get_bits!(handshake_reg, DLA_HANDSHAKE_MAC_ENABLE_BITMASK) != 0;
         let active_enabled = get_bits!(handshake_reg, DLA_HANDSHAKE_ACTIVE_ENABLE_BITMASK) != 0;
-        buf_enabled && mac_enabled && active_enabled
+        buf_enabled || mac_enabled || active_enabled
     }
 
     /// Responds to DLA handshake by disabling hardware

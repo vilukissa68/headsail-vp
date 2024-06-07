@@ -13,6 +13,7 @@ env:
   # Used by renode-test to generate snapshots of failed tests
   RENODE_CI_MODE: YES
   DLA_BIN: dla
+  DLA_VALIDATION_BIN: validate
 
 jobs:
   check-bsp:
@@ -95,6 +96,48 @@ jobs:
       run: ln -s $(readlink -f "./vp/devel/python_peripherals/DLA.py") "$RENODE_DIR/scripts/pydev/DLA.py"
     - name: Run example
       run: renode-test scripts/robot/is_hello.robot --variable BIN:"$(readlink -f $DLA_BIN)"
+    - name: Upload snapshots
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        path: snapshots/
+
+  build-dla-validation:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install requirements
+      run: rustup target add riscv64imac-unknown-none-elf
+    - name: Build validation
+      working-directory: ./examples/hpc/dla-driver
+      run: cargo build --example validate -Fvp --target riscv64imac-unknown-none-elf
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: $DLA_VALIDATION_BIN
+        path: ./examples/hpc/target/riscv64imac-unknown-none-elf/debug/examples/validate
+        if-no-files-found: error
+        retention-days: 14
+
+  run-dla-validation:
+    needs: build-dla-validation
+
+    runs-on: ubuntu-latest
+    container:
+      image: antmicro/renode:1.14.0
+      options: --user root
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Download artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: $DLA_VALIDATION_BIN
+    - name: Create Renode peripheral symlinks
+      run: ln -s $(readlink -f "./vp/devel/python_peripherals/DLA.py") "$RENODE_DIR/scripts/pydev/DLA.py"
+    - name: Run dla validation
+      run: renode-test scripts/robot/dla_validate.robot --variable BIN:"$(readlink -f $DLA_VALIDATION_BIN)"
     - name: Upload snapshots
       if: failure()
       uses: actions/upload-artifact@v4
