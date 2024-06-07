@@ -35,6 +35,7 @@ pub struct Tensor3<T> {
     pub height: usize,
     pub width: usize,
     order: Order3,
+    internal_order: Order3,
 }
 
 impl<T: Clone + uDisplay> Tensor3<T> {
@@ -53,6 +54,7 @@ impl<T: Clone + uDisplay> Tensor3<T> {
             height,
             width,
             order,
+            internal_order: order,
         }
     }
 
@@ -71,6 +73,7 @@ impl<T: Clone + uDisplay> Tensor3<T> {
             height,
             width,
             order,
+            internal_order: order,
         }
     }
 
@@ -104,6 +107,7 @@ impl<T: Clone + uDisplay> Tensor3<T> {
             height,
             width,
             order,
+            internal_order: order,
         })
     }
 
@@ -180,16 +184,20 @@ impl<T: Clone + uDisplay> Tensor3<T> {
         let mut buffer = Vec::with_capacity(self.channels * self.height * self.width);
 
         let dim_order: [usize; 3] = Order3::CHW.into();
-        let dim_order_values = self.get_dimension_order_values(Some(Order3::CHW));
+        let dim_order_values = self.get_dimension_order_values(Some(self.internal_order));
 
-        // for x in dim_order_values {
-        //     sprint!("{} ", x)
-        // }
+        for x in dim_order_values {
+            sprint!("{} ", x)
+        }
 
         for i in 0..dim_order_values[0] {
             for j in 0..dim_order_values[1] {
                 for k in 0..dim_order_values[2] {
-                    buffer.push(self.data[(i, j, k)].clone());
+                    // Match iterators i,j,k to current ordering scheme to find index data in standard CHW order
+                    let c = [i, j, k][dim_order.iter().position(|&r| r == 0).unwrap()];
+                    let h = [i, j, k][dim_order.iter().position(|&r| r == 1).unwrap()];
+                    let w = [i, j, k][dim_order.iter().position(|&r| r == 2).unwrap()];
+                    buffer.push(self.data[(c, h, w)].clone());
                 }
             }
         }
@@ -210,8 +218,8 @@ impl<T: Clone + uDisplay> Tensor3<T> {
 
         let mut buffer = Vec::with_capacity(self.channels * self.height * self.width);
 
-        let dim_order_values = self.get_dimension_order_values(None);
-        let dim_order: [usize; 3] = self.order.into();
+        let dim_order_values = self.get_dimension_order_values(Some(order));
+        let dim_order: [usize; 3] = order.into();
 
         for i in 0..dim_order_values[0] {
             for j in 0..dim_order_values[1] {
@@ -230,13 +238,15 @@ impl<T: Clone + uDisplay> Tensor3<T> {
 
     /// Prints tensor in current order
     pub fn print_tensor(&self) {
+        sprintln!("Channels: {}", self.channels);
+        sprintln!("Height: {}", self.height);
+        sprintln!("Width: {}", self.width);
         let chw_buffer = self.to_chw_buffer(); // Use common format
         let data = Array::from_shape_vec((self.channels, self.height, self.width), chw_buffer)
             .expect("Failed to reshape buffer to CHW order");
 
         let dim_order: [usize; 3] = self.order.into();
         let dim_order_values = self.get_dimension_order_values(None);
-
         // for x in dim_order_values {
         //     sprint!("{} ", x)
         // }
