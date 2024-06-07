@@ -67,10 +67,10 @@ impl From<Order4> for [usize; 4] {
 
 pub struct Tensor4<T> {
     data: Array4<T>,
-    channels: usize,
-    kernels: usize,
-    height: usize,
-    width: usize,
+    pub channels: usize,
+    pub kernels: usize,
+    pub height: usize,
+    pub width: usize,
     order: Order4,
 }
 
@@ -113,6 +113,11 @@ impl<T: Clone + uDisplay> Tensor4<T> {
             width,
             order,
         }
+    }
+
+    /// Get the number of element in ndarray
+    pub fn get_size(&self) -> usize {
+        self.data.len()
     }
 
     /// Creates a new Tensor4 from a data buffer with the specified order
@@ -260,8 +265,8 @@ impl<T: Clone + uDisplay> Tensor4<T> {
         let mut buffer =
             Vec::with_capacity(self.kernels * self.channels * self.height * self.width);
 
-        let dim_order_values = self.get_dimension_order_values(None);
-        let dim_order: [usize; 4] = self.order.into();
+        let dim_order_values = self.get_dimension_order_values(Some(order));
+        let dim_order: [usize; 4] = order.into();
 
         for i in 0..dim_order_values[0] {
             for j in 0..dim_order_values[1] {
