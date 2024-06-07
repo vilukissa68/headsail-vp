@@ -359,7 +359,7 @@ impl Dla {
     /// Reads len amount of bytes from DLA's input bank(s)
     pub fn read_input_bank(&self, len: usize) -> Vec<i8> {
         let bytes = self.read_data_bank(self.get_input_bank(), len);
-        bytes.iter().map(|&x| x as i8).collect()
+        bytes.iter().map(|&x| i8::try_from(x).unwrap()).collect()
     }
 
     /// Reads len amount of bytes from DLA's weight bank(s)
@@ -776,16 +776,13 @@ impl Dla {
     pub fn handle_handshake(&self) -> bool {
         // Handshake only if dla status is done
         if !self.is_ready() {
-            sprintln!("Result not ready");
             return false;
         }
 
         if self.is_enabled() {
-            sprintln!("DLA still enabled");
             self.handshake_disable_hw();
             return false;
         }
-        sprintln!("Finishing handshake");
 
         let mut handshake_reg = self.read_u32(DLA_HANDSHAKE);
         handshake_reg = set_bits!(

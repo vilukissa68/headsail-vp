@@ -1,5 +1,7 @@
 import math
 import random
+import os
+import sys
 
 NAME = "DLA"
 
@@ -1359,7 +1361,14 @@ if __name__ == "__main__":
     dla.process()
 
 else:
+
     if request.isInit:
+        # Supress all python print in CI
+        is_ci = os.environ.get("CI")
+        if not is_ci == None:
+            sys.stdout = open(os.devnull, 'w')
+
+        # Initialized DLA
         dla = Dla()
         print("%s initialized" % NAME)
         self.NoisyLog("%s initialized" % NAME)
