@@ -4,7 +4,7 @@
 use alloc::vec::*;
 use ndarray::{Array, Array3};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Order3 {
     CHW,
     CWH,
@@ -31,7 +31,6 @@ impl Order3 {
 pub struct Tensor3<T> {
     data: Array3<T>,
     order: Order3,
-    internal_order: Order3,
 }
 
 impl<T: Clone> Tensor3<T> {
