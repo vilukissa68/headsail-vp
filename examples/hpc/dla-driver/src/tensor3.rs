@@ -6,7 +6,7 @@ use headsail_bsp::ufmt::uDisplay;
 use headsail_bsp::{sprint, sprintln};
 use ndarray::{Array, Array3};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Order3 {
     CHW,
     CWH,
@@ -29,13 +29,13 @@ impl From<Order3> for [usize; 3] {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Tensor3<T> {
     data: Array3<T>,
     pub channels: usize,
     pub height: usize,
     pub width: usize,
     order: Order3,
-    internal_order: Order3,
 }
 
 impl<T: Clone + uDisplay> Tensor3<T> {
@@ -54,7 +54,6 @@ impl<T: Clone + uDisplay> Tensor3<T> {
             height,
             width,
             order,
-            internal_order: order,
         }
     }
 
@@ -73,7 +72,6 @@ impl<T: Clone + uDisplay> Tensor3<T> {
             height,
             width,
             order,
-            internal_order: order,
         }
     }
 
@@ -91,15 +89,26 @@ impl<T: Clone + uDisplay> Tensor3<T> {
 
         let standard_shape = [channels, height, width];
         let dim_order: [usize; 3] = order.into();
-        let channels_ordered = standard_shape[dim_order.iter().position(|&r| r == 0).unwrap()];
-        let height_ordered = standard_shape[dim_order.iter().position(|&r| r == 1).unwrap()];
-        let width_ordered = standard_shape[dim_order.iter().position(|&r| r == 2).unwrap()];
+        let fst = standard_shape[dim_order[0]];
+        let snd = standard_shape[dim_order[1]];
+        let thd = standard_shape[dim_order[2]];
+        let mut buffer = Vec::with_capacity(channels * height * width);
 
-        let data = Array::from_shape_vec(
-            (channels_ordered, height_ordered, width_ordered),
-            data_buffer,
-        )
-        .map_err(|_| "Failed to create array from data buffer")?;
+        sprintln!("From data buffer:");
+
+        for i in 0..fst {
+            for j in 0..snd {
+                for k in 0..thd {
+                    let idx = k + j * snd + i * snd * thd;
+                    let element = data_buffer[idx].clone();
+                    sprint!("\nidx:{} = {} ", idx, element);
+                    buffer.push(element)
+                }
+            }
+        }
+
+        let data = Array::from_shape_vec((fst, snd, thd), buffer)
+            .map_err(|_| "Failed to create array from data buffer")?;
 
         Ok(Tensor3 {
             data,
@@ -107,7 +116,6 @@ impl<T: Clone + uDisplay> Tensor3<T> {
             height,
             width,
             order,
-            internal_order: order,
         })
     }
 
@@ -175,65 +183,41 @@ impl<T: Clone + uDisplay> Tensor3<T> {
     }
 
     /// Sets a new order for the array
-    pub fn set_order(&mut self, order: Order3) {
+    pub fn transmute(&mut self, order: Order3) {
+        // Transmute to standard order
+        let std_order: [usize; 3] = self.order.into();
+        let std = self.data.clone().permuted_axes(std_order);
+
+        // Transmute to target order
+        let new_order: [usize; 3] = order.into();
+        self.data = std.permuted_axes(new_order);
         self.order = order;
     }
 
     /// Converts the internal buffer to CHW order
     fn to_chw_buffer(&self) -> Vec<T> {
-        let mut buffer = Vec::with_capacity(self.channels * self.height * self.width);
-
-        let dim_order: [usize; 3] = Order3::CHW.into();
-        let dim_order_values = self.get_dimension_order_values(Some(self.internal_order));
-
-        for x in dim_order_values {
-            sprint!("{} ", x)
-        }
-
-        for i in 0..dim_order_values[0] {
-            for j in 0..dim_order_values[1] {
-                for k in 0..dim_order_values[2] {
-                    // Match iterators i,j,k to current ordering scheme to find index data in standard CHW order
-                    let c = [i, j, k][dim_order.iter().position(|&r| r == 0).unwrap()];
-                    let h = [i, j, k][dim_order.iter().position(|&r| r == 1).unwrap()];
-                    let w = [i, j, k][dim_order.iter().position(|&r| r == 2).unwrap()];
-                    buffer.push(self.data[(c, h, w)].clone());
-                }
-            }
-        }
-        buffer
+        self.to_buffer_with_order(Order3::CHW)
     }
 
     /// Converts the 3D array to a linear buffer according to the current order
     pub fn to_buffer(&self) -> Vec<T> {
-        self.to_buffer_with_order(self.order)
+        let mut buffer = Vec::with_capacity(self.channels * self.height * self.width);
+        for x in Array::from_iter(self.data.iter().cloned()) {
+            buffer.push(x)
+        }
+        buffer
     }
 
     /// Converts the 3D array to a linear buffer according to the specified order
     pub fn to_buffer_with_order(&self, order: Order3) -> Vec<T> {
-        // Convert current matrix to standard ordered vector
-        let chw_buffer = self.to_chw_buffer(); // Use common format
-        let data = Array::from_shape_vec((self.channels, self.height, self.width), chw_buffer)
-            .expect("Failed to reshape buffer to CHW order");
-
-        let mut buffer = Vec::with_capacity(self.channels * self.height * self.width);
-
-        let dim_order_values = self.get_dimension_order_values(Some(order));
-        let dim_order: [usize; 3] = order.into();
-
-        for i in 0..dim_order_values[0] {
-            for j in 0..dim_order_values[1] {
-                for k in 0..dim_order_values[2] {
-                    // Match iterators i,j,k to current ordering scheme to find index data in standard CHW order
-                    let c = [i, j, k][dim_order.iter().position(|&r| r == 0).unwrap()];
-                    let h = [i, j, k][dim_order.iter().position(|&r| r == 1).unwrap()];
-                    let w = [i, j, k][dim_order.iter().position(|&r| r == 2).unwrap()];
-                    buffer.push(data[(c, h, w)].clone());
-                }
-            }
+        // If order is correct no need to permute
+        if order == self.order {
+            return self.to_buffer();
         }
 
-        buffer
+        let mut data = self.clone();
+        data.transmute(order);
+        data.to_buffer()
     }
 
     /// Prints tensor in current order
