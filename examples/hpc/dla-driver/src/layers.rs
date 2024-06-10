@@ -76,6 +76,7 @@ pub fn conv2d(
     while !dla.handle_handshake() {}
     let output_buffer = dla.read_output_i32(output_size.0 * output_size.1 * kernels.kernels);
 
+    sprintln!("Raw output:");
     for x in &output_buffer {
         sprint!("{} ", x)
     }

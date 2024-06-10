@@ -92,22 +92,8 @@ impl<T: Clone + uDisplay> Tensor3<T> {
         let fst = standard_shape[dim_order[0]];
         let snd = standard_shape[dim_order[1]];
         let thd = standard_shape[dim_order[2]];
-        let mut buffer = Vec::with_capacity(channels * height * width);
 
-        sprintln!("From data buffer:");
-
-        for i in 0..fst {
-            for j in 0..snd {
-                for k in 0..thd {
-                    let idx = k + j * snd + i * snd * thd;
-                    let element = data_buffer[idx].clone();
-                    sprint!("\nidx:{} = {} ", idx, element);
-                    buffer.push(element)
-                }
-            }
-        }
-
-        let data = Array::from_shape_vec((fst, snd, thd), buffer)
+        let data = Array::from_shape_vec((fst, snd, thd), data_buffer)
             .map_err(|_| "Failed to create array from data buffer")?;
 
         Ok(Tensor3 {
