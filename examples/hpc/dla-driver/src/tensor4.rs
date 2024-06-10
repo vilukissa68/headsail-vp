@@ -6,7 +6,7 @@ use headsail_bsp::ufmt::uDisplay;
 use headsail_bsp::{sprint, sprintln};
 use ndarray::{Array, Array4};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Order4 {
     KCHW,
     KCWH,
@@ -65,6 +65,7 @@ impl From<Order4> for [usize; 4] {
     }
 }
 
+#[derive(Clone, Debug)]
 pub struct Tensor4<T> {
     data: Array4<T>,
     pub channels: usize,
@@ -223,65 +224,38 @@ impl<T: Clone + uDisplay> Tensor4<T> {
     }
 
     /// Sets a new order for the array
-    pub fn set_order(&mut self, order: Order4) {
+    pub fn transmute(&mut self, order: Order4) {
+        let new_order: [usize; 4] = order.into();
+        let std_order: [usize; 4] = self.order.into();
+        let std = self.data.clone().permuted_axes(std_order);
+        self.data = std.permuted_axes(new_order);
         self.order = order;
     }
 
     /// Transforms data to standard format
     fn to_kchw_buffer(&self) -> Vec<T> {
-        let mut buffer =
-            Vec::with_capacity(self.kernels * self.channels * self.height * self.width);
-
-        let dim_order: [usize; 4] = Order4::KCHW.into();
-        let dim_order_values = self.get_dimension_order_values(Some(Order4::KCHW));
-
-        for i in 0..dim_order_values[0] {
-            for j in 0..dim_order_values[1] {
-                for k in 0..dim_order_values[2] {
-                    for l in 0..dim_order_values[3] {
-                        buffer.push(self.data[(i, j, k, l)].clone());
-                    }
-                }
-            }
-        }
-        buffer
+        let dim_order: [usize; 4] = self.order.into();
+        self.data.clone().permuted_axes(dim_order).into_raw_vec()
     }
 
     /// Converts the 4D array to a linear buffer according to the current order
     pub fn to_buffer(&self) -> Vec<T> {
-        self.to_buffer_with_order(self.order)
+        let mut buffer = Vec::with_capacity(self.channels * self.height * self.width);
+        for x in Array::from_iter(self.data.iter().cloned()) {
+            buffer.push(x)
+        }
+        buffer
     }
 
     /// Converts the 4D array to a linear buffer according to the specified order
     pub fn to_buffer_with_order(&self, order: Order4) -> Vec<T> {
-        // Convert current matrix to standard ordered vector
-        let kchw_buffer = self.to_kchw_buffer();
-        let data = Array::from_shape_vec(
-            (self.kernels, self.channels, self.height, self.width),
-            kchw_buffer,
-        )
-        .expect("Failed to reshape buffer to KCHW order");
-
-        let mut buffer =
-            Vec::with_capacity(self.kernels * self.channels * self.height * self.width);
-
-        let dim_order_values = self.get_dimension_order_values(Some(order));
-        let dim_order: [usize; 4] = order.into();
-
-        for i in 0..dim_order_values[0] {
-            for j in 0..dim_order_values[1] {
-                for k in 0..dim_order_values[2] {
-                    for l in 0..dim_order_values[3] {
-                        let ker = [i, j, k, l][dim_order.iter().position(|&r| r == 0).unwrap()];
-                        let c = [i, j, k, l][dim_order.iter().position(|&r| r == 1).unwrap()];
-                        let h = [i, j, k, l][dim_order.iter().position(|&r| r == 2).unwrap()];
-                        let w = [i, j, k, l][dim_order.iter().position(|&r| r == 3).unwrap()];
-                        buffer.push(data[(ker, c, h, w)].clone());
-                    }
-                }
-            }
+        // If order is correct no need to permute
+        if order == self.order {
+            return self.to_buffer();
         }
-        buffer
+        let mut data = self.clone();
+        data.transmute(order);
+        data.to_buffer()
     }
 
     /// Prints tensor in current order
