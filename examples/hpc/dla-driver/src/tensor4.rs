@@ -255,7 +255,9 @@ impl<T: Clone> Tensor4<T> {
         for x in Array::from_iter(self.data.iter().cloned()) {
             buffer.push(x)
         }
-        buffer
+        let mut data = self.clone();
+        data.transmute(order);
+        data.to_buffer()
     }
 
     /// Converts the 4D array to a linear buffer according to the specified order
