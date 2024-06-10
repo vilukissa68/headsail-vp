@@ -74,8 +74,6 @@ pub fn conv2d(
     dla.input_data_ready(true);
 
     while !dla.handle_handshake() {}
-    let len = output_size.0 * output_size.1 * kernels.kernels;
-    sprintln!("Output len: {}", len);
     let output_buffer = dla.read_output_i32(output_size.0 * output_size.1 * kernels.kernels);
 
     for x in &output_buffer {
@@ -87,9 +85,8 @@ pub fn conv2d(
         output_size.1,
         output_size.0,
         output_buffer,
-        Order3::HWC,
+        Order3::WHC, // NOTE: (20240610 vaino-waltteri.granat@tuni.fi) This might not be true on ASIC
     )
     .unwrap();
-    sprint!("here");
     output
 }

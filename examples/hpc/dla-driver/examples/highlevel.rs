@@ -36,9 +36,6 @@ fn main() -> ! {
     let mut wgt_tensor: Tensor4<i8> =
         Tensor4::from_data_buffer(2, 3, 3, 3, wgt, Order4::KCHW).unwrap();
 
-    //din_tensor.set_order(Order3::HWC);
-    //wgt_tensor.set_order(Order4::HWCK);
-
     let padding = Padding {
         top: 0,
         left: 0,
@@ -47,7 +44,8 @@ fn main() -> ! {
         padding_value: 0,
     };
     let stride = Stride { x: 1, y: 1 };
-    let output = dla_driver::layers::conv2d(din_tensor, wgt_tensor, padding, stride);
+    let mut output = dla_driver::layers::conv2d(din_tensor, wgt_tensor, padding, stride);
+    output.transmute(Order3::CHW);
     sprint!("here");
     output.print_tensor();
     sprint!("here end");
