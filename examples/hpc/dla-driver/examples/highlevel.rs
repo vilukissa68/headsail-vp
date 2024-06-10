@@ -45,10 +45,8 @@ fn main() -> ! {
     };
     let stride = Stride { x: 1, y: 1 };
     let mut output = dla_driver::layers::conv2d(din_tensor, wgt_tensor, padding, stride);
-    output.transmute(Order3::CHW);
-    sprint!("here");
+    output.transmute(Order3::CWH);
     output.print_tensor();
-    sprint!("here end");
 
     loop {}
 }
