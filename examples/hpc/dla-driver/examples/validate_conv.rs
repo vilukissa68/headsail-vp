@@ -31,7 +31,7 @@ fn calculate_conv2d_out_param_dim(
 }
 
 fn validate_conv2d_tiny() -> bool {
-    let mut dla = Dla::new();
+    let dla = Dla::new();
 
     let mut din: Vec<i8> = vec![
         0, 0, 0, 2, 0, 0, 1, 2, 1, 2, 0, 0, 1, 2, 0, 1, 0, 0, 0, 2, 0, 0, 1, 0, 1, 2, 0, 1, 0, 1,
@@ -44,7 +44,7 @@ fn validate_conv2d_tiny() -> bool {
         0,
     ];
 
-    let mut dout: Vec<i32> = vec![
+    let dout: Vec<i32> = vec![
         -10, -1, -10, 0, -14, 2, -14, -4, -6, -5, -13, 4, -12, -2, -7, 1, -10, 0,
     ];
 
@@ -100,13 +100,13 @@ fn validate_conv2d_tiny() -> bool {
 }
 
 fn validate_conv2d() -> bool {
-    let mut dla = Dla::new();
+    let dla = Dla::new();
 
     let mut din: Vec<i8> = conv_16x16x16_3x3_din::DATA
         .iter()
         .map(|&x| x as i8)
         .collect();
-    let mut dout: Vec<i32> = conv_16x16x16_3x3_dout::DATA
+    let dout: Vec<i32> = conv_16x16x16_3x3_dout::DATA
         .iter()
         .map(|&x| x as i32)
         .collect();
