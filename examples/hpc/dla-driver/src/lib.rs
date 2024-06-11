@@ -247,12 +247,8 @@ impl Dla {
          */
         for (cidx, chunk) in buf.chunks(8).enumerate() {
             for (i, b) in chunk.iter().rev().enumerate() {
-                unsafe {
-                    ptr::write_volatile(
-                        (MEMORY_BANK_BASE_ADDR + offset + cidx * 8 + i) as *mut _,
-                        *b,
-                    )
-                };
+                let addr = MEMORY_BANK_BASE_ADDR + offset + cidx * 8 + i;
+                unsafe { headsail_bsp::write_u8(addr, (*b) as u8) };
             }
         }
     }
@@ -465,7 +461,7 @@ impl Dla {
             buf_kernel_0,
             kernel_size.height - 1
         );
-        self.write_u32(DLA_BUF_KERNEL_0, buf_kernel_0);
+        self.dla_write_u32(DLA_BUF_KERNEL_0, buf_kernel_0);
         // Set BUF_KERNEL_1
         let mut buf_kernel_1 = 0;
         buf_kernel_1 = set_bits!(
@@ -474,7 +470,7 @@ impl Dla {
             buf_kernel_1,
             kernel_size.kernels - 1
         );
-        self.write_u32(DLA_BUF_KERNEL_1, buf_kernel_1);
+        self.dla_write_u32(DLA_BUF_KERNEL_1, buf_kernel_1);
     }
 
     /// Signals to DLA that all input data has been set
@@ -645,8 +641,8 @@ impl Dla {
 
     /// Reads kernel parameters from DLA
     fn get_kernel_size(&self) -> KernelSize {
-        let reg0 = self.read_u32(DLA_BUF_KERNEL_0);
-        let reg1 = self.read_u32(DLA_BUF_KERNEL_1);
+        let reg0 = self.dla_read_u32(DLA_BUF_KERNEL_0);
+        let reg1 = self.dla_read_u32(DLA_BUF_KERNEL_1);
         let width = get_bits!(reg0, DLA_BUF_KERNEL_0_WIDTH_BITMASK) + 1;
         let height = (get_bits!(reg0, DLA_BUF_KERNEL_0_HEIGHT_BITMASK)
             >> DLA_BUF_KERNEL_0_HEIGHT_OFFSET)
@@ -664,7 +660,7 @@ impl Dla {
 
     /// Reads input parameters from DLA
     fn get_input_size(&self) -> InputSize {
-        let reg = self.read_u32(DLA_BUF_INPUT);
+        let reg = self.dla_read_u32(DLA_BUF_INPUT);
         let width = get_bits!(reg, DLA_BUF_INPUT_WIDTH_BITMASK) + 1;
         let height =
             (get_bits!(reg, DLA_BUF_INPUT_HEIGHT_BITMASK) >> DLA_BUF_INPUT_HEIGHT_OFFSET) + 1;
