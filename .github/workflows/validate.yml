@@ -69,7 +69,7 @@ jobs:
       run: cargo clippy -- -D clippy::style
     - name: Build examples
       working-directory: ./examples/hpc/hello-dla
-      run: cargo build --example dla -Fvp --target riscv64imac-unknown-none-elf
+      run: cargo build --example dla --target riscv64imac-unknown-none-elf
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
