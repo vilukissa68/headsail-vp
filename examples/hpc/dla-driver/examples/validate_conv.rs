@@ -15,6 +15,9 @@ use test_data::{conv_16x16x16_3x3_din, conv_16x16x16_3x3_dout, conv_16x16x16_3x3
 
 use alloc::vec::Vec;
 
+const HEAP_START: usize = 0x1_3000_0000;
+const HEAP_SIZE: usize = 0x1000_0000;
+
 fn calculate_conv2d_out_param_dim(
     input: (u32, u32),
     kernel: (u32, u32),
@@ -165,7 +168,7 @@ fn validate_conv2d() -> bool {
 
 #[entry]
 fn main() -> ! {
-    init_alloc();
+    init_alloc(HEAP_START, HEAP_SIZE);
     sprintln!("Validate conv2d");
     let mut succesful_test = 0;
     if validate_conv2d_tiny() {
