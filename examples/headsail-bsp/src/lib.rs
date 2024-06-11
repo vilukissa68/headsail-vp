@@ -53,7 +53,7 @@ const EXTERNAL_BIT: usize = 0x1_0000_0000;
 pub unsafe fn read_u8(addr: usize) -> u8 {
     #[cfg(feature = "hpc")]
     return core::ptr::read_volatile((addr | EXTERNAL_BIT) as *const _);
-    #[cfg(feature = "sysctrl")]
+    #[cfg(not(feature = "hpc"))]
     core::ptr::read_volatile(addr as *const _)
 }
 
@@ -64,7 +64,7 @@ pub unsafe fn read_u8(addr: usize) -> u8 {
 pub unsafe fn write_u8(addr: usize, val: u8) {
     #[cfg(feature = "hpc")]
     core::ptr::write_volatile((addr | EXTERNAL_BIT) as *mut _, val);
-    #[cfg(feature = "sysctrl")]
+    #[cfg(not(feature = "hpc"))]
     core::ptr::write_volatile(addr as *mut _, val)
 }
 
@@ -72,7 +72,7 @@ pub unsafe fn write_u8(addr: usize, val: u8) {
 pub fn read_u32(addr: usize) -> u32 {
     #[cfg(feature = "hpc")]
     return unsafe { core::ptr::read_volatile((addr | EXTERNAL_BIT) as *const _) };
-    #[cfg(feature = "sysctrl")]
+    #[cfg(not(feature = "hpc"))]
     unsafe {
         core::ptr::read_volatile(addr as *const _)
     }
@@ -84,7 +84,7 @@ pub fn write_u32(addr: usize, val: u32) {
     unsafe {
         core::ptr::write_volatile((addr | EXTERNAL_BIT) as *mut _, val)
     };
-    #[cfg(feature = "sysctrl")]
+    #[cfg(not(feature = "hpc"))]
     unsafe {
         core::ptr::write_volatile(addr as *mut _, val)
     }
