@@ -1377,7 +1377,6 @@ else:
     elif request.isRead:
         read(request, dla)
     elif request.isWrite:
-        print("isWrite")
         write(request, dla)
     else:
         self.NoisyLog("Bad request: %s at 0x%x, value 0x%x" % (str(request.type), request.offset, request.value))

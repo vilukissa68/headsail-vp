@@ -589,7 +589,7 @@ impl Dla {
 
     /// Get status of calculation from DLA
     pub fn get_status(&self) -> u32 {
-        return self.dla_read_u32(DLA_STATUS_ADDR);
+        self.dla_read_u32(DLA_STATUS_ADDR)
     }
 
     /// Sets simd mode for conv2d
@@ -713,7 +713,7 @@ impl Dla {
     /// Checks if calculations are ready in DLA
     pub fn is_ready(&self) -> bool {
         let status = self.dla_read_u32(DLA_STATUS_ADDR);
-        return !get_bits!(status, DLA_BUF_DONE_BITMASK) != 0;
+        !get_bits!(status, DLA_BUF_DONE_BITMASK) != 0
     }
 
     /// Sets external memory address containing bias data for post-processing
@@ -800,7 +800,7 @@ impl Dla {
         );
 
         self.dla_write_u32(DLA_HANDSHAKE, handshake_reg);
-        return true;
+        true
     }
 
     /// Prepares DLA for receiveing configuration for next layer
