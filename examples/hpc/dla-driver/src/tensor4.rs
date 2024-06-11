@@ -225,17 +225,32 @@ impl<T: Clone + uDisplay> Tensor4<T> {
 
     /// Sets a new order for the array
     pub fn transmute(&mut self, order: Order4) {
-        let new_order: [usize; 4] = order.into();
+        // Early return if already in order
+        if self.order == order {
+            return;
+        }
+
+        if self.order == Order4::KCHW {
+            // Transmute to target order
+            let new_order: [usize; 4] = order.into();
+            self.data = self.data.clone().permuted_axes(new_order);
+            self.order = order;
+            return;
+        }
+
+        // Transmute to standard order
         let std_order: [usize; 4] = self.order.into();
         let std = self.data.clone().permuted_axes(std_order);
+
+        // Transmute to target order
+        let new_order: [usize; 4] = order.into();
         self.data = std.permuted_axes(new_order);
         self.order = order;
     }
 
     /// Transforms data to standard format
     fn to_kchw_buffer(&self) -> Vec<T> {
-        let dim_order: [usize; 4] = self.order.into();
-        self.data.clone().permuted_axes(dim_order).into_raw_vec()
+        self.to_buffer_with_order(Order4::KCHW)
     }
 
     /// Converts the 4D array to a linear buffer according to the current order
