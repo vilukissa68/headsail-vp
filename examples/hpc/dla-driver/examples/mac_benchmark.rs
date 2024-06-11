@@ -107,18 +107,14 @@ fn run_random_layer(
     };
 
     dla.init_layer(config);
-    sprintln!("Layer initialized");
 
     // Write input and kernel to buffer
     dla.write_input(&mut input);
-    sprintln!("Input written");
     dla.write_kernel(&mut kernel);
-    sprintln!("Kernel written");
 
     // Mark data ready to start calculations
     dla.kernel_data_ready(true);
     dla.input_data_ready(true);
-    sprintln!("Data ready");
 
     // Print the matrix
     sprintln!("Waiting for calculation");
