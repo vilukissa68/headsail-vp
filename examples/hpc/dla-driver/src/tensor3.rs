@@ -170,6 +170,19 @@ impl<T: Clone + uDisplay> Tensor3<T> {
 
     /// Sets a new order for the array
     pub fn transmute(&mut self, order: Order3) {
+        // Early return if already in order
+        if self.order == order {
+            return;
+        }
+
+        if self.order == Order3::CHW {
+            // Transmute to target order
+            let new_order: [usize; 3] = order.into();
+            self.data = self.data.clone().permuted_axes(new_order);
+            self.order = order;
+            return;
+        }
+
         // Transmute to standard order
         let std_order: [usize; 3] = self.order.into();
         let std = self.data.clone().permuted_axes(std_order);
@@ -217,9 +230,6 @@ impl<T: Clone + uDisplay> Tensor3<T> {
 
         let dim_order: [usize; 3] = self.order.into();
         let dim_order_values = self.get_dimension_order_values(None);
-        // for x in dim_order_values {
-        //     sprint!("{} ", x)
-        // }
 
         for i in 0..dim_order_values[0] {
             for j in 0..dim_order_values[1] {
