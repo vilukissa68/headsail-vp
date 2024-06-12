@@ -51,9 +51,6 @@ const EXTERNAL_BIT: usize = 0x1_0000_0000;
 /// Unaligned reads may fail to produce expected results on RISC-V.
 #[inline(always)]
 pub unsafe fn read_u8(addr: usize) -> u8 {
-    #[cfg(feature = "hpc")]
-    return core::ptr::read_volatile((addr | EXTERNAL_BIT) as *const _);
-    #[cfg(not(feature = "hpc"))]
     core::ptr::read_volatile(addr as *const _)
 }
 
@@ -62,32 +59,17 @@ pub unsafe fn read_u8(addr: usize) -> u8 {
 /// Unaligned writes may fail to produce expected results on RISC-V.
 #[inline(always)]
 pub unsafe fn write_u8(addr: usize, val: u8) {
-    #[cfg(feature = "hpc")]
-    core::ptr::write_volatile((addr | EXTERNAL_BIT) as *mut _, val);
-    #[cfg(not(feature = "hpc"))]
     core::ptr::write_volatile(addr as *mut _, val)
 }
 
 #[inline(always)]
 pub fn read_u32(addr: usize) -> u32 {
-    #[cfg(feature = "hpc")]
-    return unsafe { core::ptr::read_volatile((addr | EXTERNAL_BIT) as *const _) };
-    #[cfg(not(feature = "hpc"))]
-    unsafe {
-        core::ptr::read_volatile(addr as *const _)
-    }
+    unsafe { core::ptr::read_volatile(addr as *const _) }
 }
 
 #[inline(always)]
 pub fn write_u32(addr: usize, val: u32) {
-    #[cfg(feature = "hpc")]
-    unsafe {
-        core::ptr::write_volatile((addr | EXTERNAL_BIT) as *mut _, val)
-    };
-    #[cfg(not(feature = "hpc"))]
-    unsafe {
-        core::ptr::write_volatile(addr as *mut _, val)
-    }
+    unsafe { core::ptr::write_volatile(addr as *mut _, val) }
 }
 
 #[cfg(feature = "alloc")]
