@@ -1267,7 +1267,6 @@ class DlaMac:
 def write(request, dla):
     self.NoisyLog("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
     print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
-    request.absolute = request.absolute & 0xFFFFFFFF # NOTE: (20240611 vaino-waltteri.granat@tuni.fi) This is used to normalize HPC external bit addressing
     if int(request.absolute) >= DLA_ADDR:
         dla.set_register(request.offset, 0, 32, request.value, preserve_register=False)
     else:
@@ -1275,7 +1274,6 @@ def write(request, dla):
     dla.process()
 
 def read(request, dla):
-    request.absolute = request.absolute & 0xFFFFFFFF # NOTE: (20240611 vaino-waltteri.granat@tuni.fi) This is used to normalize HPC external bit addressing
     if int(request.absolute) >= DLA_ADDR:
         request.value = dla.get_register(request.offset, 0, 32)
     else:

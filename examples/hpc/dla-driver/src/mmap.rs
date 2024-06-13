@@ -1,6 +1,6 @@
 pub(crate) const UART0_ADDR: usize = 0xFFF00000;
-pub const DLA0_ADDR: usize = 0x1FF700000;
-pub const MEMORY_BANK_BASE_ADDR: usize = 0x170000000;
+pub const DLA0_ADDR: usize = 0xFF700000;
+pub const MEMORY_BANK_BASE_ADDR: usize = 0x70000000;
 pub const MEMORY_BANK_SIZE: usize = 0x8000;
 pub const MEMORY_BANK_0_OFFSET: usize = 0x00000;
 pub const MEMORY_BANK_1_OFFSET: usize = 0x08000;

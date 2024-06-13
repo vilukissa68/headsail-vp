@@ -13,9 +13,6 @@ use rand::SeedableRng;
 
 use alloc::vec::Vec;
 
-const HEAP_START: usize = 0x1_3000_0000;
-const HEAP_SIZE: usize = 0x1000_0000;
-
 fn calculate_conv2d_out_param_dim(
     input: (u32, u32),
     kernel: (u32, u32),
@@ -36,7 +33,7 @@ fn generate_random_array(buffer: &mut [i8], size: usize) {
 }
 
 fn generate_random_matrix(height: u32, width: u32, seed: u64) -> Vec<i8> {
-    let mut res: Vec<i8> = Vec::with_capacity((height * width) as usize);
+    let mut res: Vec<i8> = Vec::new();
     let mut rng = SmallRng::seed_from_u64(seed);
     for _ in 0..(height * width) {
         res.push((rng.next_u64() & 0xFF) as i8);
@@ -125,7 +122,7 @@ fn run_random_layer(
 
 #[entry]
 fn main() -> ! {
-    init_alloc(HEAP_START, HEAP_SIZE);
+    init_alloc();
 
     let mut dla = Dla::new();
     sprintln!("Starting benchmark..");

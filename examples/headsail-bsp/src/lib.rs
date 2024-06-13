@@ -70,6 +70,6 @@ pub fn write_u32(addr: usize, val: u32) {
 }
 
 #[cfg(feature = "alloc")]
-pub fn init_alloc(heap_start: usize, heap_size: usize) {
-    unsafe { alloc::init_heap(heap_start, heap_size) };
+pub fn init_alloc() {
+    unsafe { alloc::init_heap() };
 }
