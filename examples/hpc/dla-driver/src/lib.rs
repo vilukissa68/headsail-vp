@@ -441,7 +441,7 @@ impl Dla {
             reg,
             input_size.height - 1
         );
-        self.dla_write_u32(DLA_BUF_INPUT, reg);
+        self.write_u32(DLA_BUF_INPUT, reg);
     }
 
     /// Sets dimensions for filters in convolution
