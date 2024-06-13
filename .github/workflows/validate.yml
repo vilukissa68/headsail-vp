@@ -107,8 +107,6 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    - name: Print toolchain
-      run: cargo -V
     - name: Install requirements
       run: rustup target add riscv64imac-unknown-none-elf
     - name: Build validation
