@@ -90,9 +90,6 @@ mem_dsp_1: Memory.MappedMemory @ {
     }
     size: 0x10000
 
-/*
- * NOTE: Boot ram is included in SDRAM hpc
- */
 hpc_bootram: Memory.MappedMemory @ {
     sysbus new Bus.BusPointRegistration {address: 0x10000; cpu: cpu_sysctrl};
     sysbus new Bus.BusPointRegistration {address: 0x10000; cpu: cpu_hpc0};
