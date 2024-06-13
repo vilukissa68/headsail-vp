@@ -1,3 +1,6 @@
+#[cfg(feature = "hpc")]
+pub(crate) const UART0_ADDR: usize = 0x1FFF00000;
+#[cfg(not(feature = "hpc"))]
 pub(crate) const UART0_ADDR: usize = 0x1FFF00000;
 pub(crate) const TIMER0_ADDR: usize = 0x5_0000;
 pub(crate) const TIMER1_ADDR: usize = 0x5_0010;
