@@ -1,6 +1,6 @@
 [target.riscv64imac-unknown-none-elf]
 runner = "../../../scripts/run_on_hpc.sh"
-rustflags = ["-C", "link-arg=-Tsdram_hpc.x", "-C", "link-arg=-Tlink.x"]
+rustflags = ["-C", "link-arg=-Tsdram_hpc.x", "-C", "link-arg=-Tlink.x", "-C", "code-model=medium"]
 
 [build]
 target = "riscv64imac-unknown-none-elf"

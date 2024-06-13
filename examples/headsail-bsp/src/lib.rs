@@ -43,9 +43,6 @@ mod sysctrl;
 #[cfg(feature = "panic-uart")]
 mod ufmt_panic;
 
-#[cfg(feature = "hpc")]
-const EXTERNAL_BIT: usize = 0x1_0000_0000;
-
 /// # Safety
 ///
 /// Unaligned reads may fail to produce expected results on RISC-V.
