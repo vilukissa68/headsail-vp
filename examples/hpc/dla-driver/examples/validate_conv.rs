@@ -15,9 +15,6 @@ use test_data::{conv_16x16x16_3x3_din, conv_16x16x16_3x3_dout, conv_16x16x16_3x3
 
 use alloc::vec::Vec;
 
-const HEAP_START: usize = 0x1_3000_0000;
-const HEAP_SIZE: usize = 0x1000_0000;
-
 fn calculate_conv2d_out_param_dim(
     input: (u32, u32),
     kernel: (u32, u32),
@@ -31,7 +28,7 @@ fn calculate_conv2d_out_param_dim(
 }
 
 fn validate_conv2d_tiny() -> bool {
-    let dla = Dla::new();
+    let mut dla = Dla::new();
 
     let mut din: Vec<i8> = vec![
         0, 0, 0, 2, 0, 0, 1, 2, 1, 2, 0, 0, 1, 2, 0, 1, 0, 0, 0, 2, 0, 0, 1, 0, 1, 2, 0, 1, 0, 1,
@@ -44,7 +41,7 @@ fn validate_conv2d_tiny() -> bool {
         0,
     ];
 
-    let dout: Vec<i32> = vec![
+    let mut dout: Vec<i32> = vec![
         -10, -1, -10, 0, -14, 2, -14, -4, -6, -5, -13, 4, -12, -2, -7, 1, -10, 0,
     ];
 
@@ -100,13 +97,13 @@ fn validate_conv2d_tiny() -> bool {
 }
 
 fn validate_conv2d() -> bool {
-    let dla = Dla::new();
+    let mut dla = Dla::new();
 
     let mut din: Vec<i8> = conv_16x16x16_3x3_din::DATA
         .iter()
         .map(|&x| x as i8)
         .collect();
-    let dout: Vec<i32> = conv_16x16x16_3x3_dout::DATA
+    let mut dout: Vec<i32> = conv_16x16x16_3x3_dout::DATA
         .iter()
         .map(|&x| x as i32)
         .collect();
@@ -168,7 +165,7 @@ fn validate_conv2d() -> bool {
 
 #[entry]
 fn main() -> ! {
-    init_alloc(HEAP_START, HEAP_SIZE);
+    init_alloc();
     sprintln!("Validate conv2d");
     let mut succesful_test = 0;
     if validate_conv2d_tiny() {
