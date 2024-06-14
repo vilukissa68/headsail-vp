@@ -109,7 +109,7 @@ mem_dsp_1: Memory.MappedMemory @ {
     size: 0x10000
 
 hpc_bootram: Memory.MappedMemory @ {
-    sysbus new Bus.BusPointRegistration {address: 0x10000; cpu: cpu_sysctrl};
+    sysbus new Bus.BusPointRegistration {address: 0xFFE10000; cpu: cpu_sysctrl};
     sysbus new Bus.BusPointRegistration {address: 0x10000; cpu: cpu_hpc0};
     sysbus new Bus.BusPointRegistration {address: 0x10000; cpu: cpu_hpc1};
     sysbus new Bus.BusPointRegistration {address: 0x10000; cpu: cpu_hpc2};
