@@ -1,4 +1,10 @@
-use crate::{mmap::UART0_ADDR, mmap::UART_DATA_READY_OFFSET, read_u8, sprint, write_u8};
+#[cfg(feature = "alloc")]
+extern crate alloc;
+
+use crate::{mmap::UART0_ADDR, mmap::UART_DATA_READY_OFFSET, read_u8, write_u8};
+
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
 
 #[inline]
 pub fn uart_write(s: &str) {
@@ -25,9 +31,7 @@ pub fn getc() -> Option<u8> {
 }
 
 #[cfg(feature = "alloc")]
-extern crate alloc;
-use alloc::vec::Vec;
-pub fn uart_read_heap(bytes: usize) -> Vec<u8> {
+pub fn uart_read_to_heap(bytes: usize) -> Vec<u8> {
     let mut result = Vec::with_capacity(bytes);
     while result.len() < bytes {
         match getc() {
