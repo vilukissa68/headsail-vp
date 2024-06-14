@@ -139,18 +139,17 @@ ram_3: Memory.MappedMemory @ {
     }
     size: 0x8000
 
-/*
- * NOTE: These memory are included in SDRAM_TRUNCATED
- * sysctrl_bank_0: Memory.MappedMemory @ {
- *     sysbus new Bus.BusPointRegistration {address: 0x1c000000; cpu: cpu_sysctrl}
- *     }
- *     size: 0x8000
- *
- * sysctrl_bank_1: Memory.MappedMemory @ {
- *     sysbus new Bus.BusPointRegistration {address: 0x1c008000; cpu: cpu_sysctrl}
- *     }
- *     size: 0x8000
- */
+
+sysctrl_bank_0: Memory.MappedMemory @ {
+    sysbus new Bus.BusPointRegistration {address: 0x1c000000; cpu: cpu_sysctrl}
+    }
+    size: 0x8000
+
+sysctrl_bank_1: Memory.MappedMemory @ {
+    sysbus new Bus.BusPointRegistration {address: 0x1c008000; cpu: cpu_sysctrl}
+    }
+    size: 0x8000
+
 
 apb_uart_0: UART.NS16550 @ {
     sysbus 0xFFF00000;
@@ -173,16 +172,16 @@ sdram_hpc: Memory.MappedMemory @  {
     sysbus new Bus.BusPointRegistration {address: 0x104080000; cpu: cpu_hpc2};
     sysbus new Bus.BusPointRegistration {address: 0x104080000; cpu: cpu_hpc3}
     }
-    size: 0xbf80000
+    size: 0x1bf80000
 
 sdram_truncated: Memory.MappedMemory @  {
-    sysbus new Bus.BusPointRegistration {address: 0x110000000; cpu: cpu_hpc0};
-    sysbus new Bus.BusPointRegistration {address: 0x110000000; cpu: cpu_hpc1};
-    sysbus new Bus.BusPointRegistration {address: 0x110000000; cpu: cpu_hpc2};
-    sysbus new Bus.BusPointRegistration {address: 0x110000000; cpu: cpu_hpc3};
-    sysbus new Bus.BusPointRegistration {address: 0x10000000; cpu: cpu_sysctrl}
+    sysbus new Bus.BusPointRegistration {address: 0x120000000; cpu: cpu_hpc0};
+    sysbus new Bus.BusPointRegistration {address: 0x120000000; cpu: cpu_hpc1};
+    sysbus new Bus.BusPointRegistration {address: 0x120000000; cpu: cpu_hpc2};
+    sysbus new Bus.BusPointRegistration {address: 0x120000000; cpu: cpu_hpc3};
+    sysbus new Bus.BusPointRegistration {address: 0x20000000; cpu: cpu_sysctrl}
     }
-    size: 0x60000000
+    size: 0x50000000
 
 dla: Python.PythonPeripheral @ {
     sysbus new Bus.BusMultiRegistration {address: 0xFF700000; size: 0x0068; region: "cfg"; cpu: cpu_sysctrl};
