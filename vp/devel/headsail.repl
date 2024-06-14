@@ -30,7 +30,13 @@ cpu_sysctrl: CPU.IbexRiscV32 @ sysbus
  * [IP](https://gitlab.tuni.fi/soc-hub/common/hw/cva6/-/tree/master/corev_apu/clint)
  * [Specification](https://github.com/pulp-platform/clint) (unconfirmed)
  */
-clint: IRQControllers.CoreLevelInterruptor @ sysbus 0x100060000
+clint: IRQControllers.CoreLevelInterruptor @ {
+    sysbus new Bus.BusPointRegistration {address:0xFFF60000; cpu: cpu_sysctrl};
+    sysbus new Bus.BusPointRegistration {address:0x60000; cpu: cpu_hpc0};
+    sysbus new Bus.BusPointRegistration {address:0x60000; cpu: cpu_hpc1};
+    sysbus new Bus.BusPointRegistration {address:0x60000; cpu: cpu_hpc2};
+    sysbus new Bus.BusPointRegistration {address:0x60000; cpu: cpu_hpc3}
+    }
     [0, 1] -> cpu_hpc0@[3, 7] // msoft, mtimer
     [2, 3] -> cpu_hpc1@[3, 7] // msoft, mtimer
     [4, 5] -> cpu_hpc2@[3, 7] // msoft, mtimer
@@ -48,7 +54,13 @@ clint: IRQControllers.CoreLevelInterruptor @ sysbus 0x100060000
  * Length on VP: 0x4000_000
  * This takes memory from HPC_SDRAM
  */
-plic: IRQControllers.PlatformLevelInterruptController @ sysbus 0x100080000
+plic: IRQControllers.PlatformLevelInterruptController @ {
+    sysbus new Bus.BusPointRegistration {address:0xFFF80000; cpu: cpu_sysctrl};
+    sysbus new Bus.BusPointRegistration {address:0x80000; cpu: cpu_hpc0};
+    sysbus new Bus.BusPointRegistration {address:0x80000; cpu: cpu_hpc1};
+    sysbus new Bus.BusPointRegistration {address:0x80000; cpu: cpu_hpc2};
+    sysbus new Bus.BusPointRegistration {address:0x80000; cpu: cpu_hpc3}
+    }
     [0, 1] -> cpu_hpc0@[11, 9] // mext, sext
     [2, 3] -> cpu_hpc1@[11, 9] // mext, sext
     [4, 5] -> cpu_hpc2@[11, 9] // mext, sext
@@ -62,7 +74,13 @@ plic: IRQControllers.PlatformLevelInterruptController @ sysbus 0x100080000
  *
  * Interrupts are controlled by PLIC.
  */
-timer: Timers.PULP_Timer @ sysbus <0x100050000, +0x1000>
+timer: Timers.PULP_Timer @ {
+    sysbus new Bus.BusRangeRegistration {address:0xFFF50000; size:0x1000; cpu: cpu_sysctrl};
+    sysbus new Bus.BusRangeRegistration {address:0x50000; size:0x1000; cpu: cpu_hpc0};
+    sysbus new Bus.BusRangeRegistration {address:0x50000; size:0x1000; cpu: cpu_hpc1};
+    sysbus new Bus.BusRangeRegistration {address:0x50000; size:0x1000; cpu: cpu_hpc2};
+    sysbus new Bus.BusRangeRegistration {address:0x50000; size:0x1000; cpu: cpu_hpc3}
+    }
     /* Renode currently hardcodes the number of timers to 2, while Headsail specifies 4
      * See also: https://github.com/renode/renode-infrastructure/blob/579687e750c3da24a362e899d312f4e738209ae7/src/Emulator/Peripherals/Peripherals/Timers/PULP_Timer.cs#L146
     // [ovf, cmp, ovf, cmp, ...]
