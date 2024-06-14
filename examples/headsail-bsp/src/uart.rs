@@ -19,24 +19,19 @@ pub fn putc(c: u8) {
 }
 
 #[inline]
-pub fn getc() -> Option<u8> {
-    let data_ready = unsafe { read_u8(UART0_ADDR + UART_DATA_READY_OFFSET) };
-    if data_ready & 1 == 0 {
-        None
-    } else {
-        let byte = unsafe { read_u8(UART0_ADDR) };
-        Some(byte)
-    }
+pub fn getc() -> u8 {
+    // Wait for data to become ready
+    while unsafe { read_u8(UART0_ADDR + UART_DATA_READY_OFFSET) } & 1 == 0 {}
+
+    // SAFETY: UART0_ADDR is 4-byte aligned
+    unsafe { read_u8(UART0_ADDR) }
 }
 
 #[cfg(feature = "alloc")]
 pub fn uart_read_to_heap(bytes: usize) -> Vec<u8> {
     let mut result = Vec::with_capacity(bytes);
-    while result.len() < bytes {
-        match getc() {
-            Some(c) => result.push(c),
-            None => (),
-        }
+    for _ in 0..bytes {
+        result.push(getc())
     }
     result
 }
