@@ -8,5 +8,7 @@ The VP is structured as follows:
 
 | Path         | Purpose |
 | :-           | :-      |
-| headsail.repl  | Defines all headsail CPUs, memories and peripherals |
+| common.repl  | Devices available in the unified memory map available to all initiators |
+| hpc.repl     | Devices available to HPC as initiator only |
+| sysctrl.repl | Devices available to SysCtrl as initiator only |
 
