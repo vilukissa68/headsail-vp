@@ -43,6 +43,11 @@ path = "examples/uart0.rs"
 required-features = ["rt"]
 
 [[example]]
+name = "uart0-read"
+path = "examples/uart0-read.rs"
+required-features = ["alloc", "rt", "sdram"]
+
+[[example]]
 name = "sprintln"
 path = "examples/sprintln.rs"
 required-features = ["rt"]
