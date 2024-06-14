@@ -1,8 +1,7 @@
-#[cfg(feature = "alloc")]
-extern crate alloc;
-
 use crate::{mmap::UART0_ADDR, mmap::UART_DATA_READY_OFFSET, read_u8, write_u8};
 
+#[cfg(feature = "alloc")]
+extern crate alloc;
 #[cfg(feature = "alloc")]
 use alloc::vec::Vec;
 
