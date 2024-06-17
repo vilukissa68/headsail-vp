@@ -87,7 +87,7 @@ fn validate_conv2d_tiny() -> bool {
     dla.input_data_ready(true);
 
     while !dla.handle_handshake() {}
-    let output = dla.read_output_i32(output_size.0 * output_size.1 * 2);
+    let output: Vec<i32> = dla.read_output_i32(output_size.0 * output_size.1 * 2);
 
     output == dout_i32
 }
