@@ -1,6 +1,13 @@
-pub(crate) const UART0_ADDR: usize = 0xFFF00000;
+#[cfg(feature = "hpc")]
+pub const DLA0_ADDR: usize = 0x1FF700000;
+#[cfg(not(feature = "hpc"))]
 pub const DLA0_ADDR: usize = 0xFF700000;
+
+#[cfg(feature = "hpc")]
+pub const MEMORY_BANK_BASE_ADDR: usize = 0x170000000;
+#[cfg(not(feature = "hpc"))]
 pub const MEMORY_BANK_BASE_ADDR: usize = 0x70000000;
+
 pub const MEMORY_BANK_SIZE: usize = 0x8000;
 pub const MEMORY_BANK_0_OFFSET: usize = 0x00000;
 pub const MEMORY_BANK_1_OFFSET: usize = 0x08000;
@@ -18,8 +25,6 @@ pub const MEMORY_BANK_12_OFFSET: usize = 0x60000;
 pub const MEMORY_BANK_13_OFFSET: usize = 0x68000;
 pub const MEMORY_BANK_14_OFFSET: usize = 0x70000;
 pub const MEMORY_BANK_15_OFFSET: usize = 0x78000;
-
-pub(crate) const DLA_BASE_ADDR: usize = 0x1000;
 
 pub(crate) const DLA_STATUS_ADDR: usize = 0x0;
 pub(crate) const DLA_BUF_DONE_OFFSET: usize = 0x0;
