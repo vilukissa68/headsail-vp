@@ -12,6 +12,7 @@ class UartLibrary:
         with open(path, 'rb') as file:
             data = file.read()
             ser.write(data)
+            print(f"Wrote {len(data)} bytes to UART")
         ser.close()
 
     # Reads mem file (hex formatted bytes as strings) and writes the values to uart
@@ -22,6 +23,5 @@ class UartLibrary:
 
         cleaned_content = ''.join(content.split())
         byte_stream = bytes.fromhex(cleaned_content)
-        print(len(byte_stream), "Bytes written")
         ser.write(byte_stream)
         ser.close()
