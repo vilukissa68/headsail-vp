@@ -1267,7 +1267,7 @@ class DlaMac:
 def write(request, dla):
     self.NoisyLog("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
     print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
-    request.absolute = request.absolute & 0xFFFFFFFF
+    request.absolute = request.absolute & 0xFFFFFFFF # Normalize address to global address space by removing possible HPC external bit
     if int(request.absolute) >= DLA_ADDR:
         dla.set_register(request.offset, 0, 32, request.value, preserve_register=False)
     else:
@@ -1276,14 +1276,14 @@ def write(request, dla):
 
 def read(request, dla):
     original_absolute = request.absolute # Handle non-global address space addressing
-    request.absolute = request.absolute & 0xFFFFFFFF
+    request.absolute = request.absolute & 0xFFFFFFFF # Normalize address to global address space by removing possible HPC external bit
     if int(request.absolute) >= DLA_ADDR:
         request.value = dla.get_register(request.offset, 0, 32)
     else:
         tmp = dla.handle_bank_read(request)
         request.value = tmp
 
-    request.absolute = original_absolute
+    request.absolute = original_absolute # Answer to original address
     self.NoisyLog("Reading request: %s at 0x%x, value 0x%x" % (str(request.type), request.absolute, request.value))
     print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
 
