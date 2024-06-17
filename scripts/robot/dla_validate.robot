@@ -6,6 +6,9 @@ ${BIN}                          ${CURDIR}/../../examples/hpc/target/riscv64imac-
 ${TINY_DIN}                     ${CURDIR}/../../examples/hpc/dla-driver/examples/test_data/tiny_test_din.mem
 ${TINY_WGT}                     ${CURDIR}/../../examples/hpc/dla-driver/examples/test_data/tiny_test_wgt.mem
 ${TINY_DOUT}                    ${CURDIR}/../../examples/hpc/dla-driver/examples/test_data/tiny_test_dout.mem
+${CONV_16x16x16_3x3_DIN}        ${CURDIR}/../../examples/hpc/dla-driver/examples/test_data/conv_16x16x16_3x3_din.mem
+${CONV_16x16x16_3x3_WGT}        ${CURDIR}/../../examples/hpc/dla-driver/examples/test_data/conv_16x16x16_3x3_wgt.mem
+${CONV_16x16x16_3x3_DOUT}        ${CURDIR}/../../examples/hpc/dla-driver/examples/test_data/conv_16x16x16_3x3_dout.mem
 
 *** Settings ***
 Suite Setup     Setup
@@ -34,4 +37,11 @@ Runs DLA validation tests and prints on uart
     Read File And Write Mem To Uart     ${TINY_WGT}
     Wait For Line On Uart       dout
     Read File And Write Mem To Uart     ${TINY_DOUT}
+    Wait For Line On Uart       din
+    Read File And Write Mem To Uart     ${CONV_16x16x16_3x3_DIN}
+    Wait For Line On Uart       wgt
+    Read File And Write Mem To Uart     ${CONV_16x16x16_3x3_WGT}
+    Wait For Line On Uart       dout
+    Read File And Write Mem To Uart     ${CONV_16x16x16_3x3_DOUT}
+
     Wait For Line On Uart       All tests succesful!

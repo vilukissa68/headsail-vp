@@ -95,18 +95,29 @@ fn validate_conv2d_tiny() -> bool {
 fn validate_conv2d() -> bool {
     let mut dla = Dla::new();
 
-    let mut din: Vec<i8> = conv_16x16x16_3x3_din::DATA
-        .iter()
-        .map(|&x| x as i8)
+    sprintln!("din\r\n");
+    let mut din: Vec<i8> = uart_read_to_heap(4096)
+        .into_iter()
+        .map(|x| x as i8)
         .collect();
-    let mut dout: Vec<i32> = conv_16x16x16_3x3_dout::DATA
-        .iter()
-        .map(|&x| x as i32)
+
+    sprintln!("wgt\r\n");
+    let mut wgt: Vec<i8> = uart_read_to_heap(2304)
+        .into_iter()
+        .map(|x| x as i8)
         .collect();
-    let mut wgt: Vec<i8> = conv_16x16x16_3x3_wgt::DATA
-        .iter()
-        .map(|&x| x as i8)
-        .collect();
+
+    sprintln!("dout\r\n");
+    let dout: Vec<u8> = uart_read_to_heap(3136 * 4);
+    let mut dout_i32: Vec<i32> = Vec::with_capacity(3136);
+
+    for chunk in dout.chunks(4) {
+        let mut value: u32 = 0;
+        for (i, &byte) in chunk.iter().rev().enumerate() {
+            value |= (byte as u32) << (8 * i);
+        }
+        dout_i32.push(value as i32);
+    }
 
     // Calculate output size
     let output_size = calculate_conv2d_out_param_dim((16, 16), (3, 3), (0, 0), (1, 1), (1, 1));
@@ -156,11 +167,11 @@ fn validate_conv2d() -> bool {
     while !dla.handle_handshake() {}
     let output = dla.read_output_i32(output_size.0 * output_size.1 * 16);
 
-    for x in &output {
+    for x in &dout_i32 {
         sprint! {"{} ", x}
     }
 
-    output == dout
+    output == dout_i32
 }
 
 #[entry]
@@ -176,16 +187,16 @@ fn main() -> ! {
         report_fail();
         sprintln!(" Tiny test failed");
     }
-    // if validate_conv2d() {
-    //     report_ok();
-    //     sprintln!(" 16x16x16_3x3 conv2d test succesful");
-    //     succesful_test += 1;
-    // } else {
-    //     report_fail();
-    //     sprintln!(" 16x16x16_3x3 conv2d test failed");
-    // }
+    if validate_conv2d() {
+        report_ok();
+        sprintln!(" 16x16x16_3x3 conv2d test succesful");
+        succesful_test += 1;
+    } else {
+        report_fail();
+        sprintln!(" 16x16x16_3x3 conv2d test failed");
+    }
 
-    if succesful_test == 1 {
+    if succesful_test == 2 {
         report_pass();
         sprintln!(" All tests succesful!\r\n");
     } else {
