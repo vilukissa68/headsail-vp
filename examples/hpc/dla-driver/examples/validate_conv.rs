@@ -11,9 +11,6 @@ use headsail_bsp::{
 };
 use panic_halt as _;
 
-mod test_data;
-use test_data::{conv_16x16x16_3x3_din, conv_16x16x16_3x3_dout, conv_16x16x16_3x3_wgt};
-
 use alloc::vec::Vec;
 
 fn calculate_conv2d_out_param_dim(
