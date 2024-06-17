@@ -183,16 +183,16 @@ fn main() -> ! {
         report_fail();
         sprintln!(" Tiny test failed");
     }
-    // if validate_conv2d() {
-    //     report_ok();
-    //     sprintln!(" 16x16x16_3x3 conv2d test succesful");
-    //     succesful_test += 1;
-    // } else {
-    //     report_fail();
-    //     sprintln!(" 16x16x16_3x3 conv2d test failed");
-    // }
+    if validate_conv2d() {
+        report_ok();
+        sprintln!(" 16x16x16_3x3 conv2d test succesful");
+        succesful_test += 1;
+    } else {
+        report_fail();
+        sprintln!(" 16x16x16_3x3 conv2d test failed");
+    }
 
-    if succesful_test == 1 {
+    if succesful_test == 2 {
         report_pass();
         sprintln!(" All tests succesful!\r\n");
     } else {
