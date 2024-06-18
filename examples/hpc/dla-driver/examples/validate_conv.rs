@@ -164,10 +164,6 @@ fn validate_conv2d() -> bool {
     while !dla.handle_handshake() {}
     let output = dla.read_output_i32(output_size.0 * output_size.1 * 16);
 
-    for x in &dout_i32 {
-        sprint! {"{} ", x}
-    }
-
     output == dout_i32
 }
 

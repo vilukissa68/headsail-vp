@@ -30,7 +30,6 @@ Runs DLA validation tests and prints on uart
     Execute Command             sysbus LoadELF $bin false true ${CPU}
     Start Emulation
 
-    Test Lib
     Wait For Line On Uart       din
     Read File And Write Mem To Uart     ${TINY_DIN}
     Wait For Line On Uart       wgt
@@ -43,5 +42,4 @@ Runs DLA validation tests and prints on uart
     Read File And Write Mem To Uart     ${CONV_16x16x16_3x3_WGT}
     Wait For Line On Uart       dout
     Read File And Write Mem To Uart     ${CONV_16x16x16_3x3_DOUT}
-
     Wait For Line On Uart       All tests succesful!
