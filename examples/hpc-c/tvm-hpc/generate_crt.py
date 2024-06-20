@@ -15,6 +15,7 @@ from tvm import relay
 
 def onnx_to_relay(onnx_model_path):
     onnx_model = onnx.load(onnx_model_path)
+    print(dir(onnx_model))
     onnx.checker.check_model(onnx_model)
     mod, params = relay.frontend.from_onnx(onnx_model)
     return mod, params
@@ -53,4 +54,4 @@ if __name__ == "__main__":
     os.chdir(build_dir)
     os.system("xxd -i {graph} > {graphc} ".format(graph=graph_path_rel, graphc=(graph_path_rel + ".c")))
     os.system("xxd -i {params} > {paramsc} ".format(params=params_path_rel, paramsc=(params_path_rel + ".c")))
-    os.system("tar -xvcf {lib}".format(lib=lib_path))
+    os.system("tar -xf {lib}".format(lib=lib_path))
