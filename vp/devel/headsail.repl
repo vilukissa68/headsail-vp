@@ -114,10 +114,10 @@ hpc_bootram: Memory.MappedMemory @ {
     sysbus new Bus.BusPointRegistration {address: 0x10000; cpu: cpu_hpc1};
     sysbus new Bus.BusPointRegistration {address: 0x10000; cpu: cpu_hpc2};
     sysbus new Bus.BusPointRegistration {address: 0x10000; cpu: cpu_hpc3};
-    sysbus new Bus.BusPointRegistration {address: 0x100010000; cpu: cpu_hpc0};
-    sysbus new Bus.BusPointRegistration {address: 0x100010000; cpu: cpu_hpc1};
-    sysbus new Bus.BusPointRegistration {address: 0x100010000; cpu: cpu_hpc2};
-    sysbus new Bus.BusPointRegistration {address: 0x100010000; cpu: cpu_hpc3}
+    sysbus new Bus.BusPointRegistration {address: 0x1FFF10000; cpu: cpu_hpc0};
+    sysbus new Bus.BusPointRegistration {address: 0x1FFF10000; cpu: cpu_hpc1};
+    sysbus new Bus.BusPointRegistration {address: 0x1FFF10000; cpu: cpu_hpc2};
+    sysbus new Bus.BusPointRegistration {address: 0x1FFF10000; cpu: cpu_hpc3}
     }
     size: 0x8000
 
@@ -203,12 +203,12 @@ apb_uart_1: UART.NS16550 @ {
  * This area of memory if only accessible to HPC and not for Sysctrl
  */
 sdram_hpc: Memory.MappedMemory @  {
-    sysbus new Bus.BusPointRegistration {address: 0x104080000; cpu: cpu_hpc0};
-    sysbus new Bus.BusPointRegistration {address: 0x104080000; cpu: cpu_hpc1};
-    sysbus new Bus.BusPointRegistration {address: 0x104080000; cpu: cpu_hpc2};
-    sysbus new Bus.BusPointRegistration {address: 0x104080000; cpu: cpu_hpc3}
+    sysbus new Bus.BusPointRegistration {address: 0x100000000; cpu: cpu_hpc0};
+    sysbus new Bus.BusPointRegistration {address: 0x100000000; cpu: cpu_hpc1};
+    sysbus new Bus.BusPointRegistration {address: 0x100000000; cpu: cpu_hpc2};
+    sysbus new Bus.BusPointRegistration {address: 0x100000000; cpu: cpu_hpc3}
     }
-    size: 0x1bf80000
+    size: 0x20000000
 
 sdram_truncated: Memory.MappedMemory @  {
     sysbus new Bus.BusPointRegistration {address: 0x120000000; cpu: cpu_hpc0};
@@ -293,9 +293,9 @@ sysbus:
         Tag <0xFA180000 0x2008> "frtc_1"
         Tag <0xFC190000 0x2008> "frtc_2"
         Tag <0xFC180000 0x2008> "frtc_3"
-        Tag <0x100000000 0x1000> "hpc debug" // [^1]
-        Tag <0x100052000 0x1000> "hpc l2 cache config" // [^1]
-        Tag <0x100054000 0x1000> "hpc cluster config" // [^1]
+        Tag <0x1FFF00000 0x1000> "hpc debug" // [^1]
+        Tag <0x1FFF52000 0x1000> "hpc l2 cache config" // [^1]
+        Tag <0x1FFF54000 0x1000> "hpc cluster config" // [^1]
         Tag <0x1FF800000 0x0354> "dsp_0"
         Tag <0x1FF820000 0x10000> "dsp_1"
         Tag <0x1FB000200 0x200> "rgmii_adapter_registers_0"
