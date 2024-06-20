@@ -62,4 +62,4 @@ target_include_directories(${CMAKE_PROJECT_NAME}
 target_link_libraries(${CMAKE_PROJECT_NAME})
 
 # Build codegen library
-execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/build_module.py -m ${ONNX_MODEL} -o ./model_c)
+execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/generate_crt.py -m ${ONNX_MODEL} -o ./model_c)
