@@ -105,6 +105,7 @@ jobs:
   build-dla-validation:
     runs-on: ubuntu-latest
     container:
+      image: ubuntu-22.04
       options: --user root
 
     env:
