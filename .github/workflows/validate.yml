@@ -116,9 +116,9 @@ jobs:
       run: mkdir $RISCV
     - name: Create RISC-V GCC build directory
       shell: bash
-      run: mkdir /riscv-gnu-toolchain
+      run: mkdir /tmp/riscv-gnu-toolchain
     - name: Download GCC
-      working-directory: /riscv-gnu-toolchain/
+      working-directory: /tmp/riscv-gnu-toolchain/
       run: |
         sudo wget -q https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/$GCC_VER/$RISCV_XLEN-elf-ubuntu-$UBUNTU_VER-llvm-nightly-$GCC_VER-nightly.tar.gz
         mkdir ${RISCV} && \
