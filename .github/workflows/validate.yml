@@ -128,11 +128,11 @@ jobs:
     - name: Install rustup target
       run: rustup target add riscv64imac-unknown-none-elf
     - name: Create RISC-V GCC directory
-      shell: bash-wrapper {0}
+      shell: bash
       run: mkdir $RISCV
     - name: Download GCC
       working-directory: /root/riscv-gnu-toolchain/
-      shell: bash-wrapper {0}
+      shell: bash
       run: |
         sudo wget -q https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/$GCC_VER/$RISCV_XLEN-elf-ubuntu-$UBUNTU_VER-llvm-nightly-$GCC_VER-nightly.tar.gz
         mkdir ${RISCV} && \
