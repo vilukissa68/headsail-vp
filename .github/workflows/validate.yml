@@ -123,6 +123,7 @@ jobs:
           tar -xf $RISCV_XLEN-elf-$UBUNTU_VER-gcc-nightly-$GCC_VER-nightly.tar.gz --strip-components 1 -C $RISCV
         export PATH="${RISCV}/bin:${PATH}"
         $RISCV_XLEN-unknown-elf-gcc --version
+        $RISCV_XLEN-unknown-elf-ld --version
     - name: Install rustup target
       run: rustup target add riscv64imac-unknown-none-elf
     - name: Build validation
