@@ -104,6 +104,8 @@ jobs:
 
   build-dla-validation:
     runs-on: ubuntu-latest
+    container:
+      options: --user root
 
     env:
       RISCV: /opt/riscv/
