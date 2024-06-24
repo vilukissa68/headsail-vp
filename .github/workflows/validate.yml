@@ -129,7 +129,7 @@ jobs:
       run: rustup target add riscv64imac-unknown-none-elf
     - name: Build validation
       working-directory: ./examples/hpc/dla-driver
-      run: cargo build --example validate -Fvp --target riscv64imac-unknown-none-elf
+      run: cargo build --example validate -Fvp --target riscv64imac-unknown-none-elf --release
     - name: Upload artifact
       uses: actions/upload-artifact@v4
       with:
