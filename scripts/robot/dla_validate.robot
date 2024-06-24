@@ -8,14 +8,14 @@ ${TINY_WGT}                     ${CURDIR}/../../examples/hpc/dla-driver/examples
 ${TINY_DOUT}                    ${CURDIR}/../../examples/hpc/dla-driver/examples/test_data/tiny_test_dout.mem
 ${CONV_16x16x16_3x3_DIN}        ${CURDIR}/../../examples/hpc/dla-driver/examples/test_data/conv_16x16x16_3x3_din.mem
 ${CONV_16x16x16_3x3_WGT}        ${CURDIR}/../../examples/hpc/dla-driver/examples/test_data/conv_16x16x16_3x3_wgt.mem
-${CONV_16x16x16_3x3_DOUT}        ${CURDIR}/../../examples/hpc/dla-driver/examples/test_data/conv_16x16x16_3x3_dout.mem
+${CONV_16x16x16_3x3_DOUT}       ${CURDIR}/../../examples/hpc/dla-driver/examples/test_data/conv_16x16x16_3x3_dout.mem
 
 *** Settings ***
 Suite Setup     Setup
 Suite Teardown  Teardown
 Test Teardown   Test Teardown
 Resource        ${RENODEKEYWORDS}
-Library         UartLibrary.py      /tmp/uart0     9600
+Library         ${CURDIR}/UartLibrary.py      /tmp/uart0     9600
 
 *** Keywords ***
 Create Machine

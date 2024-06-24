@@ -152,11 +152,13 @@ jobs:
       uses: actions/download-artifact@v4
       with:
         name: $DLA_VALIDATION_BIN
+    - name: Install python dependencies
+      run: pip install -r ./scripts/robot/requirements.txt
     - name: Create Renode peripheral symlinks
       run: ln -s $(readlink -f "./vp/devel/python_peripherals/DLA.py") "$RENODE_DIR/scripts/pydev/DLA.py"
     - name: Run dla validation
       working-directory: scripts/robot
-      run: renode-test dla_validate.robot --variable BIN:"$(readlink -f $DLA_VALIDATION_BIN)"
+      run: ./scripts/robot/renode-test dla_validate.robot --variable BIN:"$(readlink -f $DLA_VALIDATION_BIN)"
     - name: Upload snapshots
       if: failure()
       uses: actions/upload-artifact@v4
