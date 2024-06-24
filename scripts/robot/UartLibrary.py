@@ -22,5 +22,6 @@ class UartLibrary:
 
         cleaned_content = ''.join(content.split())
         byte_stream = bytes.fromhex(cleaned_content)
+        print(len(byte_stream), "Bytes written")
         ser.write(byte_stream)
         ser.close()
