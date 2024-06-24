@@ -129,7 +129,7 @@ jobs:
       run: rustup target add riscv64imac-unknown-none-elf
     - name: Create RISC-V GCC directory
       run: mkdir $RISCV
-  - name: Create RISC-V GCC build directory
+    - name: Create RISC-V GCC build directory
       shell: bash
       run: mkdir /riscv-gnu-toolchain
     - name: Download GCC
