@@ -127,6 +127,17 @@ jobs:
         $RISCV_XLEN-unknown-elf-ld --version
     - name: Install rustup target
       run: rustup target add riscv64imac-unknown-none-elf
+    - name: Create RISC-V GCC directory
+      run: mkdir $RISCV
+    - name: Download GCC
+      working-directory: /root/riscv-gnu-toolchain/
+      run: |
+        wget -q https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/$GCC_VER/$RISCV_XLEN-elf-ubuntu-$UBUNTU_VER-llvm-nightly-$GCC_VER-nightly.tar.gz
+        mkdir ${RISCV} && \
+          tar -xf $RISCV_XLEN-elf-ubuntu-$UBUNTU_VER-llvm-nightly-$GCC_VER-nightly.tar.gz --strip-components 1 -C $RISCV
+        export PATH="${RISCV}/bin:${PATH}"
+        $RISCV_XLEN-unknown-elf-gcc --version
+    - name: Build minimal C project
     - name: Build validation
       working-directory: ./examples/hpc/dla-driver
       run: cargo build --example validate -Fvp -Fhpc --target riscv64imac-unknown-none-elf
