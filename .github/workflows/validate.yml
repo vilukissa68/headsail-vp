@@ -174,7 +174,8 @@ jobs:
     - name: Create Renode peripheral symlinks
       run: ln -s $(readlink -f "./vp/devel/python_peripherals/DLA.py") "$RENODE_DIR/scripts/pydev/DLA.py"
     - name: Run dla validation
-      run: renode-test ./scripts/robot/dla_validate.robot --variable BIN:"$(readlink -f $DLA_VALIDATION_BIN)"
+      working-directory: scripts/robot
+      run: renode-test dla_validate.robot --variable BIN:"$(readlink -f $DLA_VALIDATION_BIN)"
     - name: Upload snapshots
       if: failure()
       uses: actions/upload-artifact@v4
