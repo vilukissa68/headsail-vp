@@ -124,7 +124,6 @@ jobs:
           tar -xf $RISCV_XLEN-elf-ubuntu-$UBUNTU_VER-llvm-nightly-$GCC_VER-nightly.tar.gz --strip-components 1 -C $RISCV
         export PATH="${RISCV}/bin:${PATH}"
         $RISCV_XLEN-unknown-elf-gcc --version
-    - name: Build minimal C project
     - name: Build validation
       working-directory: ./examples/hpc/dla-driver
       run: cargo build --example validate -Fvp --target riscv64imac-unknown-none-elf
