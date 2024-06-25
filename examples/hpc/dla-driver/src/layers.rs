@@ -86,7 +86,8 @@ pub fn conv2d(
         output_size.1,
         output_size.0,
         output_buffer,
-        Order3::WHC, // NOTE: (20240610 vaino-waltteri.granat@tuni.fi) This might not be true on ASIC
+        //Order3::WHC, // NOTE: (20240610 vaino-waltteri.granat@tuni.fi) This might not be true on ASIC
+        Order3::HWC, // NOTE: (20240610 vaino-waltteri.granat@tuni.fi) This might not be true on ASIC
     )
     .unwrap();
     output
