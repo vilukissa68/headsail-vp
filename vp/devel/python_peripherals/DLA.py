@@ -859,7 +859,7 @@ class Dla:
 
         column_wise = reshape(column_wise, (filter_amount, input_channels, height, width))
 
-        print_matrix(column_wise[0][0], "flat kernel:", pformat="decimal")
+        print_matrix(column_wise[0][0], "flat kernel:", pformat="hexadecimal")
         return filter_amount, s_channels, width, height, column_wise
 
     def get_input_data(self):
@@ -1221,8 +1221,8 @@ class DlaMac:
                                     mat_sub[mat_x][mat_y] = channel_data[range_x[mat_x]][range_y[mat_y]]
 
                             # print("w:", w, "h:", h, "mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
-                            print_matrix(mat_sub, "sub_matrix", "decimal")
-                            print_matrix(kernel[channel_idx], "kernel", "decimal")
+                            # print_matrix(mat_sub, "sub_matrix", "hexadecimal")
+                            # print_matrix(kernel[channel_idx], "kernel", "hexadecimal")
                             channel_res = self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
                             channel_sum += channel_res
 
