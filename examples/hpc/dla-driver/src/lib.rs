@@ -385,8 +385,12 @@ impl Dla {
     /// Writes buffer to DLA's input bank(s)
     pub fn write_input(&self, input: &mut [i8]) {
         // TODO optimize memory bank logic
+        sprintln!("Raw input:");
         let offset = self.get_input_bank().offset();
-        self.write_data_bank(offset, input)
+        self.write_data_bank(offset, input);
+        for x in input {
+            sprint!("{} ", x)
+        }
     }
 
     /// Writes buffer to DLA's kernel bank(s)
