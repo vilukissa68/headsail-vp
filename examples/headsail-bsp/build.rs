@@ -9,7 +9,7 @@ fn main() {
     fs::copy("mem_hpc.x", out.join("mem_hpc.x")).unwrap();
     if cfg!(feature = "hpc") {
         if cfg!(feature = "sdram") {
-            println!("cargo:rustc-env=RUSTFLAGS=-C link-arg=-Tsdram_hpc.x -C link-arg=-Tlink.x");
+            println!("cargo:rustc-env=RUSTFLAGS=-C link-arg=-Tsdram_hpc.x -C link-arg=-Tlink.x -C linker=riscv64-unknown-elf-ld");
         } else {
             println!("cargo:rustc-env=RUSTFLAGS=-C link-arg=-Tmem_hpc.x -C link-arg=-Tlink.x");
         }
