@@ -1255,11 +1255,11 @@ class DlaMac:
         """Add elements between matrices A and B
 
         Params:
-        A -- Matrix A in form of [[Int]]
-        B -- Matrix B in form of [[Int]]
+        A -- N-dimensional tensor of any numerical type
+        B -- N-dimensional tensor of any numerical type
 
         Returns:
-        C -- Matrix C in form of [[Int]]
+        C -- Tensor with same dimensionality as inputs
         """
 
         # Trivial case
@@ -1278,17 +1278,21 @@ class DlaMac:
         """Multiply elements between matrices A and B
 
         Params:
-        A -- Matrix A in form of [[Int]]
-        B -- Matrix B in form of [[Int]]
+        A -- N-dimensional tensor of any numerical type
+        B -- N-dimensional tensor of any numerical type
 
         Returns:
-        C -- Matrix C in form of [[Int]]
+        C -- Tensor with same dimensionality as inputs
         """
-        assert len(A) == len(B) and len(A[0]) == len(B[0])
-        C = [[0 for _ in range(len(A[0])) ] for _ in range(len(A)) ] # np.zeros(w_out, h_out)
-        for x in range(len(A)):
-            for y in range(len(A[0])):
-                C[x][y] = A[x][y] * B[x][y]
+        # Trivial case
+        if not isinstance(A, list) and not isinstance(B, list):
+            return A * B
+
+        assert len(A) == len(B)
+        C = []
+        for a, b in zip(A, B):
+            C.append(self.matmul_element_wise(a, b))
+
         return C
 
     def mat_sum(self, A):
