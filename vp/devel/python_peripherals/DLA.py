@@ -916,14 +916,31 @@ class Dla:
         print_matrix(column_wise[0], "flat input:", pformat="hexadecimal")
         return channels, width, height, column_wise
 
-    # TODO: Finish this when external memory is figured out
-    def get_bias(self):
-       """Get bias values from external memory"""
-       # TODO: Implement this
-       return 1
-       bias_address = self.get_register(PP_AXI_READ, PP_AXI_READ_ADDRESS_OFFSET, 32)
-       #data = self.external[bias_address]
-       return 0
+    def get_bias(self, values_to_read):
+        """Get bias values from external memory"""
+        bias_addr = self.get_register(PP_AXI_READ, PP_AXI_READ_ADDRESS_OFFSET, 32)
+        # NOTE:(20240626 vaino-waltteri.granat@tuni.fi) In VP bias needs to be written into the memory banks
+        print("Values_to_read:", values_to_read)
+        if MEMORY_BANK_ADDR <= bias_addr and bias_addr < (MEMORY_BANK_ADDR + (NO_MEMORY_BANKS * MEMORY_BANK_SIZE)):
+            bias = []
+            bank_idx = (bias_addr - MEMORY_BANK_ADDR) // MEMORY_BANK_SIZE
+            print("Bank:", bank_idx)
+            bank = self.banks[bank_idx]
+            offset = 0
+
+            while len(bias) < values_to_read:
+                # Bank switching when current bank is filled
+                if offset > bank.size:
+                    bank_idx = bank_idx + 1
+                    assert(bank_idx < len(self.banks))
+                    bank = self.banks[bank_idx]
+                    offset = 0
+                bias.append(bank.read(offset))
+                offset += 1
+            print(bias)
+            return bias
+        else:
+            print("WARNING: trying to read bias outside of VP memory region as address: {:x}".format(bias_addr))
 
     def get_conv_params(self):
        """Get parameters for conv2d
@@ -1039,8 +1056,10 @@ class Dla:
         if self.get_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1):
             # TODO: Bias
             if self.get_register(HANDSHAKE, HANDSHAKE_BIAS_ENABLE_OFFSET, 1):
-                bias_amount = self.get_bias()
-                res = execute_for_all_elements(self.mac.bias_native, res, bias_amount)
+
+                bias = self.get_bias(get_size(res)) # Bias needs to be applied to each value coming out of the MAC
+                bias = reshape(bias, (get_shape(res))) # Reshapes bias to same shape as current MAC result
+                res = self.mac.matsum_element_wise(res, bias)
                 for (i, r) in enumerate(res):
                     print_matrix(r, "{} BIAS:".format(i))
 
@@ -1224,6 +1243,29 @@ class DlaMac:
         sum -- x + b
         """
         return x + b
+
+    def matsum_element_wise(self, A, B):
+        """Add elements between matrices A and B
+
+        Params:
+        A -- Matrix A in form of [[Int]]
+        B -- Matrix B in form of [[Int]]
+
+        Returns:
+        C -- Matrix C in form of [[Int]]
+        """
+
+        # Trivial case
+        if not isinstance(A, list) and not isinstance(B, list):
+            return A + B
+
+        assert len(A) == len(B)
+        C = []
+        for a, b in zip(A, B):
+            C.append(self.matsum_element_wise(a, b))
+
+        return C
+
 
     def matmul_element_wise(self, A, B):
         """Multiply elements between matrices A and B
