@@ -70,12 +70,15 @@ fn run_random_layer(
         (1, 1),
     );
 
+    let mut bias = generate_random_matrix(output_height, output_width, seed * 4);
+    dla.write_data_bank(MEMORY_BANK_12_OFFSET, &mut bias);
+
     // Initalize layer
     let config = LayerConfig {
         input_bank: Some(MemoryBank::Bank0),
-        kernel_bank: Some(MemoryBank::Bank8),
-        output_bank: Some(MemoryBank::Bank12),
-        bias_addr: Some(0),
+        kernel_bank: Some(MemoryBank::Bank4),
+        output_bank: Some(MemoryBank::Bank8),
+        bias_addr: Some((MEMORY_BANK_12_OFFSET + MEMORY_BANK_BASE_ADDR) as u32),
         pp_enabled: true,
         relu_enabled: true,
         bias_enabled: true,
