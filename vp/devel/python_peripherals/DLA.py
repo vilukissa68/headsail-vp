@@ -917,7 +917,14 @@ class Dla:
         return channels, width, height, column_wise
 
     def get_bias(self, values_to_read):
-        """Get bias values from external memory"""
+        """Get bias values from memory. Due to VP limitations bias needs to be in DLA memory banks.
+
+        Params:
+        values_to_read -- Int number of values in Bias FIFO
+
+        Returns:
+        bais -- [Int] Bias FIFO read from memory
+        """
         bias_addr = self.get_register(PP_AXI_READ, PP_AXI_READ_ADDRESS_OFFSET, 32)
         # NOTE:(20240626 vaino-waltteri.granat@tuni.fi) In VP bias needs to be written into the memory banks
         print("Values_to_read:", values_to_read)
