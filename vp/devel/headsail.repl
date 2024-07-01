@@ -119,7 +119,7 @@ hpc_bootram: Memory.MappedMemory @ {
     sysbus new Bus.BusPointRegistration {address: 0x1FFF10000; cpu: cpu_hpc2};
     sysbus new Bus.BusPointRegistration {address: 0x1FFF10000; cpu: cpu_hpc3}
     }
-    size: 0x8000
+    size: 0x40000
 
 ram_0: Memory.MappedMemory @ {
     sysbus new Bus.BusPointRegistration {address: 0x90080000; cpu: cpu_sysctrl};

@@ -12,7 +12,7 @@ ENTRY(_enter)
 
 MEMORY
 {
-    ram (airwx) : ORIGIN = 0x10000, LENGTH = 0x40000
+    ram (airwx) : ORIGIN = 0x10000000, LENGTH = 0x60000000
 }
 
 PHDRS
@@ -223,6 +223,8 @@ SECTIONS
     PROVIDE( metal_segment_bss_source_start = LOADADDR(.tbss) );
     PROVIDE( metal_segment_bss_target_start = ADDR(.tbss) );
     PROVIDE( metal_segment_bss_target_end = ADDR(.bss) + SIZEOF(.bss) );
+
+
 
     .stack (NOLOAD) : ALIGN(16) {
         PROVIDE(metal_segment_stack_begin = .);
