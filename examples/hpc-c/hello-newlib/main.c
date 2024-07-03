@@ -4,12 +4,7 @@
 //extern int _write();
 int main()
 {
-    printf("Hello world\n");
-    printf("VBVA");
-    int x = 39;
-    for(int i = 0; i < x ;++i){
-        printf("A");
-    }
+    printf("Hello from newlib!\n");
     for(;;)
     return 0;
 }

@@ -12,7 +12,7 @@ set(CMAKE_SYSTEM_PROCESSOR riscv64)
 set(ARCH rv64imac)
 set(ABI lp64)
 
-project(hello-hpc C)
+project(hello-newlib C)
 
 # Add C-runtime 0
 set(CRT0 ${CMAKE_CURRENT_SOURCE_DIR}/../crt0)
