@@ -8,6 +8,11 @@ pub const MEMORY_BANK_BASE_ADDR: usize = 0x170000000;
 #[cfg(not(feature = "hpc"))]
 pub const MEMORY_BANK_BASE_ADDR: usize = 0x70000000;
 
+#[cfg(feature = "hpc")]
+pub const EXTERNAL_BIT: usize = 0x100000000;
+#[cfg(not(feature = "hpc"))]
+pub const EXTERNAL_BIT: usize = 0x0;
+
 pub const MEMORY_BANK_SIZE: usize = 0x8000;
 pub const MEMORY_BANK_0_OFFSET: usize = 0x00000;
 pub const MEMORY_BANK_1_OFFSET: usize = 0x08000;

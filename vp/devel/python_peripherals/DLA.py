@@ -324,6 +324,22 @@ def cast_long_to_signed_byte(value):
         return value
     return value - 256
 
+def cast_long_to_signed_16(value):
+    """Bitwise cast of unsigned char to signed char.
+
+    Params:
+    value -- Int Unsigned value to cast to signed char
+
+    Returns:
+    byte -- Int Signed value in range -128..127
+    """
+    assert(0 <= value <= 65535)
+    value = value & 0xFFFF
+    if value <= 32767:
+        return value
+    return value - 65536
+
+
 
 def separate_channels(data):
     """Reformats data so that each channels is it's own 2D array
@@ -923,7 +939,7 @@ class Dla:
         values_to_read -- Int number of values in Bias FIFO
 
         Returns:
-        bais -- [Int] Bias FIFO read from memory
+        bias -- [Int] Bias FIFO read from memory with 16 bit width
         """
         bias_addr = self.get_register(PP_AXI_READ, PP_AXI_READ_ADDRESS_OFFSET, 32)
         # NOTE:(20240626 vaino-waltteri.granat@tuni.fi) In VP bias needs to be written into the memory banks
@@ -942,12 +958,17 @@ class Dla:
                     assert(bank_idx < len(self.banks))
                     bank = self.banks[bank_idx]
                     offset = 0
-                bias.append(bank.read(offset))
-                offset += 1
+                low_byte = bank.read(offset) & 0xFF
+                high_byte = bank.read(offset + 1) & 0xFF
+                value = (high_byte << 8) + low_byte
+                print("value", value, "low:", low_byte, "high:", high_byte)
+                bias.append(cast_long_to_signed_16(value))
+                offset += 2 # 16 bit width
             print(bias)
             return bias
         else:
             print("WARNING: trying to read bias outside of VP memory region as address: {:x}".format(bias_addr))
+            return []
 
     def get_conv_params(self):
        """Get parameters for conv2d
@@ -1064,9 +1085,21 @@ class Dla:
             # TODO: Bias
             if self.get_register(HANDSHAKE, HANDSHAKE_BIAS_ENABLE_OFFSET, 1):
 
-                bias = self.get_bias(get_size(res)) # Bias needs to be applied to each value coming out of the MAC
-                bias = reshape(bias, (get_shape(res))) # Reshapes bias to same shape as current MAC result
-                res = self.mac.matsum_element_wise(res, bias)
+                bias = self.get_bias(get_shape(res)[0]) # Bias needs to be applied to each layer coming out of the MAC
+                print("BIAS:", bias)
+                #bias = reshape(bias, (get_shape(res))) # Reshapes bias to same shape as current MAC result
+                tmp = []
+                for (i, r) in enumerate(res):
+                    def curry_bias(bias):
+                        def next(element):
+                            return bias + element
+                        return next
+
+                    a = execute_for_all_elements(curry_bias(bias[i]), r)
+                    tmp.append(a)
+
+                res = tmp
+                #res = self.mac.matsum_element_wise(res, bias)
                 for (i, r) in enumerate(res):
                     print_matrix(r, "{} BIAS:".format(i))
 
@@ -1211,9 +1244,9 @@ class DlaMac:
                                 for mat_y in range(len(range_y)):
                                     mat_sub[mat_x][mat_y] = channel_data[range_x[mat_x]][range_y[mat_y]]
 
-                            # print("w:", w, "h:", h, "mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
-                            # print_matrix(mat_sub, "sub_matrix", "hexadecimal")
-                            # print_matrix(kernel[channel_idx], "kernel", "hexadecimal")
+                            #print("w:", w, "h:", h, "mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
+                            #print_matrix(mat_sub, "sub_matrix", "hexadecimal")
+                            #print_matrix(kernel[channel_idx], "kernel", "hexadecimal")
                             channel_res = self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
                             #print("Channel res:", channel_res, "\n")
                             channel_sum += channel_res

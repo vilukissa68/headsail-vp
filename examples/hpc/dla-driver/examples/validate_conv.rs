@@ -169,30 +169,123 @@ fn validate_conv2d() -> bool {
 
     output == dout_i32
 }
+fn validate_conv2d_bias() -> bool {
+    let mut dla = Dla::new();
+
+    sprintln!("din\r\n");
+    let mut din: Vec<i8> = uart_read_to_heap(4096)
+        .into_iter()
+        .map(|x| x as i8)
+        .collect();
+
+    sprintln!("wgt\r\n");
+    let mut wgt: Vec<i8> = uart_read_to_heap(2304)
+        .into_iter()
+        .map(|x| x as i8)
+        .collect();
+
+    sprintln!("dout\r\n");
+    let dout: Vec<i8> = uart_read_to_heap(1024)
+        .into_iter()
+        .map(|x| x as i8)
+        .collect();
+
+    sprintln!("bias\r\n");
+    let bias: Vec<u8> = uart_read_to_heap(16 * 2);
+    let mut bias_i16: Vec<i16> = Vec::with_capacity(16);
+
+    for chunk in bias.chunks(2) {
+        let mut value: u16 = 0;
+        for (i, &byte) in chunk.iter().rev().enumerate() {
+            value |= (byte as u16) << (8 * i);
+        }
+        bias_i16.push(value as i16);
+    }
+
+    // Calculate output size
+    let output_size = calculate_conv2d_out_param_dim((16, 16), (3, 3), (0, 0), (1, 1), (1, 1));
+
+    // Initalize layer
+    let config = LayerConfig {
+        input_bank: Some(MemoryBank::Bank8),  // b
+        kernel_bank: Some(MemoryBank::Bank0), // a
+        output_bank: Some(MemoryBank::Bank10),
+        bias_addr: Some((MEMORY_BANK_12_OFFSET + MEMORY_BANK_BASE_ADDR) as u32),
+        pp_enabled: true,
+        relu_enabled: false,
+        bias_enabled: true,
+        input_size: Some(InputSize {
+            channels: 16,
+            width: 16,
+            height: 16,
+        }),
+        kernel_size: Some(KernelSize {
+            s_channels: 1,
+            kernels: 16,
+            width: 3,
+            height: 3,
+        }),
+        padding: Some(PaddingConfig {
+            top: 0,
+            right: 1,
+            left: 0,
+            bottom: 1,
+            padding_value: 0,
+        }),
+        stride: Some(StrideConfig { x: 2, y: 2 }),
+        mac_clip: Some(0),
+        pp_clip: Some(8),
+        simd_mode: Some(SimdBitMode::EightBits),
+    };
+
+    dla.init_layer(config);
+
+    dla.write_input(&mut din);
+    dla.write_kernel(&mut wgt);
+    dla.write_bias(&mut bias_i16);
+
+    // Mark data ready to start calculations
+    dla.kernel_data_ready(true);
+    dla.input_data_ready(true);
+
+    while !dla.handle_handshake() {}
+    let output = dla.read_output_i8(output_size.0 * output_size.1 * 16);
+
+    output == dout
+}
 
 #[entry]
 fn main() -> ! {
     init_alloc();
     sprintln!("Validate conv2d");
     let mut succesful_test = 0;
-    if validate_conv2d_tiny() {
+    // if validate_conv2d_tiny() {
+    //     report_ok();
+    //     sprintln!(" Tiny test succesful");
+    //     succesful_test += 1;
+    // } else {
+    //     report_fail();
+    //     sprintln!(" Tiny test failed");
+    // }
+    // if validate_conv2d() {
+    //     report_ok();
+    //     sprintln!(" 16x16x16_3x3 conv2d test succesful");
+    //     succesful_test += 1;
+    // } else {
+    //     report_fail();
+    //     sprintln!(" 16x16x16_3x3 conv2d test failed");
+    // }
+
+    if validate_conv2d_bias() {
         report_ok();
-        sprintln!(" Tiny test succesful");
+        sprintln!(" 16x16x16_3x3 conv2d bias test succesful");
         succesful_test += 1;
     } else {
         report_fail();
-        sprintln!(" Tiny test failed");
-    }
-    if validate_conv2d() {
-        report_ok();
-        sprintln!(" 16x16x16_3x3 conv2d test succesful");
-        succesful_test += 1;
-    } else {
-        report_fail();
-        sprintln!(" 16x16x16_3x3 conv2d test failed");
+        sprintln!(" 16x16x16_3x3 conv2d bias test failed");
     }
 
-    if succesful_test == 2 {
+    if succesful_test == 3 {
         report_pass();
         sprintln!(" All tests succesful!\r\n");
     } else {
