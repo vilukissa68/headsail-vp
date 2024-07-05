@@ -262,7 +262,7 @@ fn main() -> ! {
 
     if validate_conv2d_tiny() {
         report_ok();
-        sprintln!(" Tiny test succesful");
+        sprintln!(" 16x16x16_3x3 conv2d bias test succesful");
         succesful_test += 1;
     } else {
         report_fail();

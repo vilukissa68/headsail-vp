@@ -1220,9 +1220,9 @@ class DlaMac:
                                 for mat_y in range(len(range_y)):
                                     mat_sub[mat_x][mat_y] = channel_data[range_x[mat_x]][range_y[mat_y]]
 
-                            # print("w:", w, "h:", h, "mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
-                            # print_matrix(mat_sub, "sub_matrix", "hexadecimal")
-                            # print_matrix(kernel[channel_idx], "kernel", "hexadecimal")
+                            #print("w:", w, "h:", h, "mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
+                            #print_matrix(mat_sub, "sub_matrix", "hexadecimal")
+                            #print_matrix(kernel[channel_idx], "kernel", "hexadecimal")
                             channel_res = self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
                             channel_sum += channel_res
 
