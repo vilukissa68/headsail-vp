@@ -6,13 +6,14 @@
 /*                                     */
 /* Modifications: */
 /* Applied original linker structure for singular memory region.*/
+OUTPUT_FORMAT("elf64-littleriscv")
 OUTPUT_ARCH("riscv")
 
 ENTRY(_enter)
 
 MEMORY
 {
-    ram (airwx) : ORIGIN = 0x10000000, LENGTH = 0x60000000
+    ram (airwx) : ORIGIN = 0x100000000, LENGTH = 0x70000000
 }
 
 PHDRS
@@ -20,7 +21,6 @@ PHDRS
     ram PT_LOAD;
     ram_init PT_LOAD;
     tls PT_TLS;
-    ram PT_LOAD;
     text PT_LOAD;
     lim_init PT_LOAD;
 }
@@ -148,7 +148,7 @@ SECTIONS
 
     .lim : ALIGN(8) {
         *(.lim .lim.*)
-    } >ram AT>ram :lim_init
+    } >ram :lim_init
 
     PROVIDE( metal_segment_lim_source_start = LOADADDR(.lim) );
     PROVIDE( metal_segment_lim_target_start = ADDR(.lim) );
@@ -186,12 +186,12 @@ SECTIONS
         PROVIDE( __global_pointer$ = . + 0x800 );
         *(.sdata .sdata.* .sdata2.*)
         *(.gnu.linkonce.s.*)
-    } >ram AT>ram :ram_init
+    } >ram :ram_init
 
     .tdata : ALIGN(8) {
         PROVIDE( __tls_base = . );
 	*(.tdata .tdata.* .gnu.linkonce.td.*)
-    } >ram AT>ram :tls :ram_init
+    } >ram :tls :ram_init
 
     PROVIDE( __tdata_source = LOADADDR(.tdata) );
     PROVIDE( __tdata_size = SIZEOF(.tdata) );
@@ -204,7 +204,7 @@ SECTIONS
 	*(.tbss .tbss.* .gnu.linkonce.tb.*)
 	*(.tcommon .tcommon.*)
 	PROVIDE( __tls_end = . );
-    } >ram AT>ram :tls :ram
+    } >ram :tls :ram
     PROVIDE( __tbss_size = SIZEOF(.tbss) );
     PROVIDE( __tls_size = __tls_end - __tls_base );
 
@@ -235,12 +235,14 @@ SECTIONS
 
     .heap (NOLOAD) : ALIGN(8) {
         PROVIDE( __end = . );
+        PROVIDE( _heap = . );
         PROVIDE( __heap_start = . );
         PROVIDE( metal_segment_heap_target_start = . );
         /* If __heap_max is defined, grow the heap to use the rest of RAM,
          * otherwise set the heap size to __heap_size */
         . = DEFINED(__heap_max) ? MIN( LENGTH(ram) - ( . - ORIGIN(ram)) , 0x10000000) : __heap_size;
         PROVIDE( metal_segment_heap_target_end = . );
+        PROVIDE( _eheap = . );
         PROVIDE( _heap_end = . );
         PROVIDE( __heap_end = . );
     } >ram :ram
