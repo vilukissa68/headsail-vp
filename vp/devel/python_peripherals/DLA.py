@@ -424,40 +424,60 @@ def execute_for_all_elements(f, tensor, *args):
     else:  # Base case: tensor is not a list, apply f
         return f(tensor, *args)
 
-def clip_signed(value, clip, no_overflow=False):
+def clip_signed(value, clip_amount, bit_width=8, no_overflow=False):
     """Value to possibly clip is clipped to max of bit length set by clip
     params:
     value = value to clip
-    clip =  amount of bits allowed
+    clip =  number of bits to clip
     return:
     tuple (a, b)
     a = value resulting from the clipping
     b = amount of owerflow due to clipping, 0 if no clipping
     """
-    upper_bound = pow(2, clip) // 2 - 1 # 127
+    upper_bound = pow(2, bit_width) // 2 - 1 # 127
     lower_bound = -upper_bound - 1
-    if value > upper_bound:
-        return upper_bound if no_overflow else (upper_bound, value - upper_bound)
-    elif value < lower_bound:
-        return lower_bound if no_overflow else (lower_bound, value + (-lower_bound))
-    return value if no_overflow else (value, 0)
+    clipped_value = value >> clip_amount
+    if clipped_value > upper_bound:
+        return upper_bound
+    elif clipped_value < lower_bound:
+        return lower_bound
+    else:
+        return clipped_value
 
-def clip_unsigned(value, clip, no_overflow=False):
-    """Value to possibly clip is clipped to max of bit length set by clip
-    params:
-    value = value to clip
-    clip =  amount of bits allowed
-    return:
-    tuple (a, b)
-    a = value resulting from the clipping
-    b = amount of owerflow due to clipping, 0 if no clipping
-    """
-    mask = pow(2, clip)-1 # 255
-    if value > mask:
-        return mask if no_overflow else (mask, value - mask)
-    elif value < 0:
-        return 0 if no_overflow else (0, value)
-    return value if no_overflow else (value, 0)
+# def clip_signed(value, clip, no_overflow=False):
+#     """Value to possibly clip is clipped to max of bit length set by clip
+#     params:
+#     value = value to clip
+#     clip =  number of bits to clip
+#     return:
+#     tuple (a, b)
+#     a = value resulting from the clipping
+#     b = amount of owerflow due to clipping, 0 if no clipping
+#     """
+#     upper_bound = pow(2, clip) // 2 - 1 # 127
+#     lower_bound = -upper_bound - 1
+#     if value > upper_bound:
+#         return upper_bound if no_overflow else (upper_bound, value - upper_bound)
+#     elif value < lower_bound:
+#         return lower_bound if no_overflow else (lower_bound, value + (-lower_bound))
+#     return value if no_overflow else (value, 0)
+
+# def clip_unsigned(value, clip, no_overflow=False):
+#     """Value to possibly clip is clipped to max of bit length set by clip
+#     params:
+#     value = value to clip
+#     clip =  number of bits to clip
+#     return:
+#     tuple (a, b)
+#     a = value resulting from the clipping
+#     b = amount of owerflow due to clipping, 0 if no clipping
+#     """
+#     mask = pow(2, clip)-1 # 255
+#     if value > mask:
+#         return mask if no_overflow else (mask, value - mask)
+#     elif value < 0:
+#         return 0 if no_overflow else (0, value)
+#     return value if no_overflow else (value, 0)
 
 def rounding(value):
     """Round given value
@@ -778,7 +798,7 @@ class Dla:
                     values_written += 1
                     offset += 2
                 elif bit_width == 8:
-                    bank.write(offset, data[values_written])
+                    bank.write(offset, data[values_written] & 0xFF)
                     offset += 1
                     values_written += 1
                 elif bit_width == 4:
@@ -797,6 +817,7 @@ class Dla:
                     bank.write(offset, combined)
                     offset += 1
                     values_written += 4
+            print("Wrote {} values to output last address {:8}.".format(values_written, hex(offset)))
 
         else:
             print("WARNING: output written outside VP memory region")
@@ -1001,14 +1022,14 @@ class Dla:
         """Clip pp values if register is set"""
         clip_amount = self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5)
         if clip_amount > 0:
-            return execute_for_all_elements(clip_signed, values, clip_amount, True)
+            return execute_for_all_elements(clip_signed, values, clip_amount, 8, True)
         return values
 
     def mac_clip(self, values):
         """Clip mac values if register is set"""
         clip_amount = self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5)
         if clip_amount > 0:
-            return execute_for_all_elements(clip_signed, values, clip_amount, True)
+            return execute_for_all_elements(clip_signed, values, clip_amount, 16, True)
         return values
 
     def handle_handshake(self):
@@ -1080,9 +1101,7 @@ class Dla:
             for i, r in enumerate(res):
                 print_matrix(r, "{} MAC:".format(i))
 
-        # TODO: Post process
         if self.get_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1):
-            # TODO: Bias
             if self.get_register(HANDSHAKE, HANDSHAKE_BIAS_ENABLE_OFFSET, 1):
 
                 bias = self.get_bias(get_shape(res)[0]) # Bias needs to be applied to each layer coming out of the MAC
@@ -1101,7 +1120,7 @@ class Dla:
                 res = tmp
                 #res = self.mac.matsum_element_wise(res, bias)
                 for (i, r) in enumerate(res):
-                    print_matrix(r, "{} BIAS:".format(i))
+                    print_matrix(r, "{} BIAS:".format(i), "hexadecimal")
 
             # ReLU (active low)
             if self.get_register(HANDSHAKE, HANDSHAKE_ACTIVE_ENABLE_OFFSET, 1):
@@ -1109,17 +1128,21 @@ class Dla:
                 for (i, r) in enumerate(res):
                     print_matrix(r, "{} ReLU:".format(i))
 
-            output_bit_width = self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5) # Pack output according to clipping
-
             # Clipping and rounding
             res = dla.pp_clip(res)
-            res = dla.round(res)
-            print("Shape:", get_shape(res))
+            #res = dla.round(res)
             for (i, r) in enumerate(res):
                 print_matrix(r, "{} PP:".format(i))
 
+            output_bit_width = 32 - self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5) # Pack output according to clipping
+            print("Output_bit_width:", output_bit_width)
+
         # After calculating one layer the device needs new configuration
-        self.write_output(res, output_bit_width)
+        #self.write_output(res, output_bit_width)
+        if output_bit_width == 32:
+            self.write_output(res, 32)
+        else:
+            self.write_output(res, 8)
 
         # Set Done status
         self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 1)

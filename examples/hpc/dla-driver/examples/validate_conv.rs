@@ -203,7 +203,7 @@ fn validate_conv2d_bias() -> bool {
     }
 
     // Calculate output size
-    let output_size = calculate_conv2d_out_param_dim((16, 16), (3, 3), (0, 0), (1, 1), (1, 1));
+    let output_size = calculate_conv2d_out_param_dim((16, 16), (3, 3), (1, 1), (1, 1), (2, 2));
 
     // Initalize layer
     let config = LayerConfig {
@@ -233,8 +233,8 @@ fn validate_conv2d_bias() -> bool {
             padding_value: 0,
         }),
         stride: Some(StrideConfig { x: 2, y: 2 }),
-        mac_clip: Some(0),
-        pp_clip: Some(8),
+        mac_clip: Some(6),
+        pp_clip: Some(4),
         simd_mode: Some(SimdBitMode::EightBits),
     };
 
@@ -251,6 +251,13 @@ fn validate_conv2d_bias() -> bool {
     while !dla.handle_handshake() {}
     let output = dla.read_output_i8(output_size.0 * output_size.1 * 16);
 
+    for (i, x) in output.iter().enumerate() {
+        if output[i] != dout[i] {
+            sprint!("Diff found at {}, expected {}, found {}.", i, dout[i], x);
+            return false;
+        }
+    }
+
     output == dout
 }
 
@@ -259,22 +266,24 @@ fn main() -> ! {
     init_alloc();
     sprintln!("Validate conv2d");
     let mut succesful_test = 0;
-    // if validate_conv2d_tiny() {
-    //     report_ok();
-    //     sprintln!(" Tiny test succesful");
-    //     succesful_test += 1;
-    // } else {
-    //     report_fail();
-    //     sprintln!(" Tiny test failed");
-    // }
-    // if validate_conv2d() {
-    //     report_ok();
-    //     sprintln!(" 16x16x16_3x3 conv2d test succesful");
-    //     succesful_test += 1;
-    // } else {
-    //     report_fail();
-    //     sprintln!(" 16x16x16_3x3 conv2d test failed");
-    // }
+
+    if validate_conv2d_tiny() {
+        report_ok();
+        sprintln!(" Tiny test succesful");
+        succesful_test += 1;
+    } else {
+        report_fail();
+        sprintln!(" Tiny test failed");
+    }
+
+    if validate_conv2d() {
+        report_ok();
+        sprintln!(" 16x16x16_3x3 conv2d test succesful");
+        succesful_test += 1;
+    } else {
+        report_fail();
+        sprintln!(" 16x16x16_3x3 conv2d test failed");
+    }
 
     if validate_conv2d_bias() {
         report_ok();

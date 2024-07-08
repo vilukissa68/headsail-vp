@@ -11,7 +11,7 @@ ${CONV_16x16x16_3x3_DIN}        ${DATA_DIR}/conv_16x16x16_3x3_din.mem
 ${CONV_16x16x16_3x3_WGT}        ${DATA_DIR}/conv_16x16x16_3x3_wgt.mem
 ${CONV_16x16x16_3x3_DOUT}       ${DATA_DIR}/conv_16x16x16_3x3_dout.mem
 ${BIAS}                         ${DATA_DIR}/bias.mem
-${BIAS_DOUT}                    ${DATA_DIR}/bias.mem
+${BIAS_DOUT}                    ${DATA_DIR}/bias_test.out
 
 *** Settings ***
 Suite Setup     Setup
@@ -39,12 +39,14 @@ Runs DLA validation tests and prints on uart
     Read File And Write Mem To Uart     ${TINY_WGT}
     Wait For Line On Uart       dout
     Read File And Write Mem To Uart     ${TINY_DOUT}
+
     Wait For Line On Uart       din
     Read File And Write Mem To Uart     ${CONV_16x16x16_3x3_DIN}
     Wait For Line On Uart       wgt
     Read File And Write Mem To Uart     ${CONV_16x16x16_3x3_WGT}
     Wait For Line On Uart       dout
     Read File And Write Mem To Uart     ${CONV_16x16x16_3x3_DOUT}
+
     Wait For Line On Uart       din
     Read File And Write Mem To Uart     ${CONV_16x16x16_3x3_DIN}
     Wait For Line On Uart       wgt
