@@ -1075,7 +1075,7 @@ class Dla:
 
                 res = tmp
                 for (i, r) in enumerate(res):
-                    print_matrix(r, "{} BIAS:".format(i))
+                    print_matrix(r, "{} BIAS:".format(i), "hexadecimal")
 
             # ReLU (active low)
             if self.get_register(HANDSHAKE, HANDSHAKE_ACTIVE_ENABLE_OFFSET, 1):

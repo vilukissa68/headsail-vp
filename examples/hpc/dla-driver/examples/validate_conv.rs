@@ -251,6 +251,13 @@ fn validate_conv2d_bias() -> bool {
     while !dla.handle_handshake() {}
     let output = dla.read_output_i8(output_size.0 * output_size.1 * 16);
 
+    for (i, x) in output.iter().enumerate() {
+        if output[i] != dout[i] {
+            sprint!("Diff found at {}, expected {}, found {}.", i, dout[i], x);
+            return false;
+        }
+    }
+
     output == dout
 }
 
@@ -262,7 +269,7 @@ fn main() -> ! {
 
     if validate_conv2d_tiny() {
         report_ok();
-        sprintln!(" 16x16x16_3x3 conv2d bias test succesful");
+        sprintln!(" Tiny test succesful");
         succesful_test += 1;
     } else {
         report_fail();
