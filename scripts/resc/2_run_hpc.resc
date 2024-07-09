@@ -6,4 +6,4 @@ macro reset
 """
 
 runMacro $reset;
-start;
+:start;
