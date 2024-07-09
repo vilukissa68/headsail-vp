@@ -424,15 +424,14 @@ def execute_for_all_elements(f, tensor, *args):
     else:  # Base case: tensor is not a list, apply f
         return f(tensor, *args)
 
-def clip_signed(value, clip_amount, bit_width=8, no_overflow=False):
+def clip(value, clip_amount, bit_width=8):
     """Value to possibly clip is clipped to max of bit length set by clip
     params:
     value = value to clip
     clip =  number of bits to clip
+    bit_width = bit width of the given value
     return:
-    tuple (a, b)
-    a = value resulting from the clipping
-    b = amount of owerflow due to clipping, 0 if no clipping
+    clipped_value = value resulting from the clipping
     """
     upper_bound = pow(2, bit_width) // 2 - 1 # 127
     lower_bound = -upper_bound - 1
@@ -443,41 +442,6 @@ def clip_signed(value, clip_amount, bit_width=8, no_overflow=False):
         return lower_bound
     else:
         return clipped_value
-
-# def clip_signed(value, clip, no_overflow=False):
-#     """Value to possibly clip is clipped to max of bit length set by clip
-#     params:
-#     value = value to clip
-#     clip =  number of bits to clip
-#     return:
-#     tuple (a, b)
-#     a = value resulting from the clipping
-#     b = amount of owerflow due to clipping, 0 if no clipping
-#     """
-#     upper_bound = pow(2, clip) // 2 - 1 # 127
-#     lower_bound = -upper_bound - 1
-#     if value > upper_bound:
-#         return upper_bound if no_overflow else (upper_bound, value - upper_bound)
-#     elif value < lower_bound:
-#         return lower_bound if no_overflow else (lower_bound, value + (-lower_bound))
-#     return value if no_overflow else (value, 0)
-
-# def clip_unsigned(value, clip, no_overflow=False):
-#     """Value to possibly clip is clipped to max of bit length set by clip
-#     params:
-#     value = value to clip
-#     clip =  number of bits to clip
-#     return:
-#     tuple (a, b)
-#     a = value resulting from the clipping
-#     b = amount of owerflow due to clipping, 0 if no clipping
-#     """
-#     mask = pow(2, clip)-1 # 255
-#     if value > mask:
-#         return mask if no_overflow else (mask, value - mask)
-#     elif value < 0:
-#         return 0 if no_overflow else (0, value)
-#     return value if no_overflow else (value, 0)
 
 def rounding(value):
     """Round given value
@@ -1022,14 +986,14 @@ class Dla:
         """Clip pp values if register is set"""
         clip_amount = self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5)
         if clip_amount > 0:
-            return execute_for_all_elements(clip_signed, values, clip_amount, 8, True)
+            return execute_for_all_elements(clip, values, clip_amount, 8)
         return values
 
     def mac_clip(self, values):
         """Clip mac values if register is set"""
         clip_amount = self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5)
         if clip_amount > 0:
-            return execute_for_all_elements(clip_signed, values, clip_amount, 16, True)
+            return execute_for_all_elements(clip, values, clip_amount, 16)
         return values
 
     def handle_handshake(self):
