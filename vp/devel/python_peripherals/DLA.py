@@ -1052,7 +1052,6 @@ class Dla:
 
         # Pack output according to clipping
         output_bit_width = self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) if self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) > 0 else 32
-        print("output_width:", output_bit_width)
 
         if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1):
             print("Mac not enabled")
@@ -1070,7 +1069,6 @@ class Dla:
 
                 bias = self.get_bias(get_shape(res)[0]) # Bias needs to be applied to each layer coming out of the MAC
                 print("BIAS:", bias)
-                #bias = reshape(bias, (get_shape(res))) # Reshapes bias to same shape as current MAC result
                 tmp = []
                 for (i, r) in enumerate(res):
                     def curry_bias(bias):
@@ -1082,9 +1080,8 @@ class Dla:
                     tmp.append(a)
 
                 res = tmp
-                #res = self.mac.matsum_element_wise(res, bias)
                 for (i, r) in enumerate(res):
-                    print_matrix(r, "{} BIAS:".format(i), "hexadecimal")
+                    print_matrix(r, "{} BIAS:".format(i))
 
             # ReLU (active low)
             if self.get_register(HANDSHAKE, HANDSHAKE_ACTIVE_ENABLE_OFFSET, 1):
@@ -1099,10 +1096,8 @@ class Dla:
                 print_matrix(r, "{} PP:".format(i))
 
             output_bit_width = 32 - self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5) # Pack output according to clipping
-            print("Output_bit_width:", output_bit_width)
 
         # After calculating one layer the device needs new configuration
-        #self.write_output(res, output_bit_width)
         if output_bit_width == 32:
             self.write_output(res, 32)
         else:
@@ -1231,11 +1226,11 @@ class DlaMac:
                                 for mat_y in range(len(range_y)):
                                     mat_sub[mat_x][mat_y] = channel_data[range_x[mat_x]][range_y[mat_y]]
 
-                            #print("w:", w, "h:", h, "mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
-                            #print_matrix(mat_sub, "sub_matrix", "hexadecimal")
-                            #print_matrix(kernel[channel_idx], "kernel", "hexadecimal")
+                            # print("w:", w, "h:", h, "mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
+                            # print_matrix(mat_sub, "sub_matrix", "hexadecimal")
+                            # print_matrix(kernel[channel_idx], "kernel", "hexadecimal")
                             channel_res = self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
-                            #print("Channel res:", channel_res, "\n")
+                            # print("Channel res:", channel_res, "\n")
                             channel_sum += channel_res
 
 
