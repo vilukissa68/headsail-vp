@@ -6,7 +6,6 @@
 /*                                     */
 /* Modifications: */
 /* Applied original linker structure for singular memory region.*/
-OUTPUT_FORMAT("elf64-littleriscv")
 OUTPUT_ARCH("riscv")
 
 ENTRY(_enter)
@@ -16,47 +15,9 @@ MEMORY
     ram (airwx) : ORIGIN = 0x100000000, LENGTH = 0x70000000
 }
 
-PHDRS
-{
-    ram PT_LOAD;
-    ram_init PT_LOAD;
-    tls PT_TLS;
-    text PT_LOAD;
-    lim_init PT_LOAD;
-}
-
 SECTIONS
 {
-    /* Each hart is allocated its own stack of size __stack_size. This value
-     * can be overriden at build-time by adding the following to CFLAGS:
-     *
-     *     -Xlinker --defsym=__stack_size=0xf00
-     *
-     * where 0xf00 can be replaced with a multiple of 16 of your choice.
-     *
-     * __stack_size is PROVIDE-ed as a symbol so that initialization code
-     * initializes the stack pointers for each hart at the right offset fram
-     * the _sp symbol.
-     */
-    __stack_size = DEFINED(__stack_size) ? __stack_size : 0x400;
-    PROVIDE(__stack_size = __stack_size);
-
-    /* The size of the heap can be overriden at build-time by adding the
-     * following to CFLAGS:
-     *
-     *     -Xlinker --defsym=__heap_size=0xf00
-     *
-     * where 0xf00 can be replaced with the value of your choice.
-     *
-     * Altertatively, the heap can be grown to fill the entire remaining region
-     * of RAM by adding the following to CFLAGS:
-     *
-     *     -Xlinker --defsym=__heap_max=1
-     *
-     * Note that depending on the memory layout, the bitness (32/64bit) of the
-     * target, and the code model in use, this might cause a relocation error.
-     */
-    __heap_size = DEFINED(__heap_size) ? __heap_size : 0x800;
+    _minimum_stack_size = 4M;
 
     /* RAM SECTION
      *
@@ -71,17 +32,17 @@ SECTIONS
         KEEP (*(.text.init.enter))
         KEEP (*(.text.init.*))
         KEEP (*(SORT_NONE(.init)))
-    } >ram :ram
+    } >ram
 
     .fini : {
         KEEP (*(SORT_NONE(.fini)))
-    } >ram :ram
+    } >ram
 
     .preinit_array : ALIGN(8) {
         PROVIDE_HIDDEN (__preinit_array_start = .);
         KEEP (*(.preinit_array))
         PROVIDE_HIDDEN (__preinit_array_end = .);
-    } >ram :ram
+    } >ram
 
     .init_array : ALIGN(8) {
         PROVIDE_HIDDEN (__init_array_start = .);
@@ -92,7 +53,7 @@ SECTIONS
         KEEP (*(SORT_BY_INIT_PRIORITY(.metal.init_array.*)));
         KEEP (*(.metal.init_array));
         PROVIDE_HIDDEN ( metal_constructors_end = .);
-    } >ram :ram
+    } >ram
 
     .fini_array : ALIGN(8) {
         PROVIDE_HIDDEN (__fini_array_start = .);
@@ -102,9 +63,7 @@ SECTIONS
         KEEP (*(SORT_BY_INIT_PRIORITY(.metal.fini_array.*)));
         KEEP (*(.metal.fini_array));
         PROVIDE_HIDDEN ( metal_destructors_end = .);
-    } >ram :ram
-
-
+    } >ram
 
     .ctors : {
         KEEP (*crtbegin.o(.ctors))
@@ -113,7 +72,7 @@ SECTIONS
         KEEP (*(SORT(.ctors.*)))
         KEEP (*(.ctors))
         KEEP (*(.metal.ctors .metal.ctors.*))
-    } >ram :ram
+    } >ram
 
     .dtors : {
         KEEP (*crtbegin.o(.dtors))
@@ -122,7 +81,7 @@ SECTIONS
         KEEP (*(SORT(.dtors.*)))
         KEEP (*(.dtors))
         KEEP (*(.metal.dtors .metal.dtors.*))
-    } >ram : ram
+    } >ram
 
     .rodata : {
         *(.rdata)
@@ -134,7 +93,7 @@ SECTIONS
         *(.srodata.cst4)
         *(.srodata.cst2)
         *(.srodata .srodata.*)
-    } >ram :ram
+    } >ram
 
     /* LIM SECTION
      *
@@ -148,7 +107,7 @@ SECTIONS
 
     .lim : ALIGN(8) {
         *(.lim .lim.*)
-    } >ram :lim_init
+    } >ram
 
     PROVIDE( metal_segment_lim_source_start = LOADADDR(.lim) );
     PROVIDE( metal_segment_lim_target_start = ADDR(.lim) );
@@ -164,7 +123,7 @@ SECTIONS
         *(.text.startup .text.startup.*)
         *(.text .text.*)
         *(.gnu.linkonce.t.*)
-    } >ram :text
+    } >ram
 
     /* RAM SECTION
      *
@@ -186,12 +145,12 @@ SECTIONS
         PROVIDE( __global_pointer$ = . + 0x800 );
         *(.sdata .sdata.* .sdata2.*)
         *(.gnu.linkonce.s.*)
-    } >ram :ram_init
+    } >ram
 
     .tdata : ALIGN(8) {
         PROVIDE( __tls_base = . );
 	*(.tdata .tdata.* .gnu.linkonce.td.*)
-    } >ram :tls :ram_init
+    } >ram
 
     PROVIDE( __tdata_source = LOADADDR(.tdata) );
     PROVIDE( __tdata_size = SIZEOF(.tdata) );
@@ -204,13 +163,13 @@ SECTIONS
 	*(.tbss .tbss.* .gnu.linkonce.tb.*)
 	*(.tcommon .tcommon.*)
 	PROVIDE( __tls_end = . );
-    } >ram :tls :ram
+    } >ram
     PROVIDE( __tbss_size = SIZEOF(.tbss) );
     PROVIDE( __tls_size = __tls_end - __tls_base );
 
     .tbss_space : ALIGN(8) {
 	. = . + __tbss_size;
-    } >ram :ram
+    } >ram
 
     .bss (NOLOAD): ALIGN(8) {
         *(.sbss*)
@@ -218,34 +177,63 @@ SECTIONS
         *(.bss .bss.*)
         *(.gnu.linkonce.b.*)
         *(COMMON)
-    } >ram :ram
+    } >ram
 
     PROVIDE( metal_segment_bss_source_start = LOADADDR(.tbss) );
     PROVIDE( metal_segment_bss_target_start = ADDR(.tbss) );
     PROVIDE( metal_segment_bss_target_end = ADDR(.bss) + SIZEOF(.bss) );
 
+    /**
+     * HEAP AND STACK MANAGEMENT
+     *
+     * The stack is set to the top and it grows downwards. The top of the 
+     * address space is calculated using the base address + max memory 
+     * size. In this case, the memory size has been set to 256MB. The end 
+     * of the stack is calculated so we can guarantee a minimum stack size 
+     * with regards to the heap. In other words, the stack can grow indefi-
+     * nitely towards the heap, but the heap has to leave a minimum amount 
+     * of space available for the stack.
+     *
+     * The heap starts just after the BSS section and grows upwards towards
+     * the stack. The heap should grow until it has reached the stack's mi-
+     * nimum allocated space.
+     *
+     *  ORIGIN + LENGTH ==> +-----------+ <- stack top
+     *                      |           |
+     *                      |           |
+     *                      |unallocated|
+     *                      |   space   | <- stack bottom
+     *                      |           |
+     *                      |           |
+     *                      |           |
+     *                      |           |
+     *                      |           |
+     *                      |           |
+     *                      +-----------+ <- heap start
+     *                      | .bss      |
+     *                      +-----------+
+     *                      | .data     |
+     *                      +-----------+
+     *                      |.text      |
+     *                      |           |
+     *                      |           |
+     *                      |           |
+     *  ORIGIN ===========> +-----------+
+     *
+     */
 
+    /** Symbol that exports the start of the heap. */
+    PROVIDE( _heap_start = . );
 
-    .stack (NOLOAD) : ALIGN(16) {
-        PROVIDE(metal_segment_stack_begin = .);
-        . += __stack_size; /* Hart 0 */
-        PROVIDE( _sp = . );
-        PROVIDE(metal_segment_stack_end = .);
-    } >ram :ram
+    /** 
+     * End of minimum stack space. Stack grows downwards and can exceeed 
+     * this limit, but the heap cannot grow higher than this.
+     */
+    PROVIDE( _stack_bottom = ORIGIN(ram) + LENGTH(ram) - _minimum_stack_size);
+    PROVIDE( _heap_end = _stack_bottom );
 
-    .heap (NOLOAD) : ALIGN(8) {
-        PROVIDE( __end = . );
-        PROVIDE( _heap = . );
-        PROVIDE( __heap_start = . );
-        PROVIDE( metal_segment_heap_target_start = . );
-        /* If __heap_max is defined, grow the heap to use the rest of RAM,
-         * otherwise set the heap size to __heap_size */
-        . = DEFINED(__heap_max) ? MIN( LENGTH(ram) - ( . - ORIGIN(ram)) , 0x10000000) : __heap_size;
-        PROVIDE( metal_segment_heap_target_end = . );
-        PROVIDE( _eheap = . );
-        PROVIDE( _heap_end = . );
-        PROVIDE( __heap_end = . );
-    } >ram :ram
+    /** Top of the stack. */
+    PROVIDE( _stack_top = ORIGIN(ram) + LENGTH(ram));
 
     /* C++ exception handling information is
      * not useful with our current runtime environment,
