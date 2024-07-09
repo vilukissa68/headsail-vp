@@ -28,7 +28,7 @@ if __name__ == "__main__":
     opts = parser.parse_args()
 
     mod, params = onnx_to_relay(opts.model_path)
-    RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : True})
+    RUNTIME = tvm.relay.backend.Runtime("crt")
     TARGET = tvm.micro.testing.get_target("crt")
     with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
 

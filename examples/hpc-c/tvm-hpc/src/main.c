@@ -1,28 +1,27 @@
-//#include <assert.h>
-//#include <float.h>
-//#include <stdio.h>
-//#include <stdlib.h>
+#include <assert.h>
+#include <float.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-#include "boot.h"
-#include "headsail_bsp.h"
+//#include "headsail_bsp.h"
 #include "bundle.h"
 
 #include <tvm/runtime/c_runtime_api.h>
 
-extern const char graph_c_json[];
-extern unsigned int graph_c_json_len;
+/* extern const char graph_c_json[]; */
+/* extern unsigned int graph_c_json_len; */
 
-extern const char params_c_bin[];
-extern unsigned int params_c_bin_len;
+/* extern const char params_c_bin[]; */
+/* extern unsigned int params_c_bin_len; */
 
 int main(void)
 {
 
-    putc('a');
+    printf("Starting tvm");
     // Setup microtvm
-    char *json_data = (char *)(graph_c_json);
-    char *params_data = (char *)(params_c_bin);
-    uint64_t params_size = params_c_bin_len;
+    /* char *json_data = (char *)(graph_c_json); */
+    /* char *params_data = (char *)(params_c_bin); */
+    /* uint64_t params_size = params_c_bin_len; */
 
     // create tvm_runtime
     //void *handle = tvm_runtime_create(json_data, params_data, params_size, NULL);
@@ -87,9 +86,6 @@ int main(void)
 
     //tvm_runtime_destroy(handle);
 
-    putc('a');
-    putc('a');
-    putc('a');
     for(;;) {
 
     }

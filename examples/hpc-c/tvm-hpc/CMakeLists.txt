@@ -2,6 +2,15 @@ cmake_minimum_required(VERSION 3.13)
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR riscv64)
 
+set(XLEN 64)
+set(CMAKE_C_COMPILER $ENV{CC})
+message(CMAKE_C_COMPILER="${CMAKE_C_COMPILER}")
+
+set(CMAKE_SYSTEM_NAME Generic)
+set(CMAKE_SYSTEM_PROCESSOR riscv64)
+set(ARCH rv64imac)
+set(ABI lp64)
+
 project(headsail-tvm C)
 
 # Path to onnx model
@@ -15,7 +24,7 @@ find_package(RiscvGcc REQUIRED) # CMAKE_C_COMPILER, CMAKE_ASM_COMPILER, CMAKE_LI
 find_package(Bsp REQUIRED) # BSP_INCLUDE_DIR, BSP_LIBRARIES
 
 # Set GCC compile options for RISC-V 64-bit architecture with IMAC extensions
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -Os -march=rv64imac -nostartfiles -mabi=lp64 -fno-builtin -T${CRT0}/linker_sdram.lds")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 -march=${ARCH} -mabi=${ABI} -Fuse-ld=riscv-none-elf-ld -nostdlib -T${CRT0}/linker_sdram.lds -mcmodel=medany")
 
 # Add the source files
 set(SOURCE_FILES
@@ -44,10 +53,10 @@ add_executable(${CMAKE_PROJECT_NAME} ${SOURCE_FILES})
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${CRT0})
 
 # Add BSP header
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${BSP_INCLUDE_DIR})
+#target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${BSP_INCLUDE_DIR})
 
 # Link bsp static lib
-target_link_libraries(${CMAKE_PROJECT_NAME} ${BSP_LIBRARIES})
+#target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${BSP_LIBRARIES})
 
 # Include utvm runtime
 target_include_directories(${CMAKE_PROJECT_NAME}
@@ -59,7 +68,13 @@ target_include_directories(${CMAKE_PROJECT_NAME}
     PUBLIC $ENV{TVM_HOME}/build/crt_config
 )
 
-target_link_libraries(${CMAKE_PROJECT_NAME})
-
 # Build codegen library
 execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/generate_crt.py -m ${ONNX_MODEL} -o ./model_c)
+
+# Link newlib
+set(NEWLIB /Users/vainogranat/work/newlib-build/build/riscv64-unknown-elf/lib/${ARCH}/${ABI})
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${NEWLIB}/crt0.o)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${NEWLIB}/libc.a)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${NEWLIB}/libm.a)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${NEWLIB}/libgloss.a)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE -lc -lgloss -lgcc)
