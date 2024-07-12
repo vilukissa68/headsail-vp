@@ -37,6 +37,14 @@ cmake ..
 make
 ```
 
+or on arm64 Mac 
+
+``` sh
+cd build
+cmake -G Ninja -DCMAKE_OSX_ARCHITECTURES=arm64
+ninja
+```
+
 Export TVM environment variables with, these need to be set when building the tvm-hpc project
 ```sh
 export TVM_HOME=<path-to-tvm-root>

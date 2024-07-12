@@ -94,7 +94,7 @@ set(USE_OPENCL OFF)
 set(USE_OPENCL_ENABLE_HOST_PTR OFF)
 
 # Whether enable Metal runtime
-set(USE_METAL ON)
+set(USE_METAL OFF)
 
 # Whether enable Vulkan runtime
 #
@@ -122,7 +122,7 @@ set(USE_OPENGL OFF)
 set(USE_MICRO ON)
 
 # Whether enable RPC runtime
-set(USE_RPC ON)
+set(USE_RPC OFF)
 
 # Whether to build the C++ RPC server binary
 set(USE_CPP_RPC OFF)
@@ -159,7 +159,7 @@ set(USE_MICRO_STANDALONE_RUNTIME ON)
 # - OFF: disable llvm, note this will disable CPU codegen
 #        which is needed for most cases
 # - /path/to/llvm-config: enable specific LLVM when multiple llvm-dev is available.
-set(USE_LLVM /opt/homebrew/opt/llvm@16/bin/llvm-config)
+set(USE_LLVM /opt/homebrew/opt/llvm/bin/llvm-config --link-static)
 
 # Whether use MLIR to help analyze, requires USE_LLVM is enabled
 # Possible values: ON/OFF

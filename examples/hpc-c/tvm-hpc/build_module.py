@@ -18,7 +18,7 @@ def build_model_add(opts):
 
     file_format_str = "{name}_c.{ext}"
     RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : True})
-    TARGET = tvm.target.target.micro("host")
+    TARGET = tvm.target.Target("c -mcpu=generic-rv64")
     with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
         lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params)
 
@@ -27,8 +27,11 @@ def build_model_add(opts):
     if not os.path.isdir(build_dir):
         os.makedirs(build_dir)
 
+    # lib_file_name = os.path.join(build_dir, file_format_str.format(name="model", ext="tar"))
+    # lib.export_library(lib_file_name)
     lib_file_name = os.path.join(build_dir, file_format_str.format(name="model", ext="tar"))
     lib.export_library(lib_file_name)
+
 
     with open(
         os.path.join(build_dir, file_format_str.format(name="graph", ext="json")), "w"
@@ -39,6 +42,7 @@ def build_model_add(opts):
         os.path.join(build_dir, file_format_str.format(name="params", ext="bin")), "wb"
     ) as f_params:
         f_params.write(runtime.save_param_dict(lib.get_params()))
+
     # Convert graph and weights to hexdumps
     graph_path_rel = os.path.relpath("{name}_c.{ext}".format(name="graph", ext="json"))
     params_path_rel = os.path.relpath("{name}_c.{ext}".format(name="params", ext="bin"))
