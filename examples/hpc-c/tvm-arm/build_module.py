@@ -40,8 +40,7 @@ def build_model_add(opts):
 
     file_format_str = "{name}_c.{ext}"
     RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : True})
-    #TARGET = tvm.target.Target("c -mcpu=generic-rv64")
-    TARGET = tvm.target.Target("llvm -mtriple=riscv64-unknown-elf -mcpu=generic-rv64 -mabi=lp64 -mattr=+64bit")
+    TARGET = tvm.target.Target("c")
     with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
         lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params)
 
@@ -90,8 +89,7 @@ def build_model_mobilenet(opts):
 
     file_format_str = "{name}_c.{ext}"
     RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : True})
-    #TARGET = tvm.target.Target("c -mcpu=generic-rv64")
-    TARGET = tvm.target.Target("llvm -mtriple=riscv64-unknown-elf -mcpu=generic-rv64 -mabi=lp64 -mattr=+64bit")
+    TARGET = tvm.target.Target("llvm")
     with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
         lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params)
 

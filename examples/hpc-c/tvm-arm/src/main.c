@@ -3,7 +3,6 @@
 #include <float.h>
 #include <stdlib.h>
 
-//#include "headsail_bsp.h"
 #include "bundle.h"
 #include "mobile_net.h"
 
