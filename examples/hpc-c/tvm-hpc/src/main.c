@@ -5,8 +5,7 @@
 
 //#include "headsail_bsp.h"
 #include "bundle.h"
-//#include "mobile_net.h"
-#include "conv2dbasic.h"
+#include "model.h"
 
 #include <tvm/runtime/c_runtime_api.h>
 
