@@ -16,7 +16,8 @@ project(headsail-tvm C ASM)
 
 # Path to onnx model
 #set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/add.onnx)
-set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/mobilenet.onnx)
+#set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/mobilenet.onnx)
+set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/model.onnx)
 
 # Add C-runtime 0
 set(CRT0 ${CMAKE_CURRENT_SOURCE_DIR}/../crt0)
@@ -26,13 +27,13 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../cmake")
 #find_package(Bsp REQUIRED) # BSP_INCLUDE_DIR, BSP_LIBRARIES
 
 # Set GCC compile options for RISC-V 64-bit architecture with IMAC extensions
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 -march=${ARCH} -mabi=${ABI} -Fuse-ld=riscv-none-elf-ld -nostdlib -T${CRT0}/linker_sdram.lds -mcmodel=medany -fsanitize=address")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 -march=${ARCH} -mabi=${ABI} -Fuse-ld=riscv-none-elf-ld -nostdlib -T${CRT0}/linker_sdram.lds -mcmodel=medany")
 
 # Add the source files
 set(SOURCE_FILES
     src/main.c
     src/bundle_static.c
-    src/mobile_net.c
+    src/conv2dbasic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/lib0.o
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/lib1.o
     #${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/devc.o
@@ -75,4 +76,4 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $ENV{TVM_HOME}/build/cr
 
 # Build codegen library
 #execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/build_module.py -m ${ONNX_MODEL} -o ./model_c)
-#execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/build_module.py -m mobilenet -p ${ONNX_MODEL} -o ./model_c -s ../mobile_net_input.npy -t "float")
+execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/build_module.py -m conv2dbasic -p ${ONNX_MODEL} -o ./model_c -s ../stimulus.npy -t "float")
