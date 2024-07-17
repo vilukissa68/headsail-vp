@@ -33,7 +33,6 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 -march=${ARCH} -mabi=${ABI} -Fuse-ld=
 set(SOURCE_FILES
     src/main.c
     src/bundle_static.c
-    src/conv2dbasic.c
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/lib0.o
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/lib1.o
     #${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/devc.o
@@ -50,6 +49,26 @@ set(SOURCE_FILES
     $ENV{TVM_HOME}/build/standalone_crt/src/runtime/crt/common/ndarray.c
     $ENV{TVM_HOME}/build/standalone_crt/src/runtime/crt/common/crt_backend_api.c
 )
+
+option(USE_MOBILENET "Use mobilenet" OFF)
+option(USE_CONV2DBASIC "Use conv2dbasic" OFF)
+option(USE_ADDER "Use adder" OFF)
+
+if (USE_MOBILENET)
+    list(APPEND SOURCE_FILES src/mobile_net.c)
+    set(MODEL_NAME mobilenet)
+    set(STIMULUS mobile_net_input.npy)
+elseif (USE_CONV2DBASIC)
+    list(APPEND SOURCE_FILES src/conv2dbasic.c)
+    set(MODEL_NAME conv2dbasic)
+    set(STIMULUS stimulus.npy)
+elseif (USE_CONV2DBASIC)
+    list(APPEND SOURCE_FILES src/adder.c)
+    set(MODEL_NAME add)
+    set(STIMULUS mobile_net_input.npy)
+else()
+    message(FATAL_ERROR "No model selected")
+endif()
 
 # Add the executable target
 add_executable(${CMAKE_PROJECT_NAME} ${SOURCE_FILES})
@@ -76,4 +95,4 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $ENV{TVM_HOME}/build/cr
 
 # Build codegen library
 #execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/build_module.py -m ${ONNX_MODEL} -o ./model_c)
-execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/build_module.py -m conv2dbasic -p ${ONNX_MODEL} -o ./model_c -s ../stimulus.npy -t "float")
+execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/build_module.py -m ${MODEL_NAME} -p ${ONNX_MODEL} -o ./model_c -s ../stimulus.npy -t "float")
