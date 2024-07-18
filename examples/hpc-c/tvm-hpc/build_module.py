@@ -7,7 +7,13 @@ import tvm
 from tvm import runtime
 import tvm.micro
 import logging
+import onnx
 
+def normalize(v):
+    norm = np.linalg.norm(v)
+    if norm == 0:
+       return v
+    return v / norm
 
 def write_c_stimulus(data, len_symbol="stimulus_c_len", payload_symbol="stimulus_c", payload_type="unsigned char"):
     c_file = open("model_c/stimulus" + ".c", "w")
@@ -29,7 +35,6 @@ def write_c_stimulus(data, len_symbol="stimulus_c_len", payload_symbol="stimulus
 
 
 def build_model_add(opts):
-    import onnx
     onnx_path = opts.model_path
     onnx_model = onnx.load(onnx_path)
 
@@ -40,7 +45,6 @@ def build_model_add(opts):
 
     file_format_str = "{name}_c.{ext}"
     RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : True})
-    #TARGET = tvm.target.Target("c -mcpu=generic-rv64")
     TARGET = tvm.target.Target("llvm -mtriple=riscv64-unknown-elf -mcpu=generic-rv64 -mabi=lp64 -mattr=+64bit")
     with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
         lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params)
@@ -80,17 +84,15 @@ def build_model_add(opts):
     os.system("xxd -i {params} > {paramsc} ".format(params=params_path_rel, paramsc=(params_path_rel + ".c")))
 
 def build_model_mobilenet(opts):
-    import onnx
     onnx_path = opts.model_path
     onnx_model = onnx.load(onnx_path)
 
     input1_name = "input"
-    shape_dict = {input1_name: (1,3, 224,224)}
+    shape_dict = {input1_name: (1,3,224,224)}
     mod, params = relay.frontend.from_onnx(onnx_model, shape_dict)
 
     file_format_str = "{name}_c.{ext}"
     RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : True})
-    #TARGET = tvm.target.Target("c -mcpu=generic-rv64")
     TARGET = tvm.target.Target("llvm -mtriple=riscv64-unknown-elf -mcpu=generic-rv64 -mabi=lp64 -mattr=+64bit")
     with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
         lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params)
@@ -119,6 +121,7 @@ def build_model_mobilenet(opts):
         if stim_ext == ".npy":
             import numpy as np
             data = np.load(opts.stimulus).flatten()
+            data = normalize(data)
             write_c_stimulus(data, payload_type=opts.input_type)
 
     os.chdir(build_dir)
@@ -131,7 +134,6 @@ def build_model_mobilenet(opts):
 
 
 def build_model_conv2dbasic(opts):
-    import onnx
     onnx_path = opts.model_path
     onnx_model = onnx.load(onnx_path)
 
@@ -141,7 +143,6 @@ def build_model_conv2dbasic(opts):
 
     file_format_str = "{name}_c.{ext}"
     RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : True})
-    #TARGET = tvm.target.Target("c -mcpu=generic-rv64")
     TARGET = tvm.target.Target("llvm -mtriple=riscv64-unknown-elf -mcpu=generic-rv64 -mabi=lp64 -mattr=+64bit")
     with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
         lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params)
