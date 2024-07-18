@@ -14,11 +14,6 @@ set(ABI lp64)
 
 project(headsail-tvm C ASM)
 
-# Path to onnx model
-#set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/add.onnx)
-#set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/mobilenet.onnx)
-set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/model.onnx)
-
 # Add C-runtime 0
 set(CRT0 ${CMAKE_CURRENT_SOURCE_DIR}/../crt0)
 
@@ -57,15 +52,18 @@ option(USE_ADDER "Use adder" OFF)
 if (USE_MOBILENET)
     list(APPEND SOURCE_FILES src/mobile_net.c)
     set(MODEL_NAME mobilenet)
-    set(STIMULUS mobile_net_input.npy)
+    set(STIMULUS ../mobile_net_input.npy)
+    set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/mobilenet.onnx)
 elseif (USE_CONV2DBASIC)
     list(APPEND SOURCE_FILES src/conv2dbasic.c)
     set(MODEL_NAME conv2dbasic)
-    set(STIMULUS stimulus.npy)
-elseif (USE_CONV2DBASIC)
+    set(STIMULUS ../stimulus.npy)
+    set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/model.onnx)
+elseif (USE_ADDER)
     list(APPEND SOURCE_FILES src/adder.c)
     set(MODEL_NAME add)
-    set(STIMULUS mobile_net_input.npy)
+    set(STIMULUS ../mobile_net_input.npy)
+    set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/add.onnx)
 else()
     message(FATAL_ERROR "No model selected")
 endif()
@@ -95,4 +93,4 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $ENV{TVM_HOME}/build/cr
 
 # Build codegen library
 #execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/build_module.py -m ${ONNX_MODEL} -o ./model_c)
-execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/build_module.py -m ${MODEL_NAME} -p ${ONNX_MODEL} -o ./model_c -s ../stimulus.npy -t "float")
+execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/build_module.py -m ${MODEL_NAME} -p ${ONNX_MODEL} -o ./model_c -s ${STIMULUS} -t "float")
