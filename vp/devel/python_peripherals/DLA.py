@@ -497,6 +497,7 @@ class MemoryBank:
         assert(offset < self.size)
         self.mem[offset] = data
 
+
     def read(self, offset):
         """Read byte from memory at given offset"""
         return self.mem[offset]
@@ -721,7 +722,6 @@ class Dla:
                         column_wise.append(data[idx])
 
         data = column_wise
-        print("THIS:", data)
 
         addr = self.get_output_addr()
         print("Writing output to:{:x}".format(addr))
