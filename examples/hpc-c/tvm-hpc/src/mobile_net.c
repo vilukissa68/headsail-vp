@@ -34,9 +34,9 @@ int run_inference(int batch_size) {
     float input_storage[1 * HEIGHT * WIDTH * CHANNELS];
     printf("Running mobile net\n");
 
-    for(int i = 0; i < stimulus_c_len; i++) {
-        input_storage[i] = stimulus_c[i];
-    }
+    /* for(int i = 0; i < stimulus_c_len; i++) { */
+    /*     input_storage[i] = stimulus_c[i]; */
+    /* } */
     printf("Loaded %d inputs to active memory\n", stimulus_c_len);
 
     // Preprate input and output device and type
@@ -46,7 +46,7 @@ int run_inference(int batch_size) {
 
     // prepare intput tensor
     DLTensor input;
-    input.data = input_storage;
+    input.data = stimulus_c;
     input.device = dev;
     input.ndim = 4;
     input.dtype = dtype;

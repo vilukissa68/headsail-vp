@@ -5,9 +5,17 @@ import textwrap
 from tvm import relay
 import tvm
 from tvm import runtime
+from tvm.relay.op.contrib.register import get_pattern_table
 import tvm.micro
 import logging
 import onnx
+import numpy as np
+
+SHAPES = {
+    "mobilenet:", (1,3,224,224),
+    "conv2dbasic:", (1,3,32,32),
+    "add", (1)
+}
 
 def normalize(v):
     norm = np.linalg.norm(v)
@@ -33,15 +41,35 @@ def write_c_stimulus(data, len_symbol="stimulus_c_len", payload_symbol="stimulus
     c_file.close()
     print("Stimulus written!")
 
+def build_model(opts, shape_dict):
+    if not tvm.get_global_func("relay.ext.headsail", True):
+        print("skip because headsail codegen is not available")
+        return
 
-def build_model_add(opts):
+    build_dir = os.path.abspath(opts.out_dir)
+    if not os.path.isdir(build_dir):
+        os.makedirs(build_dir)
+
     onnx_path = opts.model_path
     onnx_model = onnx.load(onnx_path)
 
-    input1_name = "Input1"
-    input2_name = "Input2"
-    shape_dict = {input1_name: [1], input2_name: [1]}
     mod, params = relay.frontend.from_onnx(onnx_model, shape_dict)
+    print(mod)
+
+    # Annotate model with headsail tags
+    headsail_patterns = get_pattern_table("headsail")
+    mod = relay.transform.InferType()(mod)
+    mod = relay.transform.MergeComposite(headsail_patterns)(mod)
+    mod = relay.transform.AnnotateTarget(["headsail"])(mod) # Output: Figure 2
+    mod = relay.transform.MergeCompilerRegions()(mod) # Output: Figure 3
+    mod = relay.transform.PartitionGraph()(mod) # Output: Figure 4
+    mod = relay.transform.InferType()(mod)
+    print(mod)
+    with open(
+        os.path.join(build_dir, "mod_output.txt"), "w"
+    ) as mod_log:
+        mod_log.write(str(mod))
+
 
     file_format_str = "{name}_c.{ext}"
     RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : True})
@@ -50,11 +78,12 @@ def build_model_add(opts):
         lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params)
 
 
-    build_dir = os.path.abspath(opts.out_dir)
-    if not os.path.isdir(build_dir):
-        os.makedirs(build_dir)
+    headsail_contrib = "/Users/vainogranat/work/tvm/src/runtime/contrib/headsail/codegen.cc"
+    kwargs = {}
+    kwargs["options"] = ["-O2", "-std=c++14", "-I" + headsail_contrib]
 
     lib_file_name = os.path.join(build_dir, file_format_str.format(name="model", ext="tar"))
+    #lib.export_library(lib_file_name, fcompile=False, **kwargs)
     lib.export_library(lib_file_name)
 
     with open(
@@ -71,55 +100,6 @@ def build_model_add(opts):
     if opts.stimulus != None:
         _, stim_ext = os.path.splitext(opts.stimulus)
         if stim_ext == ".npy":
-            import numpy as np
-            data = np.load(opts.stimulus).flatten()
-            write_c_stimulus(data, payload_type=opts.input_type)
-
-    os.chdir(build_dir)
-    # Convert graph and weights to hexdumps
-    graph_path_rel = os.path.relpath("{name}_c.{ext}".format(name="graph", ext="json"))
-    params_path_rel = os.path.relpath("{name}_c.{ext}".format(name="params", ext="bin"))
-    os.system("tar -zxvf {lib}".format(lib=lib_file_name))
-    os.system("xxd -i {graph} > {graphc} ".format(graph=graph_path_rel, graphc=(graph_path_rel + ".c")))
-    os.system("xxd -i {params} > {paramsc} ".format(params=params_path_rel, paramsc=(params_path_rel + ".c")))
-
-def build_model_mobilenet(opts):
-    onnx_path = opts.model_path
-    onnx_model = onnx.load(onnx_path)
-
-    input1_name = "input"
-    shape_dict = {input1_name: (1,3,224,224)}
-    mod, params = relay.frontend.from_onnx(onnx_model, shape_dict)
-
-    file_format_str = "{name}_c.{ext}"
-    RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : True})
-    TARGET = tvm.target.Target("llvm -mtriple=riscv64-unknown-elf -mcpu=generic-rv64 -mabi=lp64 -mattr=+64bit")
-    with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
-        lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params)
-
-
-    build_dir = os.path.abspath(opts.out_dir)
-    if not os.path.isdir(build_dir):
-        os.makedirs(build_dir)
-
-    lib_file_name = os.path.join(build_dir, file_format_str.format(name="model", ext="tar"))
-    lib.export_library(lib_file_name)
-
-    with open(
-        os.path.join(build_dir, file_format_str.format(name="graph", ext="json")), "w"
-    ) as f_graph_json:
-        f_graph_json.write(lib.get_graph_json())
-
-    with open(
-        os.path.join(build_dir, file_format_str.format(name="params", ext="bin")), "wb"
-    ) as f_params:
-        f_params.write(runtime.save_param_dict(lib.get_params()))
-
-    # Generate stimulus
-    if opts.stimulus != None:
-        _, stim_ext = os.path.splitext(opts.stimulus)
-        if stim_ext == ".npy":
-            import numpy as np
             data = np.load(opts.stimulus).flatten()
             data = normalize(data)
             write_c_stimulus(data, payload_type=opts.input_type)
@@ -133,54 +113,21 @@ def build_model_mobilenet(opts):
     os.system("xxd -i {params} > {paramsc} ".format(params=params_path_rel, paramsc=(params_path_rel + ".c")))
 
 
-def build_model_conv2dbasic(opts):
-    onnx_path = opts.model_path
-    onnx_model = onnx.load(onnx_path)
+def build_model_mobilenet(opts):
+    input1_name = "input"
+    shape_dict = {input1_name: (1,3,224,224)}
+    build_model(opts, shape_dict=shape_dict)
 
+def build_model_add(opts):
+    input1_name = "Input1"
+    input2_name = "Input2"
+    shape_dict = {input1_name: [1], input2_name: [1]}
+    build_model(opts, shape_dict=shape_dict)
+
+def build_model_conv2dbasic(opts):
     input1_name = "input"
     shape_dict = {input1_name: (1,3,32,32)}
-    mod, params = relay.frontend.from_onnx(onnx_model, shape_dict)
-
-    file_format_str = "{name}_c.{ext}"
-    RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : True})
-    TARGET = tvm.target.Target("llvm -mtriple=riscv64-unknown-elf -mcpu=generic-rv64 -mabi=lp64 -mattr=+64bit")
-    with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
-        lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params)
-
-
-    build_dir = os.path.abspath(opts.out_dir)
-    if not os.path.isdir(build_dir):
-        os.makedirs(build_dir)
-
-    lib_file_name = os.path.join(build_dir, file_format_str.format(name="model", ext="tar"))
-    lib.export_library(lib_file_name)
-
-    with open(
-        os.path.join(build_dir, file_format_str.format(name="graph", ext="json")), "w"
-    ) as f_graph_json:
-        f_graph_json.write(lib.get_graph_json())
-
-    with open(
-        os.path.join(build_dir, file_format_str.format(name="params", ext="bin")), "wb"
-    ) as f_params:
-        f_params.write(runtime.save_param_dict(lib.get_params()))
-
-    # Generate stimulus
-    if opts.stimulus != None:
-        _, stim_ext = os.path.splitext(opts.stimulus)
-        if stim_ext == ".npy":
-            import numpy as np
-            data = np.load(opts.stimulus).flatten()
-            write_c_stimulus(data, payload_type=opts.input_type)
-
-    os.chdir(build_dir)
-    # Convert graph and weights to hexdumps
-    graph_path_rel = os.path.relpath("{name}_c.{ext}".format(name="graph", ext="json"))
-    params_path_rel = os.path.relpath("{name}_c.{ext}".format(name="params", ext="bin"))
-    os.system("tar -zxvf {lib}".format(lib=lib_file_name))
-    os.system("xxd -i {graph} > {graphc} ".format(graph=graph_path_rel, graphc=(graph_path_rel + ".c")))
-    os.system("xxd -i {params} > {paramsc} ".format(params=params_path_rel, paramsc=(params_path_rel + ".c")))
-
+    build_model(opts, shape_dict=shape_dict)
 
 
 if __name__ == "__main__":
