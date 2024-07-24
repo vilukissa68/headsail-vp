@@ -12,6 +12,8 @@ use headsail_bsp::{
 use panic_halt as _;
 
 use alloc::vec::Vec;
+use dla_driver::tensor3::{Order3, Tensor3};
+use dla_driver::tensor4::{Order4, Tensor4};
 
 fn calculate_conv2d_out_param_dim(
     input: (u32, u32),
@@ -41,55 +43,36 @@ fn validate_conv2d_tiny() -> bool {
         .map(i32::from)
         .collect();
 
-    // Calculate output size
-    let output_size = calculate_conv2d_out_param_dim((5, 5), (3, 3), (0, 0), (1, 1), (1, 1));
+    sprintln!("Inputs read\r\n");
 
-    // Initalize layer
-    let config = LayerConfig {
-        input_bank: Some(MemoryBank::Bank8),  // b
-        kernel_bank: Some(MemoryBank::Bank0), // a
-        output_bank: Some(MemoryBank::Bank10),
-        bias_addr: Some(0),
-        pp_enabled: false,
-        relu_enabled: false,
-        bias_enabled: false,
-        input_size: Some(InputSize {
-            channels: 3,
-            width: 5,
-            height: 5,
-        }),
-        kernel_size: Some(KernelSize {
-            s_channels: 1,
-            kernels: 2,
-            width: 3,
-            height: 3,
-        }),
-        padding: Some(PaddingConfig {
-            top: 0,
-            right: 0,
-            left: 0,
-            bottom: 0,
-            padding_value: 0,
-        }),
-        stride: Some(StrideConfig { x: 1, y: 1 }),
-        mac_clip: Some(0),
-        pp_clip: Some(8),
-        simd_mode: Some(SimdBitMode::EightBits),
+    let mut din_large_tensor: Tensor3<i8> =
+        Tensor3::from_data_buffer(3, 5, 5, din, Order3::HWC).unwrap();
+    let mut wgt_large_tensor: Tensor4<i8> =
+        Tensor4::from_data_buffer(2, 3, 3, 3, wgt, Order4::HWKC).unwrap();
+    let mut dout_tensor: Tensor3<i32> =
+        Tensor3::from_data_buffer(2, 3, 3, dout_i32.clone(), Order3::HWC).unwrap();
+
+    let padding = Padding {
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        padding_value: 0,
     };
+    let stride = Stride { x: 1, y: 1 };
+    let mut output =
+        dla_driver::layers::conv2d(din_large_tensor, wgt_large_tensor, padding, stride);
+    //output.transmute(Order3::CWH);
+    output.print_tensor();
 
-    dla.init_layer(config);
+    sprint!("\ndla out | dout\n");
+    for (i, x) in output.to_buffer().into_iter().enumerate() {
+        if x != dout_i32[i] {
+            sprintln!("{}: {}=/={}", i, x, dout_i32[i])
+        }
+    }
 
-    dla.write_input(&mut din);
-    dla.write_kernel(&mut wgt);
-
-    // Mark data ready to start calculations
-    dla.kernel_data_ready(true);
-    dla.input_data_ready(true);
-
-    while !dla.handle_handshake() {}
-    let output: Vec<i32> = dla.read_output_i32(output_size.0 * output_size.1 * 2);
-
-    output == dout_i32
+    output.to_buffer() == dout_i32
 }
 
 fn validate_conv2d() -> bool {
@@ -119,55 +102,32 @@ fn validate_conv2d() -> bool {
         dout_i32.push(value as i32);
     }
 
-    // Calculate output size
-    let output_size = calculate_conv2d_out_param_dim((16, 16), (3, 3), (0, 0), (1, 1), (1, 1));
+    let mut din_large_tensor: Tensor3<i8> =
+        Tensor3::from_data_buffer(16, 16, 16, din, Order3::HWC).unwrap();
+    let mut wgt_large_tensor: Tensor4<i8> =
+        Tensor4::from_data_buffer(16, 16, 3, 3, wgt, Order4::HWKC).unwrap();
 
-    // Initalize layer
-    let config = LayerConfig {
-        input_bank: Some(MemoryBank::Bank8),  // b
-        kernel_bank: Some(MemoryBank::Bank0), // a
-        output_bank: Some(MemoryBank::Bank10),
-        bias_addr: Some(0),
-        pp_enabled: false,
-        relu_enabled: false,
-        bias_enabled: false,
-        input_size: Some(InputSize {
-            channels: 16,
-            width: 16,
-            height: 16,
-        }),
-        kernel_size: Some(KernelSize {
-            s_channels: 1,
-            kernels: 16,
-            width: 3,
-            height: 3,
-        }),
-        padding: Some(PaddingConfig {
-            top: 0,
-            right: 0,
-            left: 0,
-            bottom: 0,
-            padding_value: 0,
-        }),
-        stride: Some(StrideConfig { x: 1, y: 1 }),
-        mac_clip: Some(0),
-        pp_clip: Some(8),
-        simd_mode: Some(SimdBitMode::EightBits),
+    let padding = Padding {
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        padding_value: 0,
     };
+    let stride = Stride { x: 1, y: 1 };
 
-    dla.init_layer(config);
+    let mut output =
+        dla_driver::layers::conv2d(din_large_tensor, wgt_large_tensor, padding, stride);
+    //output.transmute(Order3::HWC);
 
-    dla.write_input(&mut din);
-    dla.write_kernel(&mut wgt);
+    sprint!("\n");
+    for (i, x) in output.to_buffer().into_iter().enumerate() {
+        if x != dout_i32[i] {
+            sprintln!("{}: {}=/={}", i, x, dout_i32[i])
+        }
+    }
 
-    // Mark data ready to start calculations
-    dla.kernel_data_ready(true);
-    dla.input_data_ready(true);
-
-    while !dla.handle_handshake() {}
-    let output = dla.read_output_i32(output_size.0 * output_size.1 * 16);
-
-    output == dout_i32
+    output.to_buffer() == dout_i32
 }
 fn validate_conv2d_bias() -> bool {
     let mut dla = Dla::new();

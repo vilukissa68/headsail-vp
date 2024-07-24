@@ -256,7 +256,7 @@ fn run_layers<T: DlaOutput + Clone>(
     kernels.print_tensor();
 
     dla.write_input(&mut input.to_buffer_with_order(Order3::HWC));
-    dla.write_kernel(&mut kernels.to_buffer_with_order(Order4::HWCK));
+    dla.write_kernel(&mut kernels.to_buffer_with_order(Order4::HWKC));
 
     if let Some(bias) = bias {
         dla.write_bias(&bias)
