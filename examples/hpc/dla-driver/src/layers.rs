@@ -347,11 +347,6 @@ pub fn conv2d_relu(
     while !dla.handle_handshake() {}
     let output_buffer = dla.read_output_i8(output_size.0 * output_size.1 * kernels.kernels);
 
-    sprintln!("Raw output:");
-    for x in &output_buffer {
-        sprint!("{} ", x)
-    }
-
     let output: Tensor3<i8> = Tensor3::from_data_buffer(
         kernels.kernels,
         output_size.1,

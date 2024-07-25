@@ -45,10 +45,8 @@ fn validate_conv2d_tiny() -> bool {
 
     sprintln!("Inputs read\r\n");
 
-    let mut din_large_tensor: Tensor3<i8> =
-        Tensor3::from_data_buffer(3, 5, 5, din, Order3::HWC).unwrap();
-    let mut wgt_large_tensor: Tensor4<i8> =
-        Tensor4::from_data_buffer(2, 3, 3, 3, wgt, Order4::HWKC).unwrap();
+    let din_tensor: Tensor3<i8> = Tensor3::from_data_buffer(3, 5, 5, din, Order3::HWC).unwrap();
+    let wgt_tensor: Tensor4<i8> = Tensor4::from_data_buffer(2, 3, 3, 3, wgt, Order4::HWKC).unwrap();
     let mut dout_tensor: Tensor3<i32> =
         Tensor3::from_data_buffer(2, 3, 3, dout_i32.clone(), Order3::HWC).unwrap();
 
@@ -60,15 +58,16 @@ fn validate_conv2d_tiny() -> bool {
         padding_value: 0,
     };
     let stride = Stride { x: 1, y: 1 };
-    let mut output =
-        dla_driver::layers::conv2d(din_large_tensor, wgt_large_tensor, padding, stride);
-    //output.transmute(Order3::CWH);
+
+    let output = dla_driver::layers::conv2d(din_tensor, wgt_tensor, padding, stride);
     output.print_tensor();
 
     sprint!("\ndla out | dout\n");
-    for (i, x) in output.to_buffer().into_iter().enumerate() {
+    let dout_tensor_buf = dout_tensor.to_buffer();
+    let output_tensor_buf = output.to_buffer();
+    for (i, x) in output_tensor_buf.into_iter().enumerate() {
         if x != dout_i32[i] {
-            sprintln!("{}: {}=/={}", i, x, dout_i32[i])
+            sprintln!("{}: {}=/={}", i, x, dout_tensor_buf[i])
         }
     }
 
@@ -102,10 +101,11 @@ fn validate_conv2d() -> bool {
         dout_i32.push(value as i32);
     }
 
-    let mut din_large_tensor: Tensor3<i8> =
-        Tensor3::from_data_buffer(16, 16, 16, din, Order3::HWC).unwrap();
-    let mut wgt_large_tensor: Tensor4<i8> =
+    let din_tensor: Tensor3<i8> = Tensor3::from_data_buffer(16, 16, 16, din, Order3::HWC).unwrap();
+    let wgt_tensor: Tensor4<i8> =
         Tensor4::from_data_buffer(16, 16, 3, 3, wgt, Order4::HWKC).unwrap();
+    let dout_tensor: Tensor3<i32> =
+        Tensor3::from_data_buffer(16, 14, 14, dout_i32.clone(), Order3::HWC).unwrap();
 
     let padding = Padding {
         top: 0,
@@ -116,18 +116,13 @@ fn validate_conv2d() -> bool {
     };
     let stride = Stride { x: 1, y: 1 };
 
-    let mut output =
-        dla_driver::layers::conv2d(din_large_tensor, wgt_large_tensor, padding, stride);
-    //output.transmute(Order3::HWC);
+    let output = dla_driver::layers::conv2d(din_tensor, wgt_tensor, padding, stride);
 
     sprint!("\n");
-    for (i, x) in output.to_buffer().into_iter().enumerate() {
-        if x != dout_i32[i] {
-            sprintln!("{}: {}=/={}", i, x, dout_i32[i])
-        }
-    }
+    let dout_tensor_buf = dout_tensor.to_buffer();
+    let output_tensor_buf = output.to_buffer();
 
-    output.to_buffer() == dout_i32
+    dout_tensor_buf == output_tensor_buf
 }
 fn validate_conv2d_bias() -> bool {
     let mut dla = Dla::new();
