@@ -58,6 +58,36 @@ pub fn dense(outputs: usize, input: Tensor3<i8>, weights: Vec<i8>) -> Vec<i32> {
     output.to_buffer()
 }
 
+pub fn dense(outputs: usize, input: Tensor3<i8>, weights: Vec<i8>) -> Vec<i32> {
+    // Build kernels to produce 1 to 1 mac operation
+    let kernels_wrap = Tensor4::from_data_buffer(
+        outputs,
+        input.channels,
+        input.height,
+        input.width,
+        weights,
+        Order4::KCHW,
+    );
+
+    let kernels = match kernels_wrap {
+        Ok(kernels) => kernels,
+        Err(_e) => return [0].to_vec(),
+    };
+
+    let padding = Padding {
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        padding_value: 0,
+    };
+
+    let stride = Stride { x: (1), y: (1) };
+
+    let output = conv2d(input, kernels, padding, stride);
+    output.to_buffer()
+}
+
 pub fn conv2d(
     input: Tensor3<i8>,
     kernels: Tensor4<i8>,

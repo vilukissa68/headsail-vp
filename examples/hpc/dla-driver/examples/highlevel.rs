@@ -15,10 +15,27 @@ use test_data::{conv_16x16x16_3x3_din, conv_16x16x16_3x3_dout, conv_16x16x16_3x3
 
 use alloc::vec::Vec;
 
-#[entry]
-fn main() -> ! {
-    init_alloc();
+fn dense_test() {
+    sprintln!("Starting dense test");
+    let din: Vec<i8> = vec![
+        1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5, 1, 2, 3, 4, 5,
+    ];
+    let mut din_tensor: Tensor3<i8> = Tensor3::from_data_buffer(1, 5, 5, din, Order3::CHW).unwrap();
+    sprintln!("Din tensor created");
 
+    let dense_weight_size = din_tensor.height * din_tensor.width * din_tensor.channels * 5;
+
+    let mut weight: Vec<i8> = vec![];
+    for _ in 0..dense_weight_size {
+        weight.push(1)
+    }
+    sprintln!("Weight tensor created with length {}", weight.len());
+
+    let output = dla_driver::layers::dense(5, din_tensor, weight);
+    sprint!("Finished");
+}
+
+fn conv_test() {
     let din: Vec<i8> = vec![
         0, 0, 0, 2, 0, 0, 1, 2, 1, 2, 0, 0, 1, 2, 0, 1, 0, 0, 0, 2, 0, 0, 1, 0, 1, 2, 0, 1, 0, 1,
         0, 0, 2, 2, 1, 1, 0, 2, 1, 1, 2, 1, 2, 2, 1, 0, 0, 1, 1, 2, 0, 1, 1, 1, 0, 0, 2, 0, 1, 2,
@@ -82,11 +99,21 @@ fn main() -> ! {
     output.transmute(Order3::CWH);
     output.print_tensor();
 
-    let test: Vec<i8> = vec![0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26];
-    let mut test_tensor: Tensor3<i8> = Tensor3::from_data_buffer(3,3,3, test, Order3::HCW).unwrap();
+    let test: Vec<i8> = vec![
+        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24,
+        25, 26,
+    ];
+    let mut test_tensor: Tensor3<i8> =
+        Tensor3::from_data_buffer(3, 3, 3, test, Order3::HCW).unwrap();
     test_tensor.transmute(Order3::CHW);
     test_tensor.print_tensor();
+}
 
+#[entry]
+fn main() -> ! {
+    init_alloc();
+    dense_test();
+    //conv_test();
 
     loop {}
 }
