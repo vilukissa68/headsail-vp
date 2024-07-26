@@ -1094,8 +1094,8 @@ class DlaMac:
 
         w_in, h_in = get_shape(A)
         w_kernel, h_kernel = get_shape(kernel)
-        w_out = math.floor((w_in + 2*padding[0] - dilation[0] * (w_kernel - 1) -1) / stride[0] +1)
-        h_out = math.floor((h_in + 2*padding[1] - dilation[1] * (h_kernel - 1) -1) / stride[1] +1)
+        w_out = math.floor((w_in + padding.left + padding.right - dilation[0] * (w_kernel - 1) -1) / stride[0] +1)
+        h_out = math.floor((h_in + padding.top + padding.bottom - dilation[1] * (h_kernel - 1) -1) / stride[1] +1)
 
         w_middle_zero = w_kernel % 2 == 1
         h_middle_zero = h_kernel % 2 == 1
@@ -1104,17 +1104,22 @@ class DlaMac:
 
     def pad_matrix(self, mat_in, padding, padding_value=0):
 
-        h_in = len(mat_in)
-        w_in = len(mat_in[0])
+        # Add top padding
+        for _ in range(padding.top):
+            mat_in.insert(0, [padding_value] * len(mat_in[0]))
 
-        mat_out = [[ padding_value for _ in range(w_in + padding[1]*2)] for _ in range(h_in + padding[0] * 2) ] # np.zeros(w_out, h_out)
-        for (i, row) in enumerate(mat_in):
-            for (j, x) in enumerate(row):
-                mat_out[i + padding[0]][j + padding[1]] = x
-        return mat_out
+        # Add bottom padding
+        for _ in range(padding.bottom):
+            mat_in.append([padding_value] * len(mat_in[0]))
+
+        # Add left and right padding to each row
+        for i in range(len(mat_in)):
+            mat_in[i] = [padding_value] * padding.left + mat_in[i] + [padding_value] * padding.right
+
+        return mat_in
 
 
-    def conv2d(self, input_img, kernels, padding=(0,0), dilation=(1,1), stride=(1,1), padding_value=0):
+    def conv2d(self, input_img, kernels, padding, dilation=(1,1), stride=(1,1), padding_value=0):
         # Find output size of single produced filter
         # Number of output filters is defined by the number of kernels
         # Each inputed kernel is applied for the whole input entry
@@ -1128,6 +1133,12 @@ class DlaMac:
 
         w_kernel_max_offset = len(kernels[0][0]) // 2 # Kernel height max offset
         h_kernel_max_offset = len(kernels[0][0][0]) // 2 # Kernel width max offset
+
+        # Pad inputs
+        padded_input = []
+        for channel in input_img:
+            padded_input.append(self.pad_matrix(channel, padding, padding_value=padding_value))
+
 
         # Apply each kernel to input_img
         for (kernel_idx, kernel) in enumerate(kernels):
@@ -1159,10 +1170,8 @@ class DlaMac:
 
                         # Sum each channel with current kernel
                         channel_sum = 0
-                        for (channel_idx, channel_data) in enumerate(input_img):
+                        for (channel_idx, channel_data) in enumerate(padded_input):
 
-                            # Pad channel
-                            channel_data = self.pad_matrix(channel_data, padding, padding_value=padding_value)
 
                             # Constuct a sub matrix
                             # NOTE: Do not use zeroes here, for some reason IronPython can't correctly index nested lists produced by a recursive function. (20240527 vaino-waltteri.granat@tuni.fi)
