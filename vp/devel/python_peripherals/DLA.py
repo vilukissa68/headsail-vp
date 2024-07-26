@@ -929,18 +929,22 @@ class Dla:
        """Get parameters for conv2d
 
        Returns:
-       padding -- Tuple (Int, Int) sets padding in (x,y) direction
+       padding -- Padding object
        dilation -- Tuple (Int, Int) sets dilation in (x,y) direction
        stride -- Tuple (Int, Int) sets stride in (x,y) direction
        """
-       pad_x = self.get_register(BUF_PAD, BUF_PAD_LEFT_OFFSET, 4)
-       pad_y = self.get_register(BUF_PAD, BUF_PAD_TOP_OFFSET, 4)
+       pad_left = self.get_register(BUF_PAD, BUF_PAD_LEFT_OFFSET, 4)
+       pad_right = self.get_register(BUF_PAD, BUF_PAD_RIGHT_OFFSET, 4)
+       pad_top = self.get_register(BUF_PAD, BUF_PAD_TOP_OFFSET, 4)
+       pad_bottom = self.get_register(BUF_PAD, BUF_PAD_BOTTOM_OFFSET, 4)
        stride_x = self.get_register(BUF_STRIDE, BUF_STRIDE_X_OFFSET, 4) + 1
        stride_y = self.get_register(BUF_STRIDE, BUF_STRIDE_Y_OFFSET, 4) + 1
        dilation_x = 1 # NOTE: Headsail's DLA doesn't support other dilations
        dilation_y = 1
 
-       return (pad_x, pad_y), (dilation_x, dilation_y), (stride_x, stride_y)
+       padding = Padding(pad_left, pad_right, pad_top, pad_bottom)
+
+       return padding, (dilation_x, dilation_y), (stride_x, stride_y)
 
     def round(self, values):
         """Round values if register is set"""
