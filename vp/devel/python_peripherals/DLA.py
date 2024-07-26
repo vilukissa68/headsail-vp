@@ -1079,7 +1079,7 @@ class DlaMac:
         Params:
         A -- Matrix in form [[Int]] to be convolved
         kernel -- Matrix in form of [[Int]] to use ase convolution kernel
-        padding -- Tuple (Int, Int) sets padding in (x,y) direction
+        padding -- Padding(left, right, top, bottom) object
         dilation -- Tuple (Int, Int) sets dilation in (x,y) direction
         stride -- Tuple (Int, Int) sets stride in (x,y) direction
 
