@@ -43,7 +43,7 @@ const DEFAULT_PADDING: Padding = Padding {
     padding_value: 0,
 };
 const DEFAULT_STRIDE: Stride = Stride { x: 1, y: 1 };
-const DEFAULT_MAC_CLIP: u32 = 8;
+const DEFAULT_MAC_CLIP: u32 = 0;
 const DEFAULT_PP_CLIP: u32 = 8;
 const DEFAULT_SIMD_MODE: SimdBitMode = SimdBitMode::EightBits;
 
@@ -89,6 +89,7 @@ pub struct InputSize {
 /// 7 3 4 7
 /// 7 7 7 7
 /// ```
+#[derive(Clone)]
 pub struct Padding {
     pub top: u32,
     pub right: u32,
@@ -98,6 +99,7 @@ pub struct Padding {
 }
 
 /// Conv2d stride
+#[derive(Clone)]
 pub struct Stride {
     pub x: u32,
     pub y: u32,
@@ -385,12 +387,8 @@ impl Dla {
     /// Writes buffer to DLA's input bank(s)
     pub fn write_input(&self, input: &mut [i8]) {
         // TODO optimize memory bank logic
-        sprintln!("Raw input:");
         let offset = self.get_input_bank().offset();
         self.write_data_bank(offset, input);
-        for x in input {
-            sprint!("{} ", x)
-        }
     }
 
     /// Writes buffer to DLA's kernel bank(s)
@@ -815,12 +813,10 @@ impl Dla {
     pub fn handle_handshake(&self) -> bool {
         // Handshake only if dla status is done
         if !self.is_ready() {
-            sprintln!("Result not ready");
             return false;
         }
 
         if self.is_enabled() {
-            sprintln!("DLA still enabled");
             self.handshake_disable_hw();
             return false;
         }

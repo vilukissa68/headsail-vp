@@ -56,15 +56,8 @@ fn conv_test() {
     let mut dout_tensor: Tensor3<i32> =
         Tensor3::from_data_buffer(2, 3, 3, dout, Order3::CHW).unwrap();
 
-    let padding = Padding {
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        padding_value: 0,
-    };
-    let stride = Stride { x: 1, y: 1 };
-    let mut output = dla_driver::layers::conv2d(din_tensor, wgt_tensor, padding, stride);
+    let mut output =
+        dla_driver::layers::conv2d(din_tensor, wgt_tensor, None, None, None, None, None);
     //output.transmute(Order3::CWH);
     output.print_tensor();
     dout_tensor.print_tensor();
@@ -86,16 +79,16 @@ fn conv_test() {
         Tensor3::from_data_buffer(16, 16, 16, din_large, Order3::CHW).unwrap();
     let mut wgt_large_tensor: Tensor4<i8> =
         Tensor4::from_data_buffer(16, 16, 3, 3, wgt_large, Order4::KCHW).unwrap();
-    let padding = Padding {
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        padding_value: 0,
-    };
-    let stride = Stride { x: 1, y: 1 };
-    let mut output =
-        dla_driver::layers::conv2d(din_large_tensor, wgt_large_tensor, padding, stride);
+
+    let mut output = dla_driver::layers::conv2d(
+        din_large_tensor,
+        wgt_large_tensor,
+        None,
+        None,
+        None,
+        None,
+        None,
+    );
     output.transmute(Order3::CWH);
     output.print_tensor();
 
@@ -113,7 +106,7 @@ fn conv_test() {
 fn main() -> ! {
     init_alloc();
     dense_test();
-    //conv_test();
+    conv_test();
 
     loop {}
 }
