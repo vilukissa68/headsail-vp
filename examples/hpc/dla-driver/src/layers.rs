@@ -361,7 +361,7 @@ pub fn conv2d_relu(
     kernels.print_tensor();
 
     dla.write_input(&mut input.to_buffer_with_order(Order3::HWC));
-    dla.write_kernel(&mut kernels.to_buffer_with_order(Order4::HWCK));
+    dla.write_kernel(&mut kernels.to_buffer_with_order(Order4::HWKC));
 
     // Mark data ready to start calculations
     dla.kernel_data_ready(true);
@@ -409,10 +409,14 @@ pub fn conv2d_bias(
 
     // Initalize layer
     let config = LayerConfig {
-        input_bank: Some(banks.0),  // b
-        kernel_bank: Some(banks.1), // a
-        output_bank: Some(banks.2),
-        bias_addr: banks.3,
+        //input_bank: Some(banks.0),  // b
+        //kernel_bank: Some(banks.1), // a
+        //output_bank: Some(banks.2),
+        //bias_addr: banks.3,
+        input_bank: Some(MemoryBank::Bank0),  // b
+        kernel_bank: Some(MemoryBank::Bank1), // a
+        output_bank: Some(MemoryBank::Bank12),
+        bias_addr: Some((MEMORY_BANK_BASE_ADDR + MEMORY_BANK_10_OFFSET) as u32),
         pp_enabled: true,
         relu_enabled: false,
         bias_enabled: true,
@@ -440,7 +444,7 @@ pub fn conv2d_bias(
     kernels.print_tensor();
 
     dla.write_input(&mut input.to_buffer_with_order(Order3::HWC));
-    dla.write_kernel(&mut kernels.to_buffer_with_order(Order4::HWCK));
+    dla.write_kernel(&mut kernels.to_buffer_with_order(Order4::HWKC));
     dla.write_bias(&bias);
 
     // Mark data ready to start calculations

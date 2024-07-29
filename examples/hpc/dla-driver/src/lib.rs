@@ -21,9 +21,9 @@ pub use mmap::{
 };
 
 const DEFAULT_INPUT_BANK: MemoryBank = MemoryBank::Bank0;
-const DEFAULT_KERNEL_BANK: MemoryBank = MemoryBank::Bank8;
-const DEFAULT_OUTPUT_BANK: MemoryBank = MemoryBank::Bank12;
-const DEFAULT_BIAS_ADDR: u32 = 0x0;
+const DEFAULT_KERNEL_BANK: MemoryBank = MemoryBank::Bank4;
+const DEFAULT_OUTPUT_BANK: MemoryBank = MemoryBank::Bank10;
+const DEFAULT_BIAS_ADDR: u32 = (MEMORY_BANK_BASE_ADDR + MEMORY_BANK_15_OFFSET) as u32;
 const DEFAULT_KERNEL_SIZE: KernelSize = KernelSize {
     s_channels: 1,
     kernels: 1,
