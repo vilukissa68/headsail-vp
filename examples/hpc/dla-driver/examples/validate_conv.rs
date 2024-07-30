@@ -35,8 +35,11 @@ fn validate_conv2d_tiny() -> bool {
     let mut wgt: Vec<i8> = uart_read_to_heap(54).into_iter().map(|x| x as i8).collect();
 
     sprintln!("dout\r\n");
-    let dout: Vec<i8> = uart_read_to_heap(18).into_iter().map(|x| x as i8).collect();
-    let dout_i32: Vec<i32> = dout.into_iter().map(|x| x as i32).collect();
+    let dout_i32: Vec<i32> = uart_read_to_heap(18)
+        .into_iter()
+        .map(|x| x as i8)
+        .map(i32::from)
+        .collect();
 
     // Calculate output size
     let output_size = calculate_conv2d_out_param_dim((5, 5), (3, 3), (0, 0), (1, 1), (1, 1));
@@ -84,7 +87,7 @@ fn validate_conv2d_tiny() -> bool {
     dla.input_data_ready(true);
 
     while !dla.handle_handshake() {}
-    let output: Vec<i32> = dla.read_output_i32(output_size.0 * output_size.1 * 2);
+    let output = dla.read_output_i32(output_size.0 * output_size.1 * 2);
 
     output == dout_i32
 }

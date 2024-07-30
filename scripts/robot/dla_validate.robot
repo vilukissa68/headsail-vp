@@ -2,13 +2,14 @@
 ${SCRIPT}                       ${CURDIR}/../resc/1_hpc.resc
 ${CPU}                          sysbus.cpu_hpc0
 ${UART}                         sysbus.apb_uart_0
+${DATA_DIR}                     ${CURDIR}/../../examples/hpc/dla-driver/examples/test_data
 ${BIN}                          ${CURDIR}/../../examples/hpc/target/riscv64imac-unknown-none-elf/release/examples/validate
-${TINY_DIN}                     ${CURDIR}/../../examples/hpc/dla-driver/examples/test_data/tiny_test_din.mem
-${TINY_WGT}                     ${CURDIR}/../../examples/hpc/dla-driver/examples/test_data/tiny_test_wgt.mem
-${TINY_DOUT}                    ${CURDIR}/../../examples/hpc/dla-driver/examples/test_data/tiny_test_dout.mem
-${CONV_16x16x16_3x3_DIN}        ${CURDIR}/../../examples/hpc/dla-driver/examples/test_data/conv_16x16x16_3x3_din.mem
-${CONV_16x16x16_3x3_WGT}        ${CURDIR}/../../examples/hpc/dla-driver/examples/test_data/conv_16x16x16_3x3_wgt.mem
-${CONV_16x16x16_3x3_DOUT}       ${CURDIR}/../../examples/hpc/dla-driver/examples/test_data/conv_16x16x16_3x3_dout.mem
+${TINY_DIN}                     ${DATA_DIR}/tiny_test_din.mem
+${TINY_WGT}                     ${DATA_DIR}/tiny_test_wgt.mem
+${TINY_DOUT}                    ${DATA_DIR}/tiny_test_dout.mem
+${CONV_16x16x16_3x3_DIN}        ${DATA_DIR}/conv_16x16x16_3x3_din.mem
+${CONV_16x16x16_3x3_WGT}        ${DATA_DIR}/conv_16x16x16_3x3_wgt.mem
+${CONV_16x16x16_3x3_DOUT}       ${DATA_DIR}/conv_16x16x16_3x3_dout.mem
 
 *** Settings ***
 Suite Setup     Setup
