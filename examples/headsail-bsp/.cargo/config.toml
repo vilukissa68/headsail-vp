@@ -3,7 +3,6 @@ runner = "../../scripts/run_on_hpc.sh"
 linker = "riscv64-unknown-elf-ld"
 rustflags = ["-C", "link-arg=-Tmem_hpc.x", "-C", "link-arg=-Tlink.x"]
 
-[target.riscv32imc-unknown-none-elf]
+[target.riscv32im-unknown-none-elf]
 runner = "../../scripts/run_on_sysctrl.sh"
 rustflags = ["-C", "link-arg=-Tmem_sysctrl.x", "-C", "link-arg=-Tlink.x"]
-

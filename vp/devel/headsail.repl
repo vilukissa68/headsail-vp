@@ -20,7 +20,7 @@ cpu_hpc3: CPU.RiscV64 @ sysbus
 
 cpu_sysctrl: CPU.IbexRiscV32 @ sysbus
     // CPU ISA is actually rv32em but SW & VP support for that is sketchy
-    cpuType: "rv32imc"
+    cpuType: "rv32im"
     timeProvider: empty
     allowUnalignedAccesses: false
 

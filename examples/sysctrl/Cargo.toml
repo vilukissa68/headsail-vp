@@ -1,2 +1,3 @@
 [workspace]
 members = ["hello-sysctrl"]
+resolver = "2"

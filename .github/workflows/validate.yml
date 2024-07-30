@@ -25,7 +25,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Install requirements
-      run: rustup target add riscv64imac-unknown-none-elf riscv32imc-unknown-none-elf
+      run: rustup target add riscv64imac-unknown-none-elf riscv32im-unknown-none-elf
 
     - name: Run linter
       working-directory: ./examples/headsail-bsp
@@ -170,10 +170,10 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: Install requirements
-      run: rustup target add riscv64imac-unknown-none-elf riscv32imc-unknown-none-elf
+      run: rustup target add riscv64imac-unknown-none-elf riscv32im-unknown-none-elf
     - name: Build FFI without RT on SysCtrl
       working-directory: ./examples/headsail-bsp-ffi
-      run: cargo build --target=riscv32imc-unknown-none-elf -Fpanic-uart
+      run: cargo build --target=riscv32im-unknown-none-elf -Fpanic-uart
     - name: Build FFI without RT on HPC
       working-directory: ./examples/headsail-bsp-ffi
       run: cargo build --target=riscv64imac-unknown-none-elf -Fpanic-uart

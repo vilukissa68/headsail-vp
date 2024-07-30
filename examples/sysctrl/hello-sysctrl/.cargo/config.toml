@@ -1,6 +1,6 @@
 [build]
-target = "riscv32imc-unknown-none-elf"
+target = "riscv32im-unknown-none-elf"
 
-[target.riscv32imc-unknown-none-elf]
+[target.riscv32im-unknown-none-elf]
 runner = "../../../scripts/run_on_sysctrl.sh"
 rustflags = ["-C", "link-arg=-Tmem_sysctrl.x", "-C", "link-arg=-Tlink.x"]
