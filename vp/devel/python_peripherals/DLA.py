@@ -781,8 +781,6 @@ class Dla:
                     bank.write(offset, combined)
                     offset += 1
                     values_written += 4
-            print("Wrote {} values to output last address {:8}.".format(values_written, hex(offset)))
-
         else:
             print("WARNING: output written outside VP memory region")
 
@@ -850,7 +848,6 @@ class Dla:
 
         # Column wise matrix formation
         column_wise = []
-        print("")
 
         for f in range(filter_amount):
             for c in range(input_channels):
@@ -928,11 +925,9 @@ class Dla:
         """
         bias_addr = self.get_register(PP_AXI_READ, PP_AXI_READ_ADDRESS_OFFSET, 32)
         # NOTE:(20240626 vaino-waltteri.granat@tuni.fi) In VP bias needs to be written into the memory banks
-        print("Values_to_read:", values_to_read)
         if MEMORY_BANK_ADDR <= bias_addr and bias_addr < (MEMORY_BANK_ADDR + (NO_MEMORY_BANKS * MEMORY_BANK_SIZE)):
             bias = []
             bank_idx = (bias_addr - MEMORY_BANK_ADDR) // MEMORY_BANK_SIZE
-            print("Bank:", bank_idx)
             bank = self.banks[bank_idx]
             offset = 0
 
@@ -946,7 +941,6 @@ class Dla:
                 low_byte = bank.read(offset) & 0xFF
                 high_byte = bank.read(offset + 1) & 0xFF
                 value = (high_byte << 8) + low_byte
-                print("value", value, "low:", low_byte, "high:", high_byte)
                 bias.append(cast_long_to_signed_16(value))
                 offset += 2 # 16 bit width
             print(bias)
@@ -1230,7 +1224,6 @@ class DlaMac:
                             # print_matrix(mat_sub, "sub_matrix", "hexadecimal")
                             # print_matrix(kernel[channel_idx], "kernel", "hexadecimal")
                             channel_res = self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
-                            # print("Channel res:", channel_res, "\n")
                             channel_sum += channel_res
 
 
