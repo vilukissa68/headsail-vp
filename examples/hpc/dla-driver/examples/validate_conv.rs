@@ -251,13 +251,6 @@ fn validate_conv2d_bias() -> bool {
     while !dla.handle_handshake() {}
     let output = dla.read_output_i8(output_size.0 * output_size.1 * 16);
 
-    for (i, x) in output.iter().enumerate() {
-        if output[i] != dout[i] {
-            sprint!("Diff found at {}, expected {}, found {}.", i, dout[i], x);
-            return false;
-        }
-    }
-
     output == dout
 }
 
