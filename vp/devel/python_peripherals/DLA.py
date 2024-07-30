@@ -324,6 +324,22 @@ def cast_long_to_signed_byte(value):
         return value
     return value - 256
 
+def cast_long_to_signed_16(value):
+    """Bitwise cast of unsigned char to signed char.
+
+    Params:
+    value -- Int Unsigned value to cast to signed char
+
+    Returns:
+    byte -- Int Signed value in range -128..127
+    """
+    assert(0 <= value <= 65535)
+    value = value & 0xFFFF
+    if value <= 32767:
+        return value
+    return value - 65536
+
+
 
 def separate_channels(data):
     """Reformats data so that each channels is it's own 2D array
@@ -408,40 +424,24 @@ def execute_for_all_elements(f, tensor, *args):
     else:  # Base case: tensor is not a list, apply f
         return f(tensor, *args)
 
-def clip_signed(value, clip, no_overflow=False):
+def clip(value, clip_amount, bit_width=8):
     """Value to possibly clip is clipped to max of bit length set by clip
     params:
     value = value to clip
-    clip =  amount of bits allowed
+    clip =  number of bits to clip
+    bit_width = bit width of the given value
     return:
-    tuple (a, b)
-    a = value resulting from the clipping
-    b = amount of owerflow due to clipping, 0 if no clipping
+    clipped_value = value resulting from the clipping
     """
-    upper_bound = pow(2, clip) // 2 - 1 # 127
+    upper_bound = pow(2, bit_width) // 2 - 1 # 127
     lower_bound = -upper_bound - 1
-    if value > upper_bound:
-        return upper_bound if no_overflow else (upper_bound, value - upper_bound)
-    elif value < lower_bound:
-        return lower_bound if no_overflow else (lower_bound, value + (-lower_bound))
-    return value if no_overflow else (value, 0)
-
-def clip_unsigned(value, clip, no_overflow=False):
-    """Value to possibly clip is clipped to max of bit length set by clip
-    params:
-    value = value to clip
-    clip =  amount of bits allowed
-    return:
-    tuple (a, b)
-    a = value resulting from the clipping
-    b = amount of owerflow due to clipping, 0 if no clipping
-    """
-    mask = pow(2, clip)-1 # 255
-    if value > mask:
-        return mask if no_overflow else (mask, value - mask)
-    elif value < 0:
-        return 0 if no_overflow else (0, value)
-    return value if no_overflow else (value, 0)
+    clipped_value = value >> clip_amount
+    if clipped_value > upper_bound:
+        return upper_bound
+    elif clipped_value < lower_bound:
+        return lower_bound
+    else:
+        return clipped_value
 
 def rounding(value):
     """Round given value
@@ -762,7 +762,7 @@ class Dla:
                     values_written += 1
                     offset += 2
                 elif bit_width == 8:
-                    bank.write(offset, data[values_written])
+                    bank.write(offset, data[values_written] & 0xFF)
                     offset += 1
                     values_written += 1
                 elif bit_width == 4:
@@ -781,7 +781,6 @@ class Dla:
                     bank.write(offset, combined)
                     offset += 1
                     values_written += 4
-
         else:
             print("WARNING: output written outside VP memory region")
 
@@ -849,7 +848,6 @@ class Dla:
 
         # Column wise matrix formation
         column_wise = []
-        print("")
 
         for f in range(filter_amount):
             for c in range(input_channels):
@@ -916,14 +914,40 @@ class Dla:
         print_matrix(column_wise[0], "flat input:", pformat="hexadecimal")
         return channels, width, height, column_wise
 
-    # TODO: Finish this when external memory is figured out
-    def get_bias(self):
-       """Get bias values from external memory"""
-       # TODO: Implement this
-       return 1
-       bias_address = self.get_register(PP_AXI_READ, PP_AXI_READ_ADDRESS_OFFSET, 32)
-       #data = self.external[bias_address]
-       return 0
+    def get_bias(self, values_to_read):
+        """Get bias values from memory. Due to VP limitations bias needs to be in DLA memory banks.
+
+        Params:
+        values_to_read -- Int number of values in Bias FIFO
+
+        Returns:
+        bias -- [Int] Bias FIFO read from memory with 16 bit width
+        """
+        bias_addr = self.get_register(PP_AXI_READ, PP_AXI_READ_ADDRESS_OFFSET, 32)
+        # NOTE:(20240626 vaino-waltteri.granat@tuni.fi) In VP bias needs to be written into the memory banks
+        if MEMORY_BANK_ADDR <= bias_addr and bias_addr < (MEMORY_BANK_ADDR + (NO_MEMORY_BANKS * MEMORY_BANK_SIZE)):
+            bias = []
+            bank_idx = (bias_addr - MEMORY_BANK_ADDR) // MEMORY_BANK_SIZE
+            bank = self.banks[bank_idx]
+            offset = 0
+
+            while len(bias) < values_to_read:
+                # Bank switching when current bank is filled
+                if offset > bank.size:
+                    bank_idx = bank_idx + 1
+                    assert(bank_idx < len(self.banks))
+                    bank = self.banks[bank_idx]
+                    offset = 0
+                low_byte = bank.read(offset) & 0xFF
+                high_byte = bank.read(offset + 1) & 0xFF
+                value = (high_byte << 8) + low_byte
+                bias.append(cast_long_to_signed_16(value))
+                offset += 2 # 16 bit width
+            print(bias)
+            return bias
+        else:
+            print("WARNING: trying to read bias outside of VP memory region as address: {:x}".format(bias_addr))
+            return []
 
     def get_conv_params(self):
        """Get parameters for conv2d
@@ -956,14 +980,14 @@ class Dla:
         """Clip pp values if register is set"""
         clip_amount = self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5)
         if clip_amount > 0:
-            return execute_for_all_elements(clip_signed, values, clip_amount, True)
+            return execute_for_all_elements(clip, values, clip_amount, 8)
         return values
 
     def mac_clip(self, values):
         """Clip mac values if register is set"""
         clip_amount = self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5)
         if clip_amount > 0:
-            return execute_for_all_elements(clip_signed, values, clip_amount, True)
+            return execute_for_all_elements(clip, values, clip_amount, 16)
         return values
 
     def handle_handshake(self):
@@ -1022,7 +1046,6 @@ class Dla:
 
         # Pack output according to clipping
         output_bit_width = self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) if self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) > 0 else 32
-        print("output_width:", output_bit_width)
 
         if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1):
             print("Mac not enabled")
@@ -1035,12 +1058,22 @@ class Dla:
             for i, r in enumerate(res):
                 print_matrix(r, "{} MAC:".format(i))
 
-        # TODO: Post process
         if self.get_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1):
-            # TODO: Bias
             if self.get_register(HANDSHAKE, HANDSHAKE_BIAS_ENABLE_OFFSET, 1):
-                bias_amount = self.get_bias()
-                res = execute_for_all_elements(self.mac.bias_native, res, bias_amount)
+
+                bias = self.get_bias(get_shape(res)[0]) # Bias needs to be applied to each layer coming out of the MAC
+                print("BIAS:", bias)
+                tmp = []
+                for (i, r) in enumerate(res):
+                    def curry_bias(bias):
+                        def next(element):
+                            return bias + element
+                        return next
+
+                    a = execute_for_all_elements(curry_bias(bias[i]), r)
+                    tmp.append(a)
+
+                res = tmp
                 for (i, r) in enumerate(res):
                     print_matrix(r, "{} BIAS:".format(i))
 
@@ -1050,17 +1083,19 @@ class Dla:
                 for (i, r) in enumerate(res):
                     print_matrix(r, "{} ReLU:".format(i))
 
-            output_bit_width = self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5) # Pack output according to clipping
-
             # Clipping and rounding
             res = dla.pp_clip(res)
-            res = dla.round(res)
-            print("Shape:", get_shape(res))
+            #res = dla.round(res)
             for (i, r) in enumerate(res):
                 print_matrix(r, "{} PP:".format(i))
 
+            output_bit_width = 32 - self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5) # Pack output according to clipping
+
         # After calculating one layer the device needs new configuration
-        self.write_output(res, output_bit_width)
+        if output_bit_width == 32:
+            self.write_output(res, 32)
+        else:
+            self.write_output(res, 8)
 
         # Set Done status
         self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 1)
@@ -1189,7 +1224,6 @@ class DlaMac:
                             # print_matrix(mat_sub, "sub_matrix", "hexadecimal")
                             # print_matrix(kernel[channel_idx], "kernel", "hexadecimal")
                             channel_res = self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
-                            #print("Channel res:", channel_res, "\n")
                             channel_sum += channel_res
 
 
@@ -1225,21 +1259,48 @@ class DlaMac:
         """
         return x + b
 
+    def matsum_element_wise(self, A, B):
+        """Add elements between matrices A and B
+
+        Params:
+        A -- N-dimensional tensor of any numerical type
+        B -- N-dimensional tensor of any numerical type
+
+        Returns:
+        C -- Tensor with same dimensionality as inputs
+        """
+
+        # Trivial case
+        if not isinstance(A, list) and not isinstance(B, list):
+            return A + B
+
+        assert len(A) == len(B)
+        C = []
+        for a, b in zip(A, B):
+            C.append(self.matsum_element_wise(a, b))
+
+        return C
+
+
     def matmul_element_wise(self, A, B):
         """Multiply elements between matrices A and B
 
         Params:
-        A -- Matrix A in form of [[Int]]
-        B -- Matrix B in form of [[Int]]
+        A -- N-dimensional tensor of any numerical type
+        B -- N-dimensional tensor of any numerical type
 
         Returns:
-        C -- Matrix C in form of [[Int]]
+        C -- Tensor with same dimensionality as inputs
         """
-        assert len(A) == len(B) and len(A[0]) == len(B[0])
-        C = [[0 for _ in range(len(A[0])) ] for _ in range(len(A)) ] # np.zeros(w_out, h_out)
-        for x in range(len(A)):
-            for y in range(len(A[0])):
-                C[x][y] = A[x][y] * B[x][y]
+        # Trivial case
+        if not isinstance(A, list) and not isinstance(B, list):
+            return A * B
+
+        assert len(A) == len(B)
+        C = []
+        for a, b in zip(A, B):
+            C.append(self.matmul_element_wise(a, b))
+
         return C
 
     def mat_sum(self, A):

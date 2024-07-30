@@ -381,6 +381,21 @@ impl Dla {
         self.write_data_bank(self.get_kernel_bank().offset(), kernel)
     }
 
+    pub fn write_bias(&self, bias: &[i16]) {
+        // TODO Add support for writing to arbitrary memory location instead of dla memory banks
+        let mut bytes = Vec::with_capacity(bias.len() * 2);
+        for &x in bias {
+            bytes.push((x & 0xFF) as u8);
+            bytes.push((x >> 8) as u8);
+        }
+
+        let addr = self.get_bias_addr() as usize + EXTERNAL_BIT;
+        for (i, b) in bytes.iter().enumerate() {
+            let offset = addr + i;
+            unsafe { ptr::write_volatile(offset as *mut _, *b) }
+        }
+    }
+
     /// Sets one of the DLA's memory banks as starting bank for inputs
     fn set_input_data_bank(&self, bank: MemoryBank) {
         let mut reg = self.read_u32(DLA_BUF_DATA_BANK);
@@ -724,6 +739,12 @@ impl Dla {
     /// Sets external memory address containing bias data for post-processing
     fn set_bias_addr(&self, addr: u32) {
         self.write_u32(DLA_PP_AXI_READ, addr);
+    }
+
+    fn get_bias_addr(&self) -> u32 {
+        let mut reg = self.read_u32(DLA_PP_AXI_READ);
+        reg = get_bits!(reg, DLA_PP_AXI_READ_ADDRESS_BITMASK);
+        reg as u32
     }
 
     /// Checks if all functions have been enabled
