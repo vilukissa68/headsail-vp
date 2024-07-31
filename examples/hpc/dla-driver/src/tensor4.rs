@@ -33,7 +33,7 @@ pub enum Order4 {
 }
 
 impl Order4 {
-    fn into_position(&self) -> [usize; 4] {
+    fn into_position(self) -> [usize; 4] {
         match self {
             Order4::KCHW => [0, 1, 2, 3],
             Order4::KCWH => [0, 1, 3, 2],

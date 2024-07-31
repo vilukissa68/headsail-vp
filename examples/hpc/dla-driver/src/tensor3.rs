@@ -15,7 +15,7 @@ pub enum Order3 {
 }
 
 impl Order3 {
-    fn into_position(&self) -> [usize; 3] {
+    fn into_position(self) -> [usize; 3] {
         match self {
             Order3::CHW => [0, 1, 2],
             Order3::CWH => [0, 2, 1],
