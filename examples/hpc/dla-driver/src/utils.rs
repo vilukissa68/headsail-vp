@@ -68,14 +68,6 @@ pub fn get_banks_for_layer(
 
     let bias_bank = bias_size
         .map(|_| (MEMORY_BANK_BASE_ADDR + (output_bank + no_output_banks).offset()) as u32);
-    sprintln!(
-        "input bank: {:x}, kernel bank: {:x}, output bank: {:x}, bias bank: {:x}",
-        input_bank.offset(),
-        kernel_bank.offset(),
-        output_bank.offset(),
-        bias_bank.unwrap()
-    );
-
     (input_bank, kernel_bank, output_bank, bias_bank)
 }
 

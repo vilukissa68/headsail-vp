@@ -33,15 +33,11 @@ fn validate_conv2d_tiny() -> bool {
     sprintln!("Inputs read\r\n");
 
     let din_tensor: Tensor3<i8> = Tensor3::from_data_buffer(3, 5, 5, din, Order3::HWC).unwrap();
-    sprintln!("Tensor3");
     let wgt_tensor: Tensor4<i8> = Tensor4::from_data_buffer(2, 3, 3, 3, wgt, Order4::HWKC).unwrap();
-    sprintln!("Tensor4");
     let dout_tensor =
         generate_output_tensor(&din_tensor, &wgt_tensor, dout_i32, Order3::HWC, None, None);
-    sprintln!("Output tensor preparede");
     let mut output =
         dla_driver::layers::conv2d(din_tensor, wgt_tensor, None, None, None, None, None);
-    sprintln!("Output calculated");
     output.permute(Order3::HWC);
 
     sprint!("\ndla out | dout\n");
