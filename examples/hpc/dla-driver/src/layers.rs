@@ -62,9 +62,9 @@ pub fn dense(outputs: usize, input: Tensor3<i8>, weights: Vec<i8>) -> Vec<i32> {
     // Build kernels to produce 1 to 1 mac operation
     let kernels_wrap = Tensor4::from_data_buffer(
         outputs,
-        input.channels,
-        input.height,
-        input.width,
+        input.channels(),
+        input.height(),
+        input.width(),
         weights,
         Order4::KCHW,
     );
@@ -272,9 +272,6 @@ fn run_layers<T: DlaOutput + Clone>(
 
     dla.init_layer(config);
 
-    input.print_tensor();
-    kernels.print_tensor();
-
     dla.write_input(&mut input.to_buffer_with_order(Order3::HWC));
     dla.write_kernel(&mut kernels.to_buffer_with_order(Order4::HWKC));
 
@@ -309,8 +306,8 @@ pub fn conv2d_relu(
     simd_mode: Option<SimdBitMode>,
 ) -> Tensor3<i8> {
     let output_size = calculate_conv2d_out_param_dim(
-        (input.width as u32, input.height as u32),
-        (kernels.width as u32, kernels.height as u32),
+        (input.width() as u32, input.height() as u32),
+        (kernels.width() as u32, kernels.height() as u32),
         padding.clone(),
         stride.clone(),
     );
@@ -338,15 +335,15 @@ pub fn conv2d_relu(
         relu_enabled: true,
         bias_enabled: false,
         input_size: Some(InputSize {
-            channels: input.channels as u32,
-            width: input.width as u32,
-            height: input.height as u32,
+            channels: input.channels() as u32,
+            width: input.width() as u32,
+            height: input.height() as u32,
         }),
         kernel_size: Some(KernelSize {
             s_channels: 1,
-            kernels: kernels.kernels as u32,
-            width: kernels.width as u32,
-            height: kernels.height as u32,
+            kernels: kernels.kernels() as u32,
+            width: kernels.width() as u32,
+            height: kernels.height() as u32,
         }),
         padding,
         stride,
@@ -357,9 +354,6 @@ pub fn conv2d_relu(
 
     dla.init_layer(config);
 
-    input.print_tensor();
-    kernels.print_tensor();
-
     dla.write_input(&mut input.to_buffer_with_order(Order3::HWC));
     dla.write_kernel(&mut kernels.to_buffer_with_order(Order4::HWKC));
 
@@ -368,10 +362,10 @@ pub fn conv2d_relu(
     dla.input_data_ready(true);
 
     while !dla.handle_handshake() {}
-    let output_buffer = dla.read_output_i8(output_size.0 * output_size.1 * kernels.kernels);
+    let output_buffer = dla.read_output_i8(output_size.0 * output_size.1 * kernels.kernels());
 
     let output: Tensor3<i8> = Tensor3::from_data_buffer(
-        kernels.kernels,
+        kernels.kernels(),
         output_size.1,
         output_size.0,
         output_buffer,
@@ -392,8 +386,8 @@ pub fn conv2d_bias(
     simd_mode: Option<SimdBitMode>,
 ) -> Tensor3<i8> {
     let output_size = calculate_conv2d_out_param_dim(
-        (input.width as u32, input.height as u32),
-        (kernels.width as u32, kernels.height as u32),
+        (input.width() as u32, input.height() as u32),
+        (kernels.width() as u32, kernels.height() as u32),
         padding.clone(),
         stride.clone(),
     );
@@ -421,15 +415,15 @@ pub fn conv2d_bias(
         relu_enabled: false,
         bias_enabled: true,
         input_size: Some(InputSize {
-            channels: input.channels as u32,
-            width: input.width as u32,
-            height: input.height as u32,
+            channels: input.channels() as u32,
+            width: input.width() as u32,
+            height: input.height() as u32,
         }),
         kernel_size: Some(KernelSize {
             s_channels: 1,
-            kernels: kernels.kernels as u32,
-            width: kernels.width as u32,
-            height: kernels.height as u32,
+            kernels: kernels.kernels() as u32,
+            width: kernels.width() as u32,
+            height: kernels.height() as u32,
         }),
         padding,
         stride,
@@ -440,9 +434,6 @@ pub fn conv2d_bias(
 
     dla.init_layer(config);
 
-    input.print_tensor();
-    kernels.print_tensor();
-
     dla.write_input(&mut input.to_buffer_with_order(Order3::HWC));
     dla.write_kernel(&mut kernels.to_buffer_with_order(Order4::HWKC));
     dla.write_bias(&bias);
@@ -452,10 +443,10 @@ pub fn conv2d_bias(
     dla.input_data_ready(true);
 
     while !dla.handle_handshake() {}
-    let output_buffer = dla.read_output_i8(output_size.0 * output_size.1 * kernels.kernels);
+    let output_buffer = dla.read_output_i8(output_size.0 * output_size.1 * kernels.kernels());
 
     let output: Tensor3<i8> = Tensor3::from_data_buffer(
-        kernels.kernels,
+        kernels.kernels(),
         output_size.1,
         output_size.0,
         output_buffer,

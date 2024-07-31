@@ -33,14 +33,16 @@ fn validate_conv2d_tiny() -> bool {
     sprintln!("Inputs read\r\n");
 
     let din_tensor: Tensor3<i8> = Tensor3::from_data_buffer(3, 5, 5, din, Order3::HWC).unwrap();
+    sprintln!("Tensor3");
     let wgt_tensor: Tensor4<i8> = Tensor4::from_data_buffer(2, 3, 3, 3, wgt, Order4::HWKC).unwrap();
+    sprintln!("Tensor4");
     let dout_tensor =
         generate_output_tensor(&din_tensor, &wgt_tensor, dout_i32, Order3::HWC, None, None);
-
+    sprintln!("Output tensor preparede");
     let mut output =
         dla_driver::layers::conv2d(din_tensor, wgt_tensor, None, None, None, None, None);
-    output.transmute(Order3::HWC);
-    output.print_tensor();
+    sprintln!("Output calculated");
+    output.permute(Order3::HWC);
 
     sprint!("\ndla out | dout\n");
     let dout_tensor_buf = dout_tensor.to_buffer();
@@ -50,8 +52,6 @@ fn validate_conv2d_tiny() -> bool {
 }
 
 fn validate_conv2d() -> bool {
-    let mut dla = Dla::new();
-
     sprintln!("din\r\n");
     let mut din: Vec<i8> = uart_read_to_heap(4096)
         .into_iter()
@@ -84,7 +84,7 @@ fn validate_conv2d() -> bool {
 
     let mut output =
         dla_driver::layers::conv2d(din_tensor, wgt_tensor, None, None, None, None, None);
-    output.transmute(Order3::HWC);
+    output.permute(Order3::HWC);
 
     sprint!("\n");
     let dout_tensor_buf = dout_tensor.to_buffer();
@@ -158,7 +158,7 @@ fn validate_conv2d_bias() -> bool {
         None,
     );
 
-    output.transmute(Order3::HWC);
+    output.permute(Order3::HWC);
 
     let dout_tensor_buf = dout_tensor.to_buffer();
     let output_tensor_buf = output.to_buffer();

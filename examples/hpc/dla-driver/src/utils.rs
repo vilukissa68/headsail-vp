@@ -23,7 +23,7 @@ pub fn calculate_conv2d_out_param_dim(
     (output_width as usize, output_height as usize)
 }
 
-pub fn generate_output_tensor<T, H, J: Clone + headsail_bsp::ufmt::uDisplay>(
+pub fn generate_output_tensor<T: Clone, H: Clone, J: Clone>(
     input: &Tensor3<T>,
     kernel: &Tensor4<H>,
     output_buf: Vec<J>,
@@ -32,13 +32,13 @@ pub fn generate_output_tensor<T, H, J: Clone + headsail_bsp::ufmt::uDisplay>(
     stride: Option<Stride>,
 ) -> Tensor3<J> {
     let output_size = calculate_conv2d_out_param_dim(
-        (input.width as u32, input.height as u32),
-        (kernel.width as u32, kernel.height as u32),
+        (input.width() as u32, input.height() as u32),
+        (kernel.width() as u32, kernel.height() as u32),
         padding,
         stride,
     );
     Tensor3::from_data_buffer(
-        kernel.kernels,
+        kernel.kernels(),
         output_size.1,
         output_size.0,
         output_buf.clone(),
