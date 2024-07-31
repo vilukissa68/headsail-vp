@@ -105,48 +105,6 @@ jobs:
   build-dla-validation:
     runs-on: ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v4
-    - name: Install requirements
-      run: rustup target add riscv64imac-unknown-none-elf
-    - name: Build validation
-      working-directory: ./examples/hpc/dla-driver
-      run: cargo build --example validate -Fvp --target riscv64imac-unknown-none-elf
-    - name: Upload artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: $DLA_VALIDATION_BIN
-        path: ./examples/hpc/target/riscv64imac-unknown-none-elf/debug/examples/validate
-        if-no-files-found: error
-        retention-days: 14
-
-  run-dla-validation:
-    needs: build-dla-validation
-
-    runs-on: ubuntu-latest
-    container:
-      image: antmicro/renode:1.14.0
-      options: --user root
-
-    steps:
-    - uses: actions/checkout@v4
-    - name: Download artifact
-      uses: actions/download-artifact@v4
-      with:
-        name: $DLA_VALIDATION_BIN
-    - name: Create Renode peripheral symlinks
-      run: ln -s $(readlink -f "./vp/devel/python_peripherals/DLA.py") "$RENODE_DIR/scripts/pydev/DLA.py"
-    - name: Run dla validation
-      run: renode-test scripts/robot/dla_validate.robot --variable BIN:"$(readlink -f $DLA_VALIDATION_BIN)"
-    - name: Upload snapshots
-      if: failure()
-      uses: actions/upload-artifact@v4
-      with:
-        path: snapshots/
-
-  build-dla-validation:
-    runs-on: ubuntu-latest
-
     env:
       RISCV: /opt/riscv/
       GCC_VER: "2024.04.12"
@@ -164,23 +122,6 @@ jobs:
         mkdir ${RISCV} && \
           tar -xf $RISCV_XLEN-elf-$UBUNTU_VER-gcc-nightly-$GCC_VER-nightly.tar.gz --strip-components 1 -C $RISCV
         export PATH="${RISCV}"/bin:${PATH}
-        echo "${RISCV}/bin" >> $GITHUB_PATH
-        $RISCV_XLEN-unknown-elf-gcc --version
-        $RISCV_XLEN-unknown-elf-ld --version
-    - name: Install rustup target
-      run: rustup target add riscv64imac-unknown-none-elf
-    - name: Create RISC-V GCC directory
-      run: mkdir $RISCV
-    - name: Create RISC-V GCC build directory
-      shell: bash
-      run: mkdir /tmp/riscv-gnu-toolchain
-    - name: Download GCC
-      working-directory: /tmp/riscv-gnu-toolchain/
-      run: |
-        wget -q https://github.com/riscv-collab/riscv-gnu-toolchain/releases/download/$GCC_VER/$RISCV_XLEN-elf-$UBUNTU_VER-gcc-nightly-$GCC_VER-nightly.tar.gz
-        mkdir ${RISCV} && \
-          tar -xf $RISCV_XLEN-elf-ubuntu-$UBUNTU_VER-llvm-nightly-$GCC_VER-nightly.tar.gz --strip-components 1 -C $RISCV
-        export PATH="${RISCV}/bin:${PATH}"
         echo "${RISCV}/bin" >> $GITHUB_PATH
         $RISCV_XLEN-unknown-elf-gcc --version
         $RISCV_XLEN-unknown-elf-ld --version
