@@ -351,7 +351,7 @@ impl Dla {
         let mut result = Vec::with_capacity(bytes.len() * 2);
         for &byte in bytes.iter() {
             // Extract the upper 4 bits and sign-extend to i8
-            let upper = (byte as u8 & 0xF0) >> 4;
+            let upper = (byte & 0xF0) >> 4;
             let upper_sign_extended = if upper & 0x08 != 0 {
                 upper | 0xF0
             } else {
@@ -760,7 +760,7 @@ impl Dla {
     fn get_bias_addr(&self) -> u32 {
         let mut reg = self.read_u32(DLA_PP_AXI_READ);
         reg = get_bits!(reg, DLA_PP_AXI_READ_ADDRESS_BITMASK);
-        reg as u32
+        reg
     }
 
     /// Checks if all functions have been enabled

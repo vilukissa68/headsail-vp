@@ -37,15 +37,14 @@ pub fn generate_output_tensor<T, H, J: Clone + headsail_bsp::ufmt::uDisplay>(
         padding,
         stride,
     );
-    let dout_tensor = Tensor3::from_data_buffer(
+    Tensor3::from_data_buffer(
         kernel.kernels,
         output_size.1,
         output_size.0,
         output_buf.clone(),
         order,
     )
-    .unwrap();
-    dout_tensor
+    .unwrap()
 }
 
 pub fn calculate_number_of_banks_needed(bytes: usize) -> usize {
@@ -67,12 +66,8 @@ pub fn get_banks_for_layer(
     let kernel_bank = input_bank + no_input_banks;
     let output_bank = kernel_bank + no_kernel_banks;
 
-    let bias_bank = match bias_size {
-        Some(_bias_size) => {
-            Some((MEMORY_BANK_BASE_ADDR + (output_bank + no_output_banks).offset()) as u32)
-        }
-        None => None,
-    };
+    let bias_bank = bias_size
+        .map(|_| (MEMORY_BANK_BASE_ADDR + (output_bank + no_output_banks).offset()) as u32);
     sprintln!(
         "input bank: {:x}, kernel bank: {:x}, output bank: {:x}, bias bank: {:x}",
         input_bank.offset(),
@@ -81,7 +76,7 @@ pub fn get_banks_for_layer(
         bias_bank.unwrap()
     );
 
-    return (input_bank, kernel_bank, output_bank, bias_bank);
+    (input_bank, kernel_bank, output_bank, bias_bank)
 }
 
 fn ceil<T>(x: T, y: T) -> T
