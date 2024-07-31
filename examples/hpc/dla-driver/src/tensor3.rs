@@ -16,8 +16,8 @@ pub enum Order3 {
     WCH,
 }
 
-impl From<Order3> for [usize; 3] {
-    fn from(order: Order3) -> Self {
+impl Order3 {
+    fn into_positions(order: Order3) -> [usize; 3] {
         match order {
             Order3::CHW => [0, 1, 2],
             Order3::CWH => [0, 2, 1],
@@ -32,9 +32,6 @@ impl From<Order3> for [usize; 3] {
 #[derive(Clone, Debug)]
 pub struct Tensor3<T> {
     data: Array3<T>,
-    pub channels: usize,
-    pub height: usize,
-    pub width: usize,
     order: Order3,
 }
 
@@ -48,13 +45,28 @@ impl<T: Clone + uDisplay> Tensor3<T> {
         order: Order3,
     ) -> Self {
         let data = Array::from_elem((channels, height, width), initial_value);
-        Tensor3 {
-            data,
-            channels,
-            height,
-            width,
-            order,
-        }
+        Tensor3 { data, order }
+    }
+
+    pub fn channels(&self) -> usize {
+        let dim_order: [usize; 3] = self.order.into();
+        Self.data
+            .shape()
+            .get(dim_order.iter().position(|&r| r == 0).unwrap())
+    }
+
+    pub fn height(&self) -> usize {
+        let dim_order: [usize; 3] = self.order.into();
+        Self.data
+            .shape()
+            .get(dim_order.iter().position(|&r| r == 1).unwrap())
+    }
+
+    pub fn width(&self) -> usize {
+        let dim_order: [usize; 3] = self.order.into();
+        Self.data
+            .shape()
+            .get(dim_order.iter().position(|&r| r == 2).unwrap())
     }
 
     /// Creates a new Tensor3 from a data buffer with the specified order
@@ -66,13 +78,7 @@ impl<T: Clone + uDisplay> Tensor3<T> {
         let height = shape[dim_order.iter().position(|&r| r == 1).unwrap()];
         let width = shape[dim_order.iter().position(|&r| r == 2).unwrap()];
 
-        Tensor3 {
-            data,
-            channels,
-            height,
-            width,
-            order,
-        }
+        Tensor3 { data, order }
     }
 
     /// Creates a new Tensor3 from a data buffer with the specified order
@@ -96,13 +102,7 @@ impl<T: Clone + uDisplay> Tensor3<T> {
         let data = Array::from_shape_vec((fst, snd, thd), data_buffer)
             .map_err(|_| "Failed to create array from data buffer")?;
 
-        Ok(Tensor3 {
-            data,
-            channels,
-            height,
-            width,
-            order,
-        })
+        Ok(Tensor3 { data, order })
     }
 
     /// Get the number of element in ndarray
@@ -169,7 +169,7 @@ impl<T: Clone + uDisplay> Tensor3<T> {
     }
 
     /// Sets a new order for the array
-    pub fn transmute(&mut self, order: Order3) {
+    pub fn permute(&mut self, order: Order3) {
         // Early return if already in order
         if self.order == order {
             return;
@@ -217,32 +217,5 @@ impl<T: Clone + uDisplay> Tensor3<T> {
         let mut data = self.clone();
         data.transmute(order);
         data.to_buffer()
-    }
-
-    /// Prints tensor in current order
-    pub fn print_tensor(&self) {
-        sprintln!("Channels: {}", self.channels);
-        sprintln!("Height: {}", self.height);
-        sprintln!("Width: {}", self.width);
-        let chw_buffer = self.to_chw_buffer(); // Use common format
-        let data = Array::from_shape_vec((self.channels, self.height, self.width), chw_buffer)
-            .expect("Failed to reshape buffer to CHW order");
-
-        let dim_order: [usize; 3] = self.order.into();
-        let dim_order_values = self.get_dimension_order_values(None);
-
-        for i in 0..dim_order_values[0] {
-            for j in 0..dim_order_values[1] {
-                for k in 0..dim_order_values[2] {
-                    // Match iterators i,j,k to current ordering scheme to find index data in standard CHW order
-                    let c = [i, j, k][dim_order.iter().position(|&r| r == 0).unwrap()];
-                    let h = [i, j, k][dim_order.iter().position(|&r| r == 1).unwrap()];
-                    let w = [i, j, k][dim_order.iter().position(|&r| r == 2).unwrap()];
-                    sprint!("{} ", data[(c, h, w)]);
-                }
-                sprintln!("")
-            }
-            sprintln!("")
-        }
     }
 }

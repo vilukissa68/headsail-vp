@@ -34,8 +34,8 @@ pub enum Order4 {
     WHKC,
 }
 
-impl From<Order4> for [usize; 4] {
-    fn from(order: Order4) -> Self {
+impl Order4 {
+    fn into_position(order: Order4) -> Self {
         match order {
             Order4::KCHW => [0, 1, 2, 3],
             Order4::KCWH => [0, 1, 3, 2],
@@ -68,10 +68,6 @@ impl From<Order4> for [usize; 4] {
 #[derive(Clone, Debug)]
 pub struct Tensor4<T> {
     data: Array4<T>,
-    pub channels: usize,
-    pub kernels: usize,
-    pub height: usize,
-    pub width: usize,
     order: Order4,
 }
 
@@ -86,14 +82,34 @@ impl<T: Clone + uDisplay> Tensor4<T> {
         order: Order4,
     ) -> Self {
         let data = Array::from_elem((kernels, channels, height, width), initial_value);
-        Tensor4 {
-            data,
-            kernels,
-            channels,
-            height,
-            width,
-            order,
-        }
+        Tensor4 { data, order }
+    }
+    pub fn kernels(&self) -> usize {
+        let dim_order: [usize; 3] = self.order.into();
+        Self.data
+            .shape()
+            .get(dim_order.iter().position(|&r| r == 0).unwrap())
+    }
+
+    pub fn channels(&self) -> usize {
+        let dim_order: [usize; 3] = self.order.into();
+        Self.data
+            .shape()
+            .get(dim_order.iter().position(|&r| r == 1).unwrap())
+    }
+
+    pub fn height(&self) -> usize {
+        let dim_order: [usize; 3] = self.order.into();
+        Self.data
+            .shape()
+            .get(dim_order.iter().position(|&r| r == 2).unwrap())
+    }
+
+    pub fn width(&self) -> usize {
+        let dim_order: [usize; 3] = self.order.into();
+        Self.data
+            .shape()
+            .get(dim_order.iter().position(|&r| r == 3).unwrap())
     }
 
     /// Creates a new Tensor4 from a data buffer with the specified order
@@ -106,14 +122,7 @@ impl<T: Clone + uDisplay> Tensor4<T> {
         let height = shape[dim_order.iter().position(|&r| r == 2).unwrap()];
         let width = shape[dim_order.iter().position(|&r| r == 3).unwrap()];
 
-        Tensor4 {
-            data,
-            kernels,
-            channels,
-            height,
-            width,
-            order,
-        }
+        Tensor4 { data, order }
     }
 
     /// Get the number of element in ndarray
@@ -152,14 +161,7 @@ impl<T: Clone + uDisplay> Tensor4<T> {
         )
         .map_err(|_| "Failed to create array from data buffer")?;
 
-        Ok(Tensor4 {
-            data,
-            kernels,
-            channels,
-            height,
-            width,
-            order,
-        })
+        Ok(Tensor4 { data, order })
     }
 
     /// Matches order field value to height, width, channels and kernels parameters
@@ -271,41 +273,5 @@ impl<T: Clone + uDisplay> Tensor4<T> {
         let mut data = self.clone();
         data.transmute(order);
         data.to_buffer()
-    }
-
-    /// Prints tensor in current order
-    pub fn print_tensor(&self) {
-        // Convert current matrix to standard ordered vector
-        let kchw_buffer = self.to_kchw_buffer();
-        let data = Array::from_shape_vec(
-            (self.kernels, self.channels, self.height, self.width),
-            kchw_buffer,
-        )
-        .expect("Failed to reshape buffer to KCHW order");
-
-        let dim_order_values = self.get_dimension_order_values(None);
-        let dim_order: [usize; 4] = self.order.into();
-
-        // for x in dim_order_values {
-        //     sprint!("{} ", x)
-        // }
-
-        for i in 0..dim_order_values[0] {
-            for j in 0..dim_order_values[1] {
-                for k in 0..dim_order_values[2] {
-                    for l in 0..dim_order_values[3] {
-                        // Match iterators i,j,k to current ordering scheme to find index data in standard KCHW order
-                        let ker = [i, j, k, l][dim_order.iter().position(|&r| r == 0).unwrap()];
-                        let c = [i, j, k, l][dim_order.iter().position(|&r| r == 1).unwrap()];
-                        let h = [i, j, k, l][dim_order.iter().position(|&r| r == 2).unwrap()];
-                        let w = [i, j, k, l][dim_order.iter().position(|&r| r == 3).unwrap()];
-                        sprint!("{} ", data[(ker, c, h, w)]);
-                    }
-                    sprintln!("");
-                }
-                sprintln!("");
-            }
-            sprintln!("");
-        }
     }
 }
