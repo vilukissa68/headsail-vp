@@ -2,8 +2,6 @@
 #![no_main]
 
 use alloc::vec::*;
-use headsail_bsp::ufmt::uDisplay;
-use headsail_bsp::{sprint, sprintln};
 use ndarray::{Array, Array3};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -17,8 +15,8 @@ pub enum Order3 {
 }
 
 impl Order3 {
-    fn into_positions(order: Order3) -> [usize; 3] {
-        match order {
+    fn into_position(&self) -> [usize; 3] {
+        match self {
             Order3::CHW => [0, 1, 2],
             Order3::CWH => [0, 2, 1],
             Order3::HWC => [1, 2, 0],
@@ -35,7 +33,7 @@ pub struct Tensor3<T> {
     order: Order3,
 }
 
-impl<T: Clone + uDisplay> Tensor3<T> {
+impl<T: Clone> Tensor3<T> {
     // Creates a new Tensor3 with the specified dimensions, initial value, and order
     pub fn new(
         channels: usize,
@@ -49,35 +47,23 @@ impl<T: Clone + uDisplay> Tensor3<T> {
     }
 
     pub fn channels(&self) -> usize {
-        let dim_order: [usize; 3] = self.order.into();
-        Self.data
-            .shape()
-            .get(dim_order.iter().position(|&r| r == 0).unwrap())
+        let dim_order: [usize; 3] = self.order.into_position();
+        let position = dim_order.iter().position(|&r| r == 0).unwrap();
+        self.data.raw_dim()[position]
     }
-
     pub fn height(&self) -> usize {
-        let dim_order: [usize; 3] = self.order.into();
-        Self.data
-            .shape()
-            .get(dim_order.iter().position(|&r| r == 1).unwrap())
+        let dim_order: [usize; 3] = self.order.into_position();
+        let position = dim_order.iter().position(|&r| r == 1).unwrap();
+        self.data.raw_dim()[position]
     }
-
     pub fn width(&self) -> usize {
-        let dim_order: [usize; 3] = self.order.into();
-        Self.data
-            .shape()
-            .get(dim_order.iter().position(|&r| r == 2).unwrap())
+        let dim_order: [usize; 3] = self.order.into_position();
+        let position = dim_order.iter().position(|&r| r == 2).unwrap();
+        self.data.raw_dim()[position]
     }
 
     /// Creates a new Tensor3 from a data buffer with the specified order
     pub fn from_array3(data: Array3<T>, order: Order3) -> Self {
-        let shape = data.shape();
-
-        let dim_order: [usize; 3] = order.into();
-        let channels = shape[dim_order.iter().position(|&r| r == 0).unwrap()];
-        let height = shape[dim_order.iter().position(|&r| r == 1).unwrap()];
-        let width = shape[dim_order.iter().position(|&r| r == 2).unwrap()];
-
         Tensor3 { data, order }
     }
 
@@ -94,7 +80,7 @@ impl<T: Clone + uDisplay> Tensor3<T> {
         }
 
         let standard_shape = [channels, height, width];
-        let dim_order: [usize; 3] = order.into();
+        let dim_order: [usize; 3] = order.into_position();
         let fst = standard_shape[dim_order[0]];
         let snd = standard_shape[dim_order[1]];
         let thd = standard_shape[dim_order[2]];
@@ -116,15 +102,15 @@ impl<T: Clone + uDisplay> Tensor3<T> {
 
         // Use self value if no order was given
         let order: [usize; 3] = match order {
-            Some(order) => order.into(),
-            None => self.order.into(),
+            Some(order) => order.into_position(),
+            None => self.order.into_position(),
         };
 
         for (i, x) in order.into_iter().enumerate() {
             let param = match x {
-                0 => self.channels,
-                1 => self.height,
-                2 => self.width,
+                0 => self.channels(),
+                1 => self.height(),
+                2 => self.width(),
                 _ => unimplemented!(),
             };
             out[i] = param;
@@ -160,7 +146,7 @@ impl<T: Clone + uDisplay> Tensor3<T> {
 
     /// Returns the dimensions of the array
     pub fn dimensions(&self) -> (usize, usize, usize) {
-        (self.channels, self.height, self.width)
+        (self.channels(), self.height(), self.width())
     }
 
     /// Gets the current order of the array
@@ -177,18 +163,18 @@ impl<T: Clone + uDisplay> Tensor3<T> {
 
         if self.order == Order3::CHW {
             // Transmute to target order
-            let new_order: [usize; 3] = order.into();
+            let new_order: [usize; 3] = order.into_position();
             self.data = self.data.clone().permuted_axes(new_order);
             self.order = order;
             return;
         }
 
         // Transmute to standard order
-        let std_order: [usize; 3] = self.order.into();
+        let std_order: [usize; 3] = self.order.into_position();
         let std = self.data.clone().permuted_axes(std_order);
 
         // Transmute to target order
-        let new_order: [usize; 3] = order.into();
+        let new_order: [usize; 3] = order.into_position();
         self.data = std.permuted_axes(new_order);
         self.order = order;
     }
@@ -200,7 +186,7 @@ impl<T: Clone + uDisplay> Tensor3<T> {
 
     /// Converts the 3D array to a linear buffer according to the current order
     pub fn to_buffer(&self) -> Vec<T> {
-        let mut buffer = Vec::with_capacity(self.channels * self.height * self.width);
+        let mut buffer = Vec::with_capacity(self.get_size());
         for x in Array::from_iter(self.data.iter().cloned()) {
             buffer.push(x)
         }
@@ -215,7 +201,7 @@ impl<T: Clone + uDisplay> Tensor3<T> {
         }
 
         let mut data = self.clone();
-        data.transmute(order);
+        data.permute(order);
         data.to_buffer()
     }
 }

@@ -2,8 +2,6 @@
 #![no_main]
 
 use alloc::vec::*;
-use headsail_bsp::ufmt::uDisplay;
-use headsail_bsp::{sprint, sprintln};
 use ndarray::{Array, Array4};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -35,8 +33,8 @@ pub enum Order4 {
 }
 
 impl Order4 {
-    fn into_position(order: Order4) -> Self {
-        match order {
+    fn into_position(&self) -> [usize; 4] {
+        match self {
             Order4::KCHW => [0, 1, 2, 3],
             Order4::KCWH => [0, 1, 3, 2],
             Order4::KHWC => [0, 2, 3, 1],
@@ -53,8 +51,8 @@ impl Order4 {
             Order4::HKWC => [2, 0, 3, 1],
             Order4::HCKW => [2, 1, 0, 3],
             Order4::HCWK => [2, 1, 3, 0],
-            Order4::HWCK => [2, 3, 0, 1],
-            Order4::HWKC => [2, 3, 1, 0],
+            Order4::HWCK => [2, 3, 1, 0],
+            Order4::HWKC => [2, 3, 0, 1],
             Order4::WKCH => [3, 0, 1, 2],
             Order4::WKHC => [3, 0, 2, 1],
             Order4::WCKH => [3, 1, 0, 2],
@@ -71,7 +69,7 @@ pub struct Tensor4<T> {
     order: Order4,
 }
 
-impl<T: Clone + uDisplay> Tensor4<T> {
+impl<T: Clone> Tensor4<T> {
     // Creates a new Tensor4 with the specified dimensions, initial value, and order
     pub fn new(
         kernels: usize,
@@ -85,43 +83,30 @@ impl<T: Clone + uDisplay> Tensor4<T> {
         Tensor4 { data, order }
     }
     pub fn kernels(&self) -> usize {
-        let dim_order: [usize; 3] = self.order.into();
-        Self.data
-            .shape()
-            .get(dim_order.iter().position(|&r| r == 0).unwrap())
+        let dim_order: [usize; 4] = self.order.into_position();
+        let position = dim_order.iter().position(|&r| r == 0).unwrap();
+        self.data.raw_dim()[position]
     }
-
     pub fn channels(&self) -> usize {
-        let dim_order: [usize; 3] = self.order.into();
-        Self.data
-            .shape()
-            .get(dim_order.iter().position(|&r| r == 1).unwrap())
+        let dim_order: [usize; 4] = self.order.into_position();
+        let position = dim_order.iter().position(|&r| r == 1).unwrap();
+        self.data.raw_dim()[position]
     }
 
     pub fn height(&self) -> usize {
-        let dim_order: [usize; 3] = self.order.into();
-        Self.data
-            .shape()
-            .get(dim_order.iter().position(|&r| r == 2).unwrap())
+        let dim_order: [usize; 4] = self.order.into_position();
+        let position = dim_order.iter().position(|&r| r == 2).unwrap();
+        self.data.raw_dim()[position]
     }
 
     pub fn width(&self) -> usize {
-        let dim_order: [usize; 3] = self.order.into();
-        Self.data
-            .shape()
-            .get(dim_order.iter().position(|&r| r == 3).unwrap())
+        let dim_order: [usize; 4] = self.order.into_position();
+        let position = dim_order.iter().position(|&r| r == 3).unwrap();
+        self.data.raw_dim()[position]
     }
 
     /// Creates a new Tensor4 from a data buffer with the specified order
     pub fn from_array4(data: Array4<T>, order: Order4) -> Self {
-        let shape = data.shape();
-
-        let dim_order: [usize; 4] = order.into();
-        let kernels = shape[dim_order.iter().position(|&r| r == 0).unwrap()];
-        let channels = shape[dim_order.iter().position(|&r| r == 1).unwrap()];
-        let height = shape[dim_order.iter().position(|&r| r == 2).unwrap()];
-        let width = shape[dim_order.iter().position(|&r| r == 3).unwrap()];
-
         Tensor4 { data, order }
     }
 
@@ -144,7 +129,7 @@ impl<T: Clone + uDisplay> Tensor4<T> {
         }
 
         let standard_shape = [kernels, channels, height, width];
-        let dim_order: [usize; 4] = order.into();
+        let dim_order: [usize; 4] = order.into_position();
         let kernels_ordered = standard_shape[dim_order.iter().position(|&r| r == 0).unwrap()];
         let channels_ordered = standard_shape[dim_order.iter().position(|&r| r == 1).unwrap()];
         let height_ordered = standard_shape[dim_order.iter().position(|&r| r == 2).unwrap()];
@@ -170,16 +155,16 @@ impl<T: Clone + uDisplay> Tensor4<T> {
 
         // Use self value if no order was given
         let order: [usize; 4] = match order {
-            Some(order) => order.into(),
-            None => self.order.into(),
+            Some(order) => order.into_position(),
+            None => self.order.into_position(),
         };
 
         for (i, x) in order.into_iter().enumerate() {
             let param = match x {
-                0 => self.kernels,
-                1 => self.channels,
-                2 => self.height,
-                3 => self.width,
+                0 => self.kernels(),
+                1 => self.channels(),
+                2 => self.height(),
+                3 => self.width(),
                 _ => unimplemented!(),
             };
             out[i] = param;
@@ -222,11 +207,11 @@ impl<T: Clone + uDisplay> Tensor4<T> {
 
     /// Returns the dimensions of the array
     pub fn dimensions(&self) -> (usize, usize, usize, usize) {
-        (self.kernels, self.channels, self.height, self.width)
+        (self.kernels(), self.channels(), self.height(), self.width())
     }
 
     /// Sets a new order for the array
-    pub fn transmute(&mut self, order: Order4) {
+    pub fn permute(&mut self, order: Order4) {
         // Early return if already in order
         if self.order == order {
             return;
@@ -234,18 +219,18 @@ impl<T: Clone + uDisplay> Tensor4<T> {
 
         if self.order == Order4::KCHW {
             // Transmute to target order
-            let new_order: [usize; 4] = order.into();
+            let new_order: [usize; 4] = order.into_position();
             self.data = self.data.clone().permuted_axes(new_order);
             self.order = order;
             return;
         }
 
         // Transmute to standard order
-        let std_order: [usize; 4] = self.order.into();
+        let std_order: [usize; 4] = self.order.into_position();
         let std = self.data.clone().permuted_axes(std_order);
 
         // Transmute to target order
-        let new_order: [usize; 4] = order.into();
+        let new_order: [usize; 4] = order.into_position();
         self.data = std.permuted_axes(new_order);
         self.order = order;
     }
@@ -257,7 +242,7 @@ impl<T: Clone + uDisplay> Tensor4<T> {
 
     /// Converts the 4D array to a linear buffer according to the current order
     pub fn to_buffer(&self) -> Vec<T> {
-        let mut buffer = Vec::with_capacity(self.channels * self.height * self.width);
+        let mut buffer = Vec::with_capacity(self.get_size());
         for x in Array::from_iter(self.data.iter().cloned()) {
             buffer.push(x)
         }
@@ -271,7 +256,7 @@ impl<T: Clone + uDisplay> Tensor4<T> {
             return self.to_buffer();
         }
         let mut data = self.clone();
-        data.transmute(order);
+        data.permute(order);
         data.to_buffer()
     }
 }
