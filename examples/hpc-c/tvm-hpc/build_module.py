@@ -48,7 +48,6 @@ def import_onnx_model(path_to_model, shape_dict):
     return mod, params
 
 def import_pytorch_model(path_to_model, shape_dict):
-
     shape_list = []
     for input_key in shape_dict:
         shape_list.append((input_key, shape_dict[input_key]))
@@ -57,8 +56,20 @@ def import_pytorch_model(path_to_model, shape_dict):
     mod, params = relay.frontend.from_pytorch(onnx_model, shape_list)
     return mod, params
 
-def import_tflite_model(path_to_model, shape_dict, dtype_dict):
+def import_tflite_model(path_to_model, shape_dict, input_type):
+    dtype_dict = {}
+    for input_key in shape_dict:
+        dtype_dict[input_key] = input_type
+
     mod, params = relay.frontend.from_tflite(path_to_model, shape_dict, dtype_dict)
+    return mod, params
+
+def import_tf_model(path_to_model, shape_dict, input_type):
+    dtype_dict = {}
+    for input_key in shape_dict:
+        dtype_dict[input_key] = input_type
+
+    mod, params = relay.frontend.from_tensorflow(path_to_model, shape_dict, dtype_dict)
     return mod, params
 
 
@@ -124,7 +135,9 @@ def build_model(opts, shape_dict):
     elif model_ext == ".pth":
         mod, params = import_pytorch_model(opts.model_path, shape_dict)
     elif model_ext == ".tflite":
-        mod, params = import_tflite_model(opts.model_path, shape_dict, None)
+        mod, params = import_tflite_model(opts.model_path, shape_dict, opts.input_type)
+    elif model_ext == ".tf":
+        mod, params = import_tf_model(opts.model_path, shape_dict, opts.input_type)
     else:
         print("Error! Unsupported model", opts.model_path)
         return
