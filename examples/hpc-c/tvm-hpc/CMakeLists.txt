@@ -19,19 +19,24 @@ project(headsail-tvm C ASM)
 option(USE_MOBILENET "Use mobilenet" OFF)
 option(USE_CONV2DBASIC "Use conv2dbasic" OFF)
 option(USE_ADDER "Use adder" OFF)
+option(USE_ACCELERATOR "Use accelerator" ON)
+
+if(USE_ACCELERATOR)
+    set(PYTHON_ACCELERATOR_PARAM "--annotate-graph")
+endif()
 
 if (USE_MOBILENET)
-    list(APPEND SOURCE_FILES src/mobile_net.c)
+    set(MODEL_INFERENCE_SRC src/mobile_net.c)
     set(MODEL_NAME mobilenet)
     set(STIMULUS ../mobile_net_input.npy)
     set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/mobilenet.onnx)
 elseif (USE_CONV2DBASIC)
-    list(APPEND SOURCE_FILES src/conv2dbasic.c)
+    set(MODEL_INFERENCE_SRC src/conv2dbasic.c)
     set(MODEL_NAME conv2dbasic)
     set(STIMULUS ../stimulus.npy)
     set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/model.onnx)
 elseif (USE_ADDER)
-    list(APPEND SOURCE_FILES src/adder.c)
+    set(MODEL_INFERENCE_SRC src/adder.c)
     set(MODEL_NAME add)
     set(STIMULUS ../mobile_net_input.npy)
     set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/add.onnx)
@@ -40,7 +45,7 @@ else()
 endif()
 
 # Build codegen library
-execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/build_module.py -m ${MODEL_NAME} -p ${ONNX_MODEL} -o ./model_c -s ${STIMULUS} -t "float")
+execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/build_module.py -m ${MODEL_NAME} -p ${ONNX_MODEL} -o ./model_c -s ${STIMULUS} -t "float" ${PYTHON_ACCELERATOR_PARAM})
 
 # Add C-runtime 0
 set(CRT0 ${CMAKE_CURRENT_SOURCE_DIR}/../crt0)
@@ -58,10 +63,10 @@ message(GLOB="${LIB_SOURCES}")
 set(SOURCE_FILES
     src/main.c
     src/bundle_static.c
+    ${MODEL_INFERENCE_SRC}
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/lib0.o
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/lib1.o
     #${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/devc.o
-    ${LIB_SOURCES}
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/graph_c.json.c
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/params_c.bin.c
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/stimulus.c
