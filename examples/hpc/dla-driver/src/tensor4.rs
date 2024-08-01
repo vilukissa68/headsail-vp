@@ -115,11 +115,6 @@ impl<T: Clone> Tensor4<T> {
         self.data.len()
     }
 
-    /// Get the number of element in ndarray
-    pub fn get_size(&self) -> usize {
-        self.data.len()
-    }
-
     /// Creates a new Tensor4 from a data buffer with the specified order
     pub fn from_data_buffer(
         kernels: usize,
@@ -255,9 +250,7 @@ impl<T: Clone> Tensor4<T> {
         for x in Array::from_iter(self.data.iter().cloned()) {
             buffer.push(x)
         }
-        let mut data = self.clone();
-        data.transmute(order);
-        data.to_buffer()
+        buffer
     }
 
     /// Converts the 4D array to a linear buffer according to the specified order

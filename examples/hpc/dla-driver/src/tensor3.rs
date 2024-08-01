@@ -96,11 +96,6 @@ impl<T: Clone> Tensor3<T> {
         self.data.len()
     }
 
-    /// Get the number of element in ndarray
-    pub fn get_size(&self) -> usize {
-        self.data.len()
-    }
-
     /// Matches order field value to height, width and channels parameters
     fn get_dimension_order_values(&self, order: Option<Order3>) -> [usize; 3] {
         let mut out = [0; 3];
