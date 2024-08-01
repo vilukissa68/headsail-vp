@@ -12,34 +12,27 @@ use crate::utils::{
     calculate_conv2d_out_param_dim, calculate_number_of_banks_needed, get_banks_for_layer,
 };
 
-#[derive(Clone, Copy)]
-enum DlaOutput {
-    I8,
-    I16,
-    I32,
-}
-
 // Define a trait for output handling
-trait DlaOutputType: Sized {
+trait DlaOutput: Sized {
     fn read_output(dla: &Dla, size: usize) -> Vec<Self>;
 }
 
 // Implement the trait for i8
-impl DlaOutputType for i8 {
+impl DlaOutput for i8 {
     fn read_output(dla: &Dla, size: usize) -> Vec<Self> {
         dla.read_output_i8(size)
     }
 }
 
 // Implement the trait for i16
-impl DlaOutputType for i16 {
+impl DlaOutput for i16 {
     fn read_output(dla: &Dla, size: usize) -> Vec<Self> {
         dla.read_output_i16(size)
     }
 }
 
 // Implement the trait for i32
-impl DlaOutputType for i32 {
+impl DlaOutput for i32 {
     fn read_output(dla: &Dla, size: usize) -> Vec<Self> {
         dla.read_output_i32(size)
     }
@@ -193,7 +186,7 @@ pub fn conv2d_bias_relu(
     )
 }
 
-fn run_layers<T: DlaOutputType + Clone>(
+fn run_layers<T: DlaOutput + Clone>(
     input: Tensor3<i8>,
     kernels: Tensor4<i8>,
     bias: Option<Vec<i16>>,
