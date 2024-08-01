@@ -84,24 +84,24 @@ impl<T: Clone> Tensor4<T> {
     }
     pub fn kernels(&self) -> usize {
         let dim_order: [usize; 4] = self.order.into_position();
-        let position = dim_order.iter().position(|&r| r == 0).unwrap();
+        let position = unsafe { dim_order.iter().position(|&r| r == 0).unwrap_unchecked() };
         self.data.raw_dim()[position]
     }
     pub fn channels(&self) -> usize {
         let dim_order: [usize; 4] = self.order.into_position();
-        let position = dim_order.iter().position(|&r| r == 1).unwrap();
+        let position = unsafe { dim_order.iter().position(|&r| r == 1).unwrap_unchecked() };
         self.data.raw_dim()[position]
     }
 
     pub fn height(&self) -> usize {
         let dim_order: [usize; 4] = self.order.into_position();
-        let position = dim_order.iter().position(|&r| r == 2).unwrap();
+        let position = unsafe { dim_order.iter().position(|&r| r == 2).unwrap_unchecked() };
         self.data.raw_dim()[position]
     }
 
     pub fn width(&self) -> usize {
         let dim_order: [usize; 4] = self.order.into_position();
-        let position = dim_order.iter().position(|&r| r == 3).unwrap();
+        let position = unsafe { dim_order.iter().position(|&r| r == 3).unwrap_unchecked() };
         self.data.raw_dim()[position]
     }
 
@@ -130,10 +130,14 @@ impl<T: Clone> Tensor4<T> {
 
         let standard_shape = [kernels, channels, height, width];
         let dim_order: [usize; 4] = order.into_position();
-        let kernels_ordered = standard_shape[dim_order.iter().position(|&r| r == 0).unwrap()];
-        let channels_ordered = standard_shape[dim_order.iter().position(|&r| r == 1).unwrap()];
-        let height_ordered = standard_shape[dim_order.iter().position(|&r| r == 2).unwrap()];
-        let width_ordered = standard_shape[dim_order.iter().position(|&r| r == 3).unwrap()];
+        let kernels_ordered =
+            standard_shape[unsafe { dim_order.iter().position(|&r| r == 0).unwrap_unchecked() }];
+        let channels_ordered =
+            standard_shape[unsafe { dim_order.iter().position(|&r| r == 1).unwrap_unchecked() }];
+        let height_ordered =
+            standard_shape[unsafe { dim_order.iter().position(|&r| r == 2).unwrap_unchecked() }];
+        let width_ordered =
+            standard_shape[unsafe { dim_order.iter().position(|&r| r == 3).unwrap_unchecked() }];
 
         let data = Array::from_shape_vec(
             (

@@ -48,17 +48,17 @@ impl<T: Clone> Tensor3<T> {
 
     pub fn channels(&self) -> usize {
         let dim_order: [usize; 3] = self.order.into_position();
-        let position = dim_order.iter().position(|&r| r == 0).unwrap();
+        let position = unsafe { dim_order.iter().position(|&r| r == 0).unwrap_unchecked() };
         self.data.raw_dim()[position]
     }
     pub fn height(&self) -> usize {
         let dim_order: [usize; 3] = self.order.into_position();
-        let position = dim_order.iter().position(|&r| r == 1).unwrap();
+        let position = unsafe { dim_order.iter().position(|&r| r == 1).unwrap_unchecked() };
         self.data.raw_dim()[position]
     }
     pub fn width(&self) -> usize {
         let dim_order: [usize; 3] = self.order.into_position();
-        let position = dim_order.iter().position(|&r| r == 2).unwrap();
+        let position = unsafe { dim_order.iter().position(|&r| r == 2).unwrap_unchecked() };
         self.data.raw_dim()[position]
     }
 
