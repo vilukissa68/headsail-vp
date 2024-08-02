@@ -7,6 +7,11 @@ use crate::{MemoryBank, Padding, Stride, DEFAULT_PADDING, DEFAULT_STRIDE, MEMORY
 use alloc::vec::Vec;
 
 /// Calculates the output size of Conv2D for a single channel based on size of the inputs
+///
+/// * `input` - Input data for a given layer.
+/// * `kernel` - Kernels/weight data for a given layer.
+/// * `padding` - Padding used in the given layer.
+/// * `stride` - Stride used in the given layer.
 pub fn calculate_conv2d_out_param_dim(
     input: (u32, u32),
     kernel: (u32, u32),
@@ -23,7 +28,14 @@ pub fn calculate_conv2d_out_param_dim(
     (output_width as usize, output_height as usize)
 }
 
-/// Creates a output tensor matching the given inputs from the ground truth output
+/// Creates a output tensor matching the given inputs from the ground truth output.
+///
+/// * `input` - Input data for a given layer.
+/// * `kernel` - Kernels/weight data for a given layer.
+/// * `output_buf` - Data containing the known ground truth for the output of a layer.
+/// * `order` - Order of the data in output_buf.
+/// * `padding` - Padding used in the given layer.
+/// * `stride` - Stride used in the given layer.
 pub fn generate_output_tensor<T: Clone, H: Clone, J: Clone>(
     input: &Tensor3<T>,
     kernel: &Tensor4<H>,
@@ -49,12 +61,19 @@ pub fn generate_output_tensor<T: Clone, H: Clone, J: Clone>(
 }
 
 /// Calculates the number of data banks needed for given input size
+///
+/// * `bytes` - Number of bytes the data contains
 pub fn calculate_number_of_banks_needed(bytes: usize) -> usize {
     // Take ceil
     (bytes + (MEMORY_BANK_SIZE - 1)) / MEMORY_BANK_SIZE
 }
 
 /// Assigns data banks for layer data
+///
+/// * `input_size` - The size of input data in bytes
+/// * `kernel_size` - The size of kernel data in bytes
+/// * `output_size` - The size of output in bytes
+/// * `bias_size` - The size of bias in bytes. If left empty bias is not assigned.
 pub fn get_banks_for_layer(
     input_size: usize,
     kernels_size: usize,
@@ -87,9 +106,12 @@ where
 }
 
 /// Calculates the padding needed to produce output with the same size as the input
-fn calculate_same_padding(input: (u32, u32), kernel: (u32, u32), stride: (u32, u32)) -> Padding {
-    let padding_width = ((input.0 - 1) * stride.0 + kernel.0).saturating_sub(input.0);
-    let padding_height = ((input.1 - 1) * stride.1 + kernel.1).saturating_sub(input.1);
+/// * `input` - Input data for a given layer.
+/// * `kernel` - Kernels/weight data for a given layer.
+/// * `stride` - Stride used in the given layer.
+fn calculate_same_padding(input: (u32, u32), kernel: (u32, u32), stride: Stride) -> Padding {
+    let padding_width = ((input.0 - 1) * stride.x + kernel.0).saturating_sub(input.0);
+    let padding_height = ((input.1 - 1) * stride.y + kernel.1).saturating_sub(input.1);
 
     Padding {
         top: padding_height / 2,
