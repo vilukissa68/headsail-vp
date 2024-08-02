@@ -23,7 +23,7 @@ pub use mmap::{
 const DEFAULT_INPUT_BANK: MemoryBank = MemoryBank::Bank0;
 const DEFAULT_KERNEL_BANK: MemoryBank = MemoryBank::Bank4;
 const DEFAULT_OUTPUT_BANK: MemoryBank = MemoryBank::Bank10;
-const DEFAULT_BIAS_ADDR: u32 = (MEMORY_BANK_BASE_ADDR + MEMORY_BANK_15_OFFSET) as u32;
+const DEFAULT_BIAS_ADDR: u32 = MemoryBank::Bank15.addr() as u32;
 const DEFAULT_KERNEL_SIZE: KernelSize = KernelSize {
     s_channels: 1,
     kernels: 1,
@@ -48,7 +48,7 @@ const DEFAULT_PP_CLIP: u32 = 8;
 const DEFAULT_SIMD_MODE: SimdBitMode = SimdBitMode::EightBits;
 
 use alloc::vec::Vec;
-use core::{ptr, result};
+use core::ptr;
 use headsail_bsp::{sprint, sprintln};
 use mmap::*;
 
@@ -189,7 +189,7 @@ impl core::ops::Add<usize> for MemoryBank {
 }
 
 impl MemoryBank {
-    fn offset(&self) -> usize {
+    const fn offset(&self) -> usize {
         match self {
             MemoryBank::Bank0 => MEMORY_BANK_0_OFFSET,
             MemoryBank::Bank1 => MEMORY_BANK_1_OFFSET,
@@ -208,6 +208,10 @@ impl MemoryBank {
             MemoryBank::Bank14 => MEMORY_BANK_14_OFFSET,
             MemoryBank::Bank15 => MEMORY_BANK_15_OFFSET,
         }
+    }
+
+    const fn addr(&self) -> usize {
+        self.offset() + MEMORY_BANK_BASE_ADDR
     }
 }
 
