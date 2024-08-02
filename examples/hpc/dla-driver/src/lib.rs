@@ -3,10 +3,15 @@
 //! Implements driver for sochub headsail SoC's deep learning accelerator.
 #![no_std]
 
+#[macro_use]
 extern crate alloc;
 
-mod mmap;
+pub mod layers;
+pub mod tensor3;
+pub mod tensor4;
+pub mod utils;
 
+mod mmap;
 pub use mmap::{
     DLA0_ADDR, MEMORY_BANK_0_OFFSET, MEMORY_BANK_10_OFFSET, MEMORY_BANK_11_OFFSET,
     MEMORY_BANK_12_OFFSET, MEMORY_BANK_13_OFFSET, MEMORY_BANK_14_OFFSET, MEMORY_BANK_15_OFFSET,
@@ -16,9 +21,9 @@ pub use mmap::{
 };
 
 const DEFAULT_INPUT_BANK: MemoryBank = MemoryBank::Bank0;
-const DEFAULT_KERNEL_BANK: MemoryBank = MemoryBank::Bank8;
-const DEFAULT_OUTPUT_BANK: MemoryBank = MemoryBank::Bank12;
-const DEFAULT_BIAS_ADDR: u32 = 0x0;
+const DEFAULT_KERNEL_BANK: MemoryBank = MemoryBank::Bank4;
+const DEFAULT_OUTPUT_BANK: MemoryBank = MemoryBank::Bank10;
+const DEFAULT_BIAS_ADDR: u32 = MemoryBank::Bank15.addr() as u32;
 const DEFAULT_KERNEL_SIZE: KernelSize = KernelSize {
     s_channels: 1,
     kernels: 1,
@@ -30,20 +35,20 @@ const DEFAULT_INPUT_SIZE: InputSize = InputSize {
     width: 8,
     height: 8,
 };
-const DEFAULT_PADDING: PaddingConfig = PaddingConfig {
+const DEFAULT_PADDING: Padding = Padding {
     top: 0,
     right: 0,
     left: 0,
     bottom: 0,
     padding_value: 0,
 };
-const DEFAULT_STRIDE: StrideConfig = StrideConfig { x: 1, y: 1 };
-const DEFAULT_MAC_CLIP: u32 = 8;
+const DEFAULT_STRIDE: Stride = Stride { x: 1, y: 1 };
+const DEFAULT_MAC_CLIP: u32 = 0;
 const DEFAULT_PP_CLIP: u32 = 8;
 const DEFAULT_SIMD_MODE: SimdBitMode = SimdBitMode::EightBits;
 
 use alloc::vec::Vec;
-use core::{ptr, result};
+use core::ptr;
 use headsail_bsp::{sprint, sprintln};
 use mmap::*;
 
@@ -72,7 +77,7 @@ pub struct InputSize {
 ///
 /// Non functional example, padding is done in hardware
 /// ```
-/// let padding = PaddingConfig {top:1, right:1, left:1, bottom:1, padding_value: 7};
+/// let padding = Padding {top:1, right:1, left:1, bottom:1, padding_value: 7};
 /// matrix = [[1,2], [3,4]];
 /// pretty_print_matrix(matrix)
 /// 1 2
@@ -84,7 +89,8 @@ pub struct InputSize {
 /// 7 3 4 7
 /// 7 7 7 7
 /// ```
-pub struct PaddingConfig {
+#[derive(Clone)]
+pub struct Padding {
     pub top: u32,
     pub right: u32,
     pub left: u32,
@@ -93,7 +99,8 @@ pub struct PaddingConfig {
 }
 
 /// Conv2d stride
-pub struct StrideConfig {
+#[derive(Clone)]
+pub struct Stride {
     pub x: u32,
     pub y: u32,
 }
@@ -109,8 +116,8 @@ pub struct LayerConfig {
     pub bias_enabled: bool,
     pub input_size: Option<InputSize>,
     pub kernel_size: Option<KernelSize>,
-    pub padding: Option<PaddingConfig>,
-    pub stride: Option<StrideConfig>,
+    pub padding: Option<Padding>,
+    pub stride: Option<Stride>,
     pub mac_clip: Option<u32>,
     pub pp_clip: Option<u32>,
     pub simd_mode: Option<SimdBitMode>,
@@ -172,8 +179,17 @@ impl From<MemoryBank> for usize {
     }
 }
 
+impl core::ops::Add<usize> for MemoryBank {
+    type Output = MemoryBank;
+
+    fn add(self, other: usize) -> Self::Output {
+        let value: usize = self.into();
+        MemoryBank::try_from((value + other) as u32).unwrap()
+    }
+}
+
 impl MemoryBank {
-    fn offset(&self) -> usize {
+    const fn offset(&self) -> usize {
         match self {
             MemoryBank::Bank0 => MEMORY_BANK_0_OFFSET,
             MemoryBank::Bank1 => MEMORY_BANK_1_OFFSET,
@@ -192,6 +208,10 @@ impl MemoryBank {
             MemoryBank::Bank14 => MEMORY_BANK_14_OFFSET,
             MemoryBank::Bank15 => MEMORY_BANK_15_OFFSET,
         }
+    }
+
+    const fn addr(&self) -> usize {
+        self.offset() + MEMORY_BANK_BASE_ADDR
     }
 }
 
@@ -335,7 +355,7 @@ impl Dla {
         let mut result = Vec::with_capacity(bytes.len() * 2);
         for &byte in bytes.iter() {
             // Extract the upper 4 bits and sign-extend to i8
-            let upper = (byte as u8 & 0xF0) >> 4;
+            let upper = (byte & 0xF0) >> 4;
             let upper_sign_extended = if upper & 0x08 != 0 {
                 upper | 0xF0
             } else {
@@ -372,7 +392,7 @@ impl Dla {
     pub fn write_input(&self, input: &mut [i8]) {
         // TODO optimize memory bank logic
         let offset = self.get_input_bank().offset();
-        self.write_data_bank(offset, input)
+        self.write_data_bank(offset, input);
     }
 
     /// Writes buffer to DLA's kernel bank(s)
@@ -554,7 +574,7 @@ impl Dla {
     }
 
     /// Sets padding paramters for convolution
-    fn set_input_padding(&self, padding: PaddingConfig) {
+    fn set_input_padding(&self, padding: Padding) {
         let mut reg = 0;
         reg = set_bits!(
             DLA_BUF_PAD_TOP_OFFSET,
@@ -590,7 +610,7 @@ impl Dla {
     }
 
     /// Sets stride paramters for convolution
-    fn set_stride(&self, stride: StrideConfig) {
+    fn set_stride(&self, stride: Stride) {
         let mut reg = 0;
         reg = set_bits!(
             DLA_BUF_STRIDE_X_OFFSET,
@@ -744,7 +764,7 @@ impl Dla {
     fn get_bias_addr(&self) -> u32 {
         let mut reg = self.read_u32(DLA_PP_AXI_READ);
         reg = get_bits!(reg, DLA_PP_AXI_READ_ADDRESS_BITMASK);
-        reg as u32
+        reg
     }
 
     /// Checks if all functions have been enabled
