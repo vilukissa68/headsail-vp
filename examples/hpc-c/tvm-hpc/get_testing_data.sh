@@ -5,11 +5,13 @@ mkdir -p $TARGET_DIR
 
 # Anomaly detection
 echo "Fetching anomaly detection data"
-ANOMALY_DETECTION_URL="https://zenodo.org/records/3841772/files/eval_data_test_ToyCar.zip?download=1"
+ANOMALY_DETECTION_URL="https://zenodo.org/records/3727685/files/eval_data_train_fan.zip?download=1"
 ZIPFILE="anomaly_detection_data.zip"
 curl $ANOMALY_DETECTION_URL -o $ZIPFILE
 unzip $ZIPFILE -d $TARGET_DIR
 rm $ZIPFILE
+curl https://raw.githubusercontent.com/mlcommons/tiny/master/benchmark/evaluation/datasets/ad01/y_labels_alt.csv -o y_labels_alt.csv
+mv y_labels_alt.csv $TARGET_DIR
 
 # Keyword spotting
 echo "Fetching keyword spotting data"

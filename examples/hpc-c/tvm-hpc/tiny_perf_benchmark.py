@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 from PIL import Image
 import io
+import numpy as np
 
 
 ROOT_PATH = Path(__file__).parents[0]
@@ -13,7 +14,7 @@ KWS_DATA_DIR = DATA_DIR / "kws01"
 VWW_DATA_DIR = DATA_DIR / "vw_coco2014_96"
 VWW_NON_PERSON_DATA_DIR =  VWW_DATA_DIR / "non_person"
 VWW_PERSON_DATA_DIR = VWW_DATA_DIR / "person"
-IC_DATA_DIR = DATA_DIR / "cifar-10-patches-py"
+IC_DATA_DIR = DATA_DIR / "cifar-10-batches-py"
 AD_DATA_DIR = DATA_DIR / "ToyCar"
 
 def read_kws_file(path):
@@ -40,9 +41,6 @@ def read_vww_file(path):
     image.save(byte_array, format="PNG")
     return byte_array.getvalue()
 
-
-
-
 def run_vww():
     items = os.listdir(VWW_NON_PERSON_DATA_DIR)
     non_persons = [item for item in items if os.path.isfile(os.path.join(VWW_NON_PERSON_DATA_DIR, item))]
@@ -55,9 +53,22 @@ def run_vww():
     print(read_vww_file(VWW_PERSON_DATA_DIR / persons[0]))
 
 
+def run_ic():
+    import pickle
+    with open(IC_DATA_DIR / "test_batch", "rb") as file:
+        data = pickle.load(file, encoding='bytes')
+    for (i, image) in enumerate(data[b'data']):
+        label = data[b'labels'][i]
+        print(label)
+
+def run_ad():
+
+
 
 def main():
     #run_kws()
-    run_vww()
+    #run_vww()
+    #run_ic()
+    run_ad()
 
 main()
