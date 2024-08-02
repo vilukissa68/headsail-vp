@@ -43,7 +43,7 @@ pub fn generate_output_tensor<I: Clone, K: Clone, O: Clone>(
     order: Order3,
     padding: Option<Padding>,
     stride: Option<Stride>,
-) -> Tensor3<J> {
+) -> Tensor3<O> {
     let output_size = calculate_conv2d_out_param_dim(
         (input.width() as u32, input.height() as u32),
         (kernel.width() as u32, kernel.height() as u32),
