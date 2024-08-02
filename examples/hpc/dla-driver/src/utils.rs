@@ -36,10 +36,10 @@ pub fn calculate_conv2d_out_param_dim(
 /// * `order` - Order of the data in output_buf.
 /// * `padding` - Padding used in the given layer.
 /// * `stride` - Stride used in the given layer.
-pub fn generate_output_tensor<T: Clone, H: Clone, J: Clone>(
-    input: &Tensor3<T>,
-    kernel: &Tensor4<H>,
-    output_buf: Vec<J>,
+pub fn generate_output_tensor<I: Clone, K: Clone, O: Clone>(
+    input: &Tensor3<I>,
+    kernel: &Tensor4<K>,
+    output_buf: Vec<O>,
     order: Order3,
     padding: Option<Padding>,
     stride: Option<Stride>,
@@ -80,21 +80,21 @@ pub fn get_banks_for_layer(
     output_size: usize,
     bias_size: Option<usize>,
 ) -> (MemoryBank, MemoryBank, MemoryBank, Option<u32>) {
-    let no_input_banks = calculate_number_of_banks_needed(input_size);
-    let no_kernel_banks = calculate_number_of_banks_needed(kernels_size);
-    let no_output_banks = calculate_number_of_banks_needed(output_size);
+    let num_input_banks = calculate_number_of_banks_needed(input_size);
+    let num_kernel_banks = calculate_number_of_banks_needed(kernels_size);
+    let num_output_banks = calculate_number_of_banks_needed(output_size);
 
     let input_bank = MemoryBank::Bank0;
-    let kernel_bank = input_bank + no_input_banks;
-    let output_bank = kernel_bank + no_kernel_banks;
+    let kernel_bank = input_bank + num_input_banks;
+    let output_bank = kernel_bank + num_kernel_banks;
 
     let bias_bank = bias_size
-        .map(|_| (MEMORY_BANK_BASE_ADDR + (output_bank + no_output_banks).offset()) as u32);
+        .map(|_| (MEMORY_BANK_BASE_ADDR + (output_bank + num_output_banks).offset()) as u32);
     (input_bank, kernel_bank, output_bank, bias_bank)
 }
 
 /// Divides x with y and ceils the output
-fn ceil<T>(x: T, y: T) -> T
+fn ceil_div<T>(x: T, y: T) -> T
 where
     T: core::ops::Add<Output = T>
         + core::ops::Sub<Output = T>
