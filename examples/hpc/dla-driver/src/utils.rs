@@ -5,8 +5,8 @@ use crate::tensor3::{Order3, Tensor3};
 use crate::tensor4::Tensor4;
 use crate::{MemoryBank, Padding, Stride, DEFAULT_PADDING, DEFAULT_STRIDE, MEMORY_BANK_BASE_ADDR};
 use alloc::vec::Vec;
-use headsail_bsp::sprintln;
 
+/// Calculates the output size of Conv2D for a single channel based on size of the inputs
 pub fn calculate_conv2d_out_param_dim(
     input: (u32, u32),
     kernel: (u32, u32),
@@ -23,6 +23,7 @@ pub fn calculate_conv2d_out_param_dim(
     (output_width as usize, output_height as usize)
 }
 
+/// Creates a output tensor matching the given inputs from the ground truth output
 pub fn generate_output_tensor<T: Clone, H: Clone, J: Clone>(
     input: &Tensor3<T>,
     kernel: &Tensor4<H>,
@@ -47,11 +48,13 @@ pub fn generate_output_tensor<T: Clone, H: Clone, J: Clone>(
     .unwrap()
 }
 
+/// Calculates the number of data banks needed for given input size
 pub fn calculate_number_of_banks_needed(bytes: usize) -> usize {
     // Take ceil
     (bytes + (MEMORY_BANK_SIZE - 1)) / MEMORY_BANK_SIZE
 }
 
+/// Assigns data banks for layer data
 pub fn get_banks_for_layer(
     input_size: usize,
     kernels_size: usize,
@@ -71,6 +74,7 @@ pub fn get_banks_for_layer(
     (input_bank, kernel_bank, output_bank, bias_bank)
 }
 
+/// Divides x with y and ceils the output
 fn ceil<T>(x: T, y: T) -> T
 where
     T: core::ops::Add<Output = T>
@@ -82,22 +86,7 @@ where
     (x + y - T::from(1)) / y
 }
 
-pub fn calculate_valid_output_size(
-    input: (u32, u32),
-    kernel: (u32, u32),
-    stride: (u32, u32),
-) -> (usize, usize) {
-    let output_width = ceil(input.0 - kernel.0 + 1, stride.0);
-    let output_height = ceil(input.1 - kernel.1 + 1, stride.1);
-    (output_width as usize, output_height as usize)
-}
-
-pub fn calculate_same_output_size(input: (u32, u32), stride: (u32, u32)) -> (usize, usize) {
-    let output_width = ceil(input.0, stride.0);
-    let output_height = ceil(input.1, stride.1);
-    (output_width as usize, output_height as usize)
-}
-
+/// Calculates the padding needed to produce output with the same size as the input
 fn calculate_same_padding(input: (u32, u32), kernel: (u32, u32), stride: (u32, u32)) -> Padding {
     let padding_width = ((input.0 - 1) * stride.0 + kernel.0).saturating_sub(input.0);
     let padding_height = ((input.1 - 1) * stride.1 + kernel.1).saturating_sub(input.1);

@@ -820,7 +820,6 @@ impl Dla {
             self.handshake_disable_hw();
             return false;
         }
-        sprintln!("Finishing handshake");
 
         let mut handshake_reg = self.read_u32(DLA_HANDSHAKE);
         handshake_reg = set_bits!(
