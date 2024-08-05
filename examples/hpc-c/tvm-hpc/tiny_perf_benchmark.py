@@ -10,6 +10,7 @@ import librosa as lb
 import sys
 import pylab
 import re
+import serial
 
 
 ROOT_PATH = Path(__file__).parents[0]
@@ -63,11 +64,18 @@ def run_ic():
         data = pickle.load(file, encoding='bytes')
     for (i, image) in enumerate(data[b'data']):
         label = data[b'labels'][i]
-        print(label)
+        send_stimulus(image.tobytes())
+
+def send_stimulus(data):
+    ser = serial.Serial('/tmp/uart0', 9600)
+    #print(data)
+    ser.write(b'0xff')
+    ser.write(data)
+    ser.close()
 
 def main():
     #run_kws()
     #run_vww()
-    #run_ic()
+    run_ic()
 
 main()
