@@ -6,6 +6,10 @@ import pandas as pd
 from PIL import Image
 import io
 import numpy as np
+import librosa as lb
+import sys
+import pylab
+import re
 
 
 ROOT_PATH = Path(__file__).parents[0]
@@ -15,7 +19,7 @@ VWW_DATA_DIR = DATA_DIR / "vw_coco2014_96"
 VWW_NON_PERSON_DATA_DIR =  VWW_DATA_DIR / "non_person"
 VWW_PERSON_DATA_DIR = VWW_DATA_DIR / "person"
 IC_DATA_DIR = DATA_DIR / "cifar-10-batches-py"
-AD_DATA_DIR = DATA_DIR / "ToyCar"
+AD_DATA_DIR = DATA_DIR / "ToyCar" / "test"
 
 def read_kws_file(path):
     with open(path, mode="rb") as file:
@@ -61,14 +65,9 @@ def run_ic():
         label = data[b'labels'][i]
         print(label)
 
-def run_ad():
-
-
-
 def main():
     #run_kws()
     #run_vww()
     #run_ic()
-    run_ad()
 
 main()
