@@ -1,16 +1,9 @@
-#![no_std]
-
 use crate::tensor3::{Order3, Tensor3};
 use crate::tensor4::{Order4, Tensor4};
-use crate::{
-    Dla, InputSize, KernelSize, LayerConfig, MemoryBank, Padding, SimdBitMode, Stride,
-    MEMORY_BANK_10_OFFSET, MEMORY_BANK_BASE_ADDR,
-};
+use crate::{Dla, InputSize, KernelSize, LayerConfig, Padding, SimdBitMode, Stride};
 use alloc::vec::Vec;
 
-use crate::utils::{
-    calculate_conv2d_out_param_dim, calculate_number_of_banks_needed, get_banks_for_layer,
-};
+use crate::utils::{calculate_conv2d_out_param_dim, get_banks_for_layer};
 
 // Define a trait for output handling
 trait DlaOutput: Sized {
@@ -73,7 +66,7 @@ pub fn conv2d(
 }
 
 pub fn relu(input: Tensor3<i8>, pp_clip: Option<u32>) -> Tensor3<i8> {
-    let mut kernel_buf = vec![1; input.get_size() * input.channels()]; // 1 filled kernels for constant conv2d
+    let kernel_buf = vec![1; input.get_size() * input.channels()]; // 1 filled kernels for constant conv2d
     let kernels: Tensor4<i8> = Tensor4::from_data_buffer(
         input.channels(),
         input.channels(),
@@ -99,7 +92,7 @@ pub fn relu(input: Tensor3<i8>, pp_clip: Option<u32>) -> Tensor3<i8> {
 }
 
 pub fn bias(input: Tensor3<i8>, bias: Vec<i16>, pp_clip: Option<u32>) -> Tensor3<i8> {
-    let mut kernel_buf = vec![1; input.get_size() * input.channels()]; // 1 filled kernels for constant conv2d
+    let kernel_buf = vec![1; input.get_size() * input.channels()]; // 1 filled kernels for constant conv2d
     let kernels: Tensor4<i8> = Tensor4::from_data_buffer(
         input.channels(),
         input.channels(),
@@ -207,13 +200,10 @@ fn run_layers<T: DlaOutput + Clone>(
 
     let dla = Dla::new();
 
-    let bias_size = bias.as_ref().map(|bias| bias.len());
-
     let banks = get_banks_for_layer(
         input.get_size(),
         kernels.get_size(),
         output_size.0 * output_size.1,
-        bias_size,
     );
 
     // Initalize layer

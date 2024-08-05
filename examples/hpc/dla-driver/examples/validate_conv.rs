@@ -1,7 +1,6 @@
 #![no_std]
 #![no_main]
 
-#[macro_use]
 extern crate alloc;
 
 use dla_driver::utils::generate_output_tensor;
@@ -18,10 +17,10 @@ use dla_driver::tensor4::{Order4, Tensor4};
 
 fn validate_conv2d_tiny() -> bool {
     sprintln!("din\r\n");
-    let mut din: Vec<i8> = uart_read_to_heap(75).into_iter().map(|x| x as i8).collect();
+    let din: Vec<i8> = uart_read_to_heap(75).into_iter().map(|x| x as i8).collect();
 
     sprintln!("wgt\r\n");
-    let mut wgt: Vec<i8> = uart_read_to_heap(54).into_iter().map(|x| x as i8).collect();
+    let wgt: Vec<i8> = uart_read_to_heap(54).into_iter().map(|x| x as i8).collect();
 
     sprintln!("dout\r\n");
     let dout_i32: Vec<i32> = uart_read_to_heap(18)
@@ -49,13 +48,13 @@ fn validate_conv2d_tiny() -> bool {
 
 fn validate_conv2d() -> bool {
     sprintln!("din\r\n");
-    let mut din: Vec<i8> = uart_read_to_heap(4096)
+    let din: Vec<i8> = uart_read_to_heap(4096)
         .into_iter()
         .map(|x| x as i8)
         .collect();
 
     sprintln!("wgt\r\n");
-    let mut wgt: Vec<i8> = uart_read_to_heap(2304)
+    let wgt: Vec<i8> = uart_read_to_heap(2304)
         .into_iter()
         .map(|x| x as i8)
         .collect();

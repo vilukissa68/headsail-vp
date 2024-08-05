@@ -93,14 +93,14 @@ fn run_random_layer(
             width: kernel_width,
             height: kernel_height,
         }),
-        padding: Some(PaddingConfig {
+        padding: Some(Padding {
             top: 0,
             right: 0,
             left: 0,
             bottom: 0,
             padding_value: 0,
         }),
-        stride: Some(StrideConfig { x: 1, y: 1 }),
+        stride: Some(Stride { x: 1, y: 1 }),
         mac_clip: Some(8),
         pp_clip: Some(8),
         simd_mode: Some(SimdBitMode::EightBits),

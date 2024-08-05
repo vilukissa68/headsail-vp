@@ -1,6 +1,3 @@
-#![no_std]
-#![no_main]
-
 use alloc::vec::*;
 use ndarray::{Array, Array3};
 

@@ -1,3 +1,9 @@
+// allow(dead_code):
+//
+// It's common to have unused symbols in the memory maps and in this case we don't feel that's an
+// issue. If this library ever becomes "finished", we can remove this allow definition.
+#![allow(dead_code)]
+
 #[cfg(feature = "hpc")]
 pub const DLA0_ADDR: usize = 0x1FF700000;
 #[cfg(not(feature = "hpc"))]

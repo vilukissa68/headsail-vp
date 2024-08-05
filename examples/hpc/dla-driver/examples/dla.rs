@@ -8,7 +8,7 @@ use panic_halt as _;
 #[entry]
 fn main() -> ! {
     sprintln!("Hello world!");
-    let mut dla = Dla::new();
+    let _dla = Dla::new();
     sprintln!("Dla initalized");
     loop {}
 }
