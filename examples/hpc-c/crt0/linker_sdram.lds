@@ -12,7 +12,7 @@ ENTRY(_enter)
 
 MEMORY
 {
-    ram (airwx) : ORIGIN = 0x10000, LENGTH = 0x8000
+    ram (airwx) : ORIGIN = 0x100000000, LENGTH = 0x70000000
 }
 
 SECTIONS
@@ -22,20 +22,16 @@ SECTIONS
      * Offset that when added to the origin address of the memory, gives us the 
      * top of the stack. Stack grows downwards below this address.
      */
-    _allocation_size = 0x8000;
+    _allocation_size = 256M;
 
     /* MINIMUM STACK SIZE
      * 
-     * This is the minimum guaranteed(*) size we want to leave available for the stack.
+     * This is the minimum guaranteed size we want to leave available for the stack.
      * It defines the upper limit of the heap, so that the heap can never grow and  
-     * occupy memory space reserved for the stack. The stack can always grow below this 
-     * limit, which has been set only to stop the expansion of the heap.
-     *
-     * (*) Guaranteed with regards to the heap. Beware, that if the program is big enough
-     * to surpass the _stack_bottom pointer, the stack will overwrite the program area with 
-     * its data, corrupting this way the program.
+     * occupy memory space reserved for the stack. The heap starts after the last 
+     * allocated section and grows upwards.
      */
-    _minimum_stack_size = 1K;
+    _minimum_stack_size = 4M;
     
 
     /* RAM SECTION
@@ -202,16 +198,16 @@ SECTIONS
      * nimum allocated space.
      *
      *  ORIGIN + _allocation_size ====> +-----------+ <- stack top
-     *                                  |           |   |
-     *                                  |           |   V
+     *                                  |           |
+     *                                  |           |
      *                                  |unallocated|
      *                                  |   space   | <- stack bottom
      *                                  |           |
      *                                  |           |
      *                                  |           |
-     *                                  |           |   ^
-     *                                  |           |   |
-     *                                  |           |   |
+     *                                  |           |
+     *                                  |           |
+     *                                  |           |
      *                                  +-----------+ <- heap start
      *                                  | .bss      |
      *                                  +-----------+

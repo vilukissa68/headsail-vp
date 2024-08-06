@@ -14,16 +14,8 @@ typedef void (*function_t)(void);
 
 // These symbols are defined by the linker script.
 // See linker.lds
-extern uint8_t metal_segment_bss_target_start;
-extern uint8_t metal_segment_bss_target_end;
-extern const uint8_t metal_segment_data_source_start;
-extern uint8_t metal_segment_data_target_start;
-extern uint8_t metal_segment_data_target_end;
-
-extern function_t __init_array_start;
-extern function_t __init_array_end;
-extern function_t __fini_array_start;
-extern function_t __fini_array_end;
+extern uint8_t _bss_target_start;
+extern uint8_t _bss_target_end;
 
 // This function will be placed by the linker script according to the section
 // Raw function 'called' by the CPU with no runtime.
@@ -50,9 +42,9 @@ void _enter(void)
         // Without 'norelax' the global pointer will
         // be loaded relative to the global pointer!
         ".option norelax;"
-        "la    gp, __global_pointer$;"
+        "la    gp, _global_pointer$;"
         ".option pop;"
-        "la    sp, _sp;"
+        "la    sp, _stack_top;"
         "jal   zero, _start;"
         : /* output: none %0 */
         : /* input: none */
@@ -66,32 +58,11 @@ void _start(void)
 
     // Init memory regions
     // Clear the .bss section (global variables with no initial values)
-    memset((void *)&metal_segment_bss_target_start,
+    memset((void *)&_bss_target_start,
            0,
-           (&metal_segment_bss_target_end - &metal_segment_bss_target_start));
-
-    // Initialize the .data section (global variables with initial values)
-    memcpy((void *)&metal_segment_data_target_start,
-           (const void *)&metal_segment_data_source_start,
-           (&metal_segment_data_target_end - &metal_segment_data_target_start));
-
-    // Call constructors
-    for (const function_t *entry = &__init_array_start;
-         entry < &__init_array_end;
-         ++entry)
-    {
-        (*entry)();
-    }
+           (&_bss_target_end - &_bss_target_start));
 
     int rc = main();
-
-    // Call destructors
-    for (const function_t *entry = &__fini_array_start;
-         entry < &__fini_array_end;
-         ++entry)
-    {
-        (*entry)();
-    }
 
     _Exit(rc);
 }

@@ -13,7 +13,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../cmake")
 find_package(RiscvGcc REQUIRED)
 
 # Set GCC compile options for RISC-V 64-bit architecture with IMAC extensions
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -march=rv64imac -nostartfiles -mabi=lp64 -fno-builtin -T${CRT0}/linker.lds")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -march=rv64imac -nostartfiles -mabi=lp64 -fno-builtin -mcmodel=medany -T${CRT0}/linker.lds")
 
 # Add the source file(s)
 set(SOURCE_FILES main.c)

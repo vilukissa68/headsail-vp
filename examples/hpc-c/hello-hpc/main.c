@@ -3,7 +3,7 @@
 
 #include "boot.h"
 
-const uintptr_t UART0_ADDR = 0xFFF00000;
+const uintptr_t UART0_ADDR = 0x1FFF00000;
 uint8_t *const UART0_PTR = (uint8_t *)UART0_ADDR;
 
 void putc(char ch)
