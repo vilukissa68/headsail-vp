@@ -4,11 +4,8 @@ import os
 from pathlib import Path
 import pandas as pd
 from PIL import Image
-import io
 import numpy as np
 import librosa as lb
-import sys
-import pylab
 import re
 import serial
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
@@ -32,8 +29,10 @@ def accuracy_report(gt, prediction):
     print(classification_report(gt, prediction))
 
 def send_stimulus(data):
+    print("Writing {} bytes as stimulus...".format(len(data)))
     ser = serial.Serial(UART, 9600)
     ser.write(data)
+    ser.write(b'\n') # EOL signifies end of stimulus
     ser.close()
 
 def wait_for_result():
@@ -60,6 +59,12 @@ def run_kws():
         predictions.append(wait_for_result())
 
     accuracy_report(df["class"], predictions)
+
+def get_kws_stimulus():
+    df = pd.read_csv(KWS_DATA_DIR / "y_labels.csv", names=["filename", "no_classes", "class"])
+    data = read_kws_file(KWS_DATA_DIR / df["filename"][0])
+    print("Expected label:", df["class"][0])
+    return data
 
 def read_vww_file(path):
     #Image loading and preprocessing
@@ -95,10 +100,22 @@ def run_vww():
 
     for x in persons:
         data = read_vww_file(VWW_PERSON_DATA_DIR / x)
-        send_stimulus(data.tobyte())
+        send_stimulus(data.tobytes())
         predictions.append(wait_for_result())
 
     accuracy_report(gt, predictions)
+
+def get_vww_stimulus():
+    # items = os.listdir(VWW_PERSON_DATA_DIR)
+    # persons = [item for item in items if os.path.isfile(os.path.join(VWW_PERSON_DATA_DIR, item)) and item.startswith("COCO_val")]
+    # data = read_vww_file(VWW_PERSON_DATA_DIR / persons[1])
+
+    items = os.listdir(VWW_NON_PERSON_DATA_DIR)
+    non_persons = [item for item in items if os.path.isfile(os.path.join(VWW_NON_PERSON_DATA_DIR, item)) and item.startswith("COCO_val")]
+    data = read_vww_file(VWW_NON_PERSON_DATA_DIR / non_persons[0])
+    print("Expected label: 1")
+    return data.tobytes()
+
 
 def run_ic():
     import pickle
@@ -117,9 +134,18 @@ def run_ic():
     # Evaluate predictions
     accuracy_report(data[b'labels'], predictions)
 
+def get_ic_stimulus():
+    import pickle
+    with open(IC_DATA_DIR / "test_batch", "rb") as file:
+        data = pickle.load(file, encoding='bytes')
+    print("Expected label:", data[b'labels'][0])
+    return data[b'data'][0].tobytes()
+
+
 def main():
     #run_kws()
-    run_vww()
-    #run_ic()
+    #run_vww()
+    run_ic()
 
-main()
+if __name__ == "__main__":
+    main()

@@ -10,11 +10,16 @@ import tvm.micro
 import logging
 import onnx
 import numpy as np
+from pathlib import Path
+from tiny_perf_benchmark import get_ic_stimulus, get_kws_stimulus, get_vww_stimulus
 
 SHAPES = {
     "mobilenet": {"input" :(1,3,224,224)},
     "conv2dbasic": {"input" :(1,3,32,32)},
-    "add": {"Input1": (1), "Input2": (1)}
+    "add": {"Input1": (1), "Input2": (1)},
+    "perf_ic": {"input_1_int8": (1,32, 32, 3)},
+    "perf_vww": {"data": (1,96, 96, 3)},
+    "perf_kws": {"data": (1,49,10,1)},
 }
 
 def normalize(v):
@@ -57,11 +62,17 @@ def import_pytorch_model(path_to_model, shape_dict):
     return mod, params
 
 def import_tflite_model(path_to_model, shape_dict, input_type):
+    import tflite
+    import tensorflow as tf
+    tflite_model_buf = open(path_to_model, "rb").read()
+    tf_model = tflite.Model.GetRootAsModel(tflite_model_buf, 0)
     dtype_dict = {}
     for input_key in shape_dict:
         dtype_dict[input_key] = input_type
 
-    mod, params = relay.frontend.from_tflite(path_to_model, shape_dict, dtype_dict)
+    print(shape_dict)
+    print(dtype_dict)
+    mod, params = relay.frontend.from_tflite(tf_model, shape_dict, dtype_dict)
     return mod, params
 
 def import_tf_model(path_to_model, shape_dict, input_type):
@@ -113,7 +124,8 @@ def generate_hex_dumps(lib_file_name, build_dir):
 def export_stimulus(stimulus, input_type):
     _, stim_ext = os.path.splitext(stimulus)
     if stim_ext == ".npy":
-        data = np.load(stimulus).flatten()
+        stimulus_path = Path(__file__).parents[0] / stimulus
+        data = np.load(stimulus_path).flatten()
         data = normalize(data)
         write_c_stimulus(data, payload_type=input_type)
 
@@ -136,8 +148,8 @@ def build_model(opts, shape_dict):
         mod, params = import_pytorch_model(opts.model_path, shape_dict)
     elif model_ext == ".tflite":
         mod, params = import_tflite_model(opts.model_path, shape_dict, opts.input_type)
-    elif model_ext == ".tf":
-        mod, params = import_tf_model(opts.model_path, shape_dict, opts.input_type)
+    # elif model_ext == ".tf":
+    #     mod, params = import_tf_model(opts.model_path, shape_dict, opts.input_type)
     else:
         print("Error! Unsupported model", opts.model_path)
         return
@@ -171,21 +183,12 @@ def build_model(opts, shape_dict):
 
     # Generate stimulus
     if opts.stimulus != None:
+        opts.stimulus = opts.stimulus.strip()
         export_stimulus(opts.stimulus, opts.input_type)
     os.chdir(build_dir)
 
     # Convert graph and weights to hexdumps
     generate_hex_dumps(lib_file_name, build_dir)
-
-def build_model_mobilenet(opts):
-    build_model(opts, shape_dict=SHAPES["mobilenet"])
-
-def build_model_add(opts):
-    build_model(opts, shape_dict=SHAPES["add"])
-
-def build_model_conv2dbasic(opts):
-    build_model(opts, shape_dict=SHAPES["conv2dbasic"])
-
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
@@ -201,10 +204,22 @@ if __name__ == "__main__":
     opts = parser.parse_args()
 
     if opts.model == "add":
-        build_model_add(opts)
+        build_model(opts, shape_dict=SHAPES["add"])
     elif opts.model == "mobilenet":
-        build_model_mobilenet(opts)
+        build_model(opts, shape_dict=SHAPES["mobilenet"])
     elif opts.model == "conv2dbasic":
-        build_model_conv2dbasic(opts)
+        build_model(opts, shape_dict=SHAPES["conv2dbasic"])
+    elif opts.model == "perf_image_classification":
+        build_model(opts, shape_dict=SHAPES["perf_ic"])
+        os.chdir(os.path.abspath("../"))
+        write_c_stimulus(get_ic_stimulus(), "uint8_t")
+    elif opts.model == "perf_visual_wakeup_word":
+        build_model(opts, shape_dict=SHAPES["perf_vww"])
+        os.chdir(os.path.abspath("../"))
+        write_c_stimulus(get_vww_stimulus(), "uint8_t")
+    elif opts.model == "perf_keyword_spotting":
+        build_model(opts, shape_dict=SHAPES["perf_kws"])
+        os.chdir(os.path.abspath("../"))
+        write_c_stimulus(get_kws_stimulus(), "uint8_t")
     else:
         print("No such model", opts.model, "Availeable models: add, mobilenet")
