@@ -51,16 +51,19 @@ elseif (USE_PERF_IMAGE_CLASSIFICATION)
     set(MODEL_NAME perf_image_classification)
     set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/models/pretrainedResnet_quant.tflite)
     set(INPUT_TYPE "int8")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D IMAGE_CLASSIFICATION")
 elseif (USE_PERF_KEYWORD_SPOTTING)
     set(MODEL_INFERENCE_SRC src/perf_keyword_spotting.c)
     set(MODEL_NAME perf_keyword_spotting)
     set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/models/kws_ref_model.tflite)
     set(INPUT_TYPE "float")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D KEYWORD_SPOTTING")
 elseif (USE_PERF_VISUAL_WAKEUP_WORD)
     set(MODEL_INFERENCE_SRC src/perf_visual_wakeup_word.c)
     set(MODEL_NAME perf_visual_wakeup_word)
     set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/models/vww_96_int8.tflite)
     set(INPUT_TYPE "float")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -D VISUAL_WAKEUP_WORD")
 else()
     message(FATAL_ERROR "No model selected")
 endif()
@@ -84,7 +87,7 @@ message(GLOB="${LIB_SOURCES}")
 set(SOURCE_FILES
     src/main.c
     src/bundle_static.c
-    ${MODEL_INFERENCE_SRC}
+    #${MODEL_INFERENCE_SRC}
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/lib0.o
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/lib1.o
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/devc.o

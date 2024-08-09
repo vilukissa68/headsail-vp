@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import os
 from pathlib import Path
 import pandas as pd
@@ -38,11 +39,6 @@ def send_stimulus(data, label=None):
 
     wait_start = time.time()
     wait_time = time.time() - wait_start
-    # output = ser.readline()
-    # while output != b'Waiting for stimulus...\n':
-    #     output = ser.readline()
-    #     print(wait_time * 1000)
-
     print("Sending stimulus...")
     ser.write(bytes(data))
     ser.close()
@@ -77,19 +73,7 @@ def run_kws():
     predictions = []
     for (i, filename) in enumerate(df["filename"]):
         data = read_kws_file(KWS_DATA_DIR / filename)
-        # data = bytearray(data)
-        # arr = []
-        # for byte in data:
-        #     arr.append(byte)
-
-        # arr = np.array(arr, np.uint8)
-        # arr = arr.astype(np.int8)
-        # arr = np.reshape(arr, (49,10))
-        # arr = np.transpose(arr)
-        # arr = np.reshape(arr, (490))
-        # send_stimulus(arr.tobytes(), df["class"][i])
         send_stimulus(data, df["class"][i])
-
         predictions.append(wait_for_result())
 
     accuracy_report(df["class"], predictions)
@@ -185,9 +169,17 @@ def get_ic_stimulus():
 
 
 def main():
-    #run_kws()
-    run_vww()
-    #run_ic()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-b", "--benchmark", required=True)
+    opts = parser.parse_args()
+    if opts.benchmark == "kws":
+        run_kws()
+    elif opts.benchmark == "vww":
+        run_vww()
+    elif opts.benchmark == "ic":
+        run_ic()
+    else:
+        print("Bad benchmark! Availeable benchmarks are: kws, vww, ic")
 
 if __name__ == "__main__":
     main()
