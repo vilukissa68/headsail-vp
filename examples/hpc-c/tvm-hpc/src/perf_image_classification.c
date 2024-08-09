@@ -20,16 +20,6 @@ extern unsigned int stimulus_c_len;
 
 #include <tvm/runtime/c_runtime_api.h>
 
-void read_stimulus(int8_t* buf) {
-    printf("Waiting for stimulus...");
-    scanf("%d", buf);
-}
-
-void write_prediction(int8_t* prediction) {
-    printf(prediction);
-}
-
-
 int run_inference(int batch_size) {
     printf("Running mobile net\n");
     char *json_data = (char *)(graph_c_json);
@@ -39,18 +29,27 @@ int run_inference(int batch_size) {
 
     // create tvm_runtime
     void *handle = tvm_runtime_create(json_data, params_data, params_size, NULL);
-    printf("Running mobile net\n");
+    printf("Runtime crated \n");
 
+    for(;;) {
+       run_inference_a(handle);
+    }
+
+    tvm_runtime_destroy(handle);
+}
+
+
+int run_inference_a(void *handle) {
     // Preprate input and output device and type
     DLDevice dev = {kDLCPU, 0};
     DLDataType dtype = {kDLInt, 8, 1};
     int64_t shape[4] = {1, HEIGHT, WIDTH, CHANNELS};
     int8_t stimulus[HEIGHT * WIDTH * CHANNELS];
-    //read_stimulus(stimulus);
+    read_stimulus(stimulus, HEIGHT * WIDTH * CHANNELS);
 
     // prepare intput tensor
     DLTensor input;
-    input.data = stimulus_c;
+    input.data = stimulus;
     input.device = dev;
     input.ndim = 4;
     input.dtype = dtype;
@@ -84,11 +83,11 @@ int run_inference(int batch_size) {
 
     printf("Getting output of inference\n");
     tvm_runtime_get_output(handle, 0, &output);
-    for(int i = 0; i < OUTPUT_SIZE; i++) {
-        printf("%d ", output_storage[i]);
-    }
-    write_prediction(output_storage);
-    tvm_runtime_destroy(handle);
+    /* for(int i = 0; i < OUTPUT_SIZE; i++) { */
+    /*     printf("%d ", output_storage[i]); */
+    /* } */
+    /* printf("\n"); */
+    write_prediction(output_storage, OUTPUT_SIZE);
     return 0;
 }
 

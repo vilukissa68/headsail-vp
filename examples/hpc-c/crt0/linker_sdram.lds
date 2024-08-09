@@ -17,7 +17,22 @@ MEMORY
 
 SECTIONS
 {
+    /* ALLOCATION SIZE
+     * 
+     * Offset that when added to the origin address of the memory, gives us the 
+     * top of the stack. Stack grows downwards below this address.
+     */
+    _allocation_size = 256M;
+
+    /* MINIMUM STACK SIZE
+     * 
+     * This is the minimum guaranteed size we want to leave available for the stack.
+     * It defines the upper limit of the heap, so that the heap can never grow and  
+     * occupy memory space reserved for the stack. The heap starts after the last 
+     * allocated section and grows upwards.
+     */
     _minimum_stack_size = 4M;
+    
 
     /* RAM SECTION
      *
@@ -25,7 +40,6 @@ SECTIONS
      * such memory is present in the design, for the entire duration of program
      * execution.
      */
-
     .init : {
         /* The _enter symbol is placed in the .text.init.enter section
          * and must be placed at the beginning of the program */
@@ -39,9 +53,9 @@ SECTIONS
     } >ram
 
     .preinit_array : ALIGN(8) {
-        PROVIDE_HIDDEN (__preinit_array_start = .);
+        PROVIDE_HIDDEN (_preinit_array_start = .);
         KEEP (*(.preinit_array))
-        PROVIDE_HIDDEN (__preinit_array_end = .);
+        PROVIDE_HIDDEN (_preinit_array_end = .);
     } >ram
 
     .init_array : ALIGN(8) {
@@ -104,20 +118,14 @@ SECTIONS
      * Generally, the data copied into the LIM should be performance-critical
      * functions which benefit fram low instruction-fetch latency.
      */
-
     .lim : ALIGN(8) {
         *(.lim .lim.*)
     } >ram
-
-    PROVIDE( metal_segment_lim_source_start = LOADADDR(.lim) );
-    PROVIDE( metal_segment_lim_target_start = ADDR(.lim) );
-    PROVIDE( metal_segment_lim_target_end = ADDR(.lim) + SIZEOF(.lim) );
 
     /* TEXT SECTION
      *
      * The following section contains the code of the program
      */
-
     .text : {
         *(.text.unlikely .text.unlikely.*)
         *(.text.startup .text.startup.*)
@@ -137,38 +145,29 @@ SECTIONS
      * the implementation of _start in Freedom Metal libgloss depends on the
      * ADDR and LOADADDR being 8-byte aligned.
      */
-
     .data : ALIGN(8) {
         *(.data .data.*)
         *(.gnu.linkonce.d.*)
         . = ALIGN(8);
-        PROVIDE( __global_pointer$ = . + 0x800 );
+        PROVIDE( _global_pointer$ = . + 0x800 );
         *(.sdata .sdata.* .sdata2.*)
         *(.gnu.linkonce.s.*)
     } >ram
 
     .tdata : ALIGN(8) {
-        PROVIDE( __tls_base = . );
+        PROVIDE( _tls_base = . );
 	*(.tdata .tdata.* .gnu.linkonce.td.*)
     } >ram
-
-    PROVIDE( __tdata_source = LOADADDR(.tdata) );
-    PROVIDE( __tdata_size = SIZEOF(.tdata) );
-
-    PROVIDE( metal_segment_data_source_start = LOADADDR(.data) );
-    PROVIDE( metal_segment_data_target_start = ADDR(.data) );
-    PROVIDE( metal_segment_data_target_end = ADDR(.tdata) + SIZEOF(.tdata) );
 
     .tbss : ALIGN(8) {
 	*(.tbss .tbss.* .gnu.linkonce.tb.*)
 	*(.tcommon .tcommon.*)
-	PROVIDE( __tls_end = . );
+	PROVIDE( _tls_end = . );
     } >ram
-    PROVIDE( __tbss_size = SIZEOF(.tbss) );
-    PROVIDE( __tls_size = __tls_end - __tls_base );
+    PROVIDE( _tbss_size = SIZEOF(.tbss) );
 
     .tbss_space : ALIGN(8) {
-	. = . + __tbss_size;
+	. = . + _tbss_size;
     } >ram
 
     .bss (NOLOAD): ALIGN(8) {
@@ -179,11 +178,11 @@ SECTIONS
         *(COMMON)
     } >ram
 
-    PROVIDE( metal_segment_bss_source_start = LOADADDR(.tbss) );
-    PROVIDE( metal_segment_bss_target_start = ADDR(.tbss) );
-    PROVIDE( metal_segment_bss_target_end = ADDR(.bss) + SIZEOF(.bss) );
+    PROVIDE( _bss_source_start = LOADADDR(.tbss) );
+    PROVIDE( _bss_target_start = ADDR(.tbss) );
+    PROVIDE( _bss_target_end = ADDR(.bss) + SIZEOF(.bss) );
 
-    /**
+    /*
      * HEAP AND STACK MANAGEMENT
      *
      * The stack is set to the top and it grows downwards. The top of the 
@@ -198,42 +197,42 @@ SECTIONS
      * the stack. The heap should grow until it has reached the stack's mi-
      * nimum allocated space.
      *
-     *  ORIGIN + LENGTH ==> +-----------+ <- stack top
-     *                      |           |
-     *                      |           |
-     *                      |unallocated|
-     *                      |   space   | <- stack bottom
-     *                      |           |
-     *                      |           |
-     *                      |           |
-     *                      |           |
-     *                      |           |
-     *                      |           |
-     *                      +-----------+ <- heap start
-     *                      | .bss      |
-     *                      +-----------+
-     *                      | .data     |
-     *                      +-----------+
-     *                      |.text      |
-     *                      |           |
-     *                      |           |
-     *                      |           |
-     *  ORIGIN ===========> +-----------+
+     *  ORIGIN + _allocation_size ====> +-----------+ <- stack top
+     *                                  |           |
+     *                                  |           |
+     *                                  |unallocated|
+     *                                  |   space   | <- stack bottom
+     *                                  |           |
+     *                                  |           |
+     *                                  |           |
+     *                                  |           |
+     *                                  |           |
+     *                                  |           |
+     *                                  +-----------+ <- heap start
+     *                                  | .bss      |
+     *                                  +-----------+
+     *                                  | .data     |
+     *                                  +-----------+
+     *                                  |.text      |
+     *                                  |           |
+     *                                  |           |
+     *                                  |           |
+     *  ORIGIN =======================> +-----------+
      *
      */
 
-    /** Symbol that exports the start of the heap. */
+    /* Symbol that exports the start of the heap. */
     PROVIDE( _heap_start = . );
 
-    /** 
+    /* 
      * End of minimum stack space. Stack grows downwards and can exceeed 
      * this limit, but the heap cannot grow higher than this.
      */
-    PROVIDE( _stack_bottom = ORIGIN(ram) + LENGTH(ram) - _minimum_stack_size);
+    PROVIDE( _stack_bottom = ORIGIN(ram) + _allocation_size - _minimum_stack_size);
     PROVIDE( _heap_end = _stack_bottom );
 
-    /** Top of the stack. */
-    PROVIDE( _stack_top = ORIGIN(ram) + LENGTH(ram));
+    /* Top of the stack. */
+    PROVIDE( _stack_top = ORIGIN(ram) + _allocation_size);
 
     /* C++ exception handling information is
      * not useful with our current runtime environment,
