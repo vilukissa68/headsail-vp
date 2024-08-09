@@ -62,6 +62,7 @@ def wait_for_result():
         results.append(((x & 0xff) ^ 0x80) - 0x80)
     results = results[:-1] # Remove line break
     print(results)
+    print("Predicted class: {}".format(np.argmax(results)))
     return results
 
 def read_kws_file(path):
@@ -184,8 +185,8 @@ def get_ic_stimulus():
 
 
 def main():
-    run_kws()
-    #run_vww()
+    #run_kws()
+    run_vww()
     #run_ic()
 
 if __name__ == "__main__":
