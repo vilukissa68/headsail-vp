@@ -10,6 +10,7 @@ import re
 import serial
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 import tensorflow as tf
+import time
 
 
 
@@ -28,19 +29,40 @@ def accuracy_report(gt, prediction):
     print("Confusion matrix:\n{}".format(confusion_matrix(gt, prediction)))
     print(classification_report(gt, prediction))
 
-def send_stimulus(data):
+def send_stimulus(data, label=None):
     print("Writing {} bytes as stimulus...".format(len(data)))
+    if label is not None:
+        print("Expected label: {}".format(label))
     ser = serial.Serial(UART, 9600)
-    ser.write(data)
-    ser.write(b'\n') # EOL signifies end of stimulus
+
+
+    wait_start = time.time()
+    wait_time = time.time() - wait_start
+    # output = ser.readline()
+    # while output != b'Waiting for stimulus...\n':
+    #     output = ser.readline()
+    #     print(wait_time * 1000)
+
+    print("Sending stimulus...")
+    ser.write(bytes(data))
     ser.close()
 
 def wait_for_result():
-    return 1
+    print("Waiting for results...")
     ser = serial.Serial(UART,  9600)
     output = ser.readline()
+    while output != b'Prediction:\n':
+        output = ser.readline()
+    output = ser.readline()
     ser.close()
-    return output
+    output = bytearray(output)
+    results = []
+    for x in output:
+        # Append signed
+        results.append(((x & 0xff) ^ 0x80) - 0x80)
+    results = results[:-1] # Remove line break
+    print(results)
+    return results
 
 def read_kws_file(path):
     with open(path, mode="rb") as file:
@@ -54,7 +76,18 @@ def run_kws():
     predictions = []
     for (i, filename) in enumerate(df["filename"]):
         data = read_kws_file(KWS_DATA_DIR / filename)
-        send_stimulus(data)
+        # data = bytearray(data)
+        # arr = []
+        # for byte in data:
+        #     arr.append(byte)
+
+        # arr = np.array(arr, np.uint8)
+        # arr = arr.astype(np.int8)
+        # arr = np.reshape(arr, (49,10))
+        # arr = np.transpose(arr)
+        # arr = np.reshape(arr, (490))
+        # send_stimulus(arr.tobytes(), df["class"][i])
+        send_stimulus(data, df["class"][i])
 
         predictions.append(wait_for_result())
 
@@ -124,11 +157,19 @@ def run_ic():
     print("Input shape: {}".format(np.shape(data[b'data'][0])))
 
     predictions = []
-    for image in data[b'data']:
-        send_stimulus(image.tobytes())
+    for (i, image) in enumerate(data[b'data']):
+        #FROM CHW to HWC
+        print("Running inference for image {}/{}".format(i, len(data[b'data'])))
+        image = np.reshape(image, (3, 32, 32))
+        image = np.rollaxis(image, 0, 3)
+        image = image - 128
+        image = np.reshape(image, (3072))
+        label = data[b'labels'][i]
+        from matplotlib import pyplot as plt
+        send_stimulus(image.tobytes(), label)
 
         # Wait for inference result
-        predictions.append(wait_for_result())
+        predictions.append(np.argmax(wait_for_result()))
         pass
 
     # Evaluate predictions
@@ -143,9 +184,9 @@ def get_ic_stimulus():
 
 
 def main():
-    #run_kws()
+    run_kws()
     #run_vww()
-    run_ic()
+    #run_ic()
 
 if __name__ == "__main__":
     main()

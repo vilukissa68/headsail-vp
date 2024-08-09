@@ -90,7 +90,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/devc.o
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/graph_c.json.c
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/params_c.bin.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/stimulus.c
+    #${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/stimulus.c
     $ENV{TVM_HOME}/build/standalone_crt/src/runtime/crt/common/crt_runtime_api.c
     $ENV{TVM_HOME}/build/standalone_crt/src/runtime/crt/graph_executor/graph_executor.c
     $ENV{TVM_HOME}/build/standalone_crt/src/runtime/crt/memory/page_allocator.c
@@ -113,6 +113,8 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${NEWLIB}/libm.a)
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${NEWLIB}/libgloss.a)
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${LIBGCC})
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE -lc -lm -lgloss -lgcc)
+
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE /Users/vainogranat/work/headsail-newlib/libgloss/riscv)
 
 # Include TVM headers
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $ENV{TVM_HOME}/build/standalone_crt/include)
