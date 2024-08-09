@@ -14,12 +14,12 @@ from pathlib import Path
 from tiny_perf_benchmark import get_ic_stimulus, get_kws_stimulus, get_vww_stimulus
 
 SHAPES = {
-    "mobilenet": {"input" :(1,3,224,224)},
-    "conv2dbasic": {"input" :(1,3,32,32)},
+    "mobilenet": {"input" :(1, 3, 224, 224)},
+    "conv2dbasic": {"input" :(1, 3, 32, 32)},
     "add": {"Input1": (1), "Input2": (1)},
-    "perf_ic": {"input_1_int8": (1,32, 32, 3)},
-    "perf_vww": {"data": (1,96, 96, 3)},
-    "perf_kws": {"data": (1,49,10,1)},
+    "perf_ic": {"input_1_int8": (1, 32, 32, 3)},
+    "perf_vww": {"data": (1, 96, 96, 3)},
+    "perf_kws": {"data": (1, 49, 10, 1)},
 }
 
 def normalize(v):
@@ -148,8 +148,8 @@ def build_model(opts, shape_dict):
         mod, params = import_pytorch_model(opts.model_path, shape_dict)
     elif model_ext == ".tflite":
         mod, params = import_tflite_model(opts.model_path, shape_dict, opts.input_type)
-    # elif model_ext == ".tf":
-    #     mod, params = import_tf_model(opts.model_path, shape_dict, opts.input_type)
+    elif model_ext == ".tf":
+        mod, params = import_tf_model(opts.model_path, shape_dict, opts.input_type)
     else:
         print("Error! Unsupported model", opts.model_path)
         return
