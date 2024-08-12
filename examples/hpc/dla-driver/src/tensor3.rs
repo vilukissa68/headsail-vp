@@ -24,6 +24,21 @@ impl Order3 {
     }
 }
 
+impl TryFrom<&str> for Order3 {
+    type Error = ();
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s {
+            "CHW" => Ok(Order3::CHW),
+            "CWH" => Ok(Order3::CWH),
+            "HWC" => Ok(Order3::HWC),
+            "HCW" => Ok(Order3::HCW),
+            "WHC" => Ok(Order3::WHC),
+            "WCH" => Ok(Order3::WCH),
+            _ => Err(()),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Tensor3<T> {
     data: Array3<T>,
