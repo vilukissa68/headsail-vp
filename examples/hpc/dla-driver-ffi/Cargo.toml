@@ -1,0 +1,16 @@
+[package]
+name = "dla-driver-ffi"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["staticlib"]
+
+[dependencies]
+dla-driver = { version = "0.1.0", path = "../dla-driver" }
+
+[build-dependencies]
+cbindgen = "0.26.0"
+
+[workspace]
+members = []
