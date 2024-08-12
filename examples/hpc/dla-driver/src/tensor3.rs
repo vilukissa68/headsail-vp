@@ -1,4 +1,6 @@
+use alloc::boxed::Box;
 use alloc::vec::*;
+use core::ffi::c_char;
 use ndarray::{Array, Array3};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -34,6 +36,22 @@ impl TryFrom<&str> for Order3 {
             "HCW" => Ok(Order3::HCW),
             "WHC" => Ok(Order3::WHC),
             "WCH" => Ok(Order3::WCH),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFrom<[c_char; 3]> for Order3 {
+    type Error = ();
+    fn try_from(s: [c_char; 3]) -> Result<Self, Self::Error> {
+        match s {
+            // C = 0x43, H = 0x48, W = 0x57
+            [0x43, 0x48, 0x57] => Ok(Order3::CHW),
+            [0x43, 0x57, 0x48] => Ok(Order3::CWH),
+            [0x48, 0x57, 0x43] => Ok(Order3::HWC),
+            [0x48, 0x43, 0x57] => Ok(Order3::HCW),
+            [0x57, 0x48, 0x43] => Ok(Order3::WHC),
+            [0x57, 0x43, 0x48] => Ok(Order3::WCH),
             _ => Err(()),
         }
     }
