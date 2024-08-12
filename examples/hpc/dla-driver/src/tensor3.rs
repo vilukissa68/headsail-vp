@@ -1,3 +1,4 @@
+use alloc::boxed::Box;
 use alloc::vec::*;
 use core::ffi::c_char;
 use ndarray::{Array, Array3};
