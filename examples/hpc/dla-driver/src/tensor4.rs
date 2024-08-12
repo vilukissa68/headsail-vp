@@ -60,6 +60,39 @@ impl Order4 {
     }
 }
 
+impl TryFrom<&str> for Order4 {
+    type Error = ();
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s {
+            "KCHW" => Ok(Order4::KCHW),
+            "KCWH" => Ok(Order4::KCWH),
+            "KHWC" => Ok(Order4::KHWC),
+            "KHCW" => Ok(Order4::KHCW),
+            "KWHC" => Ok(Order4::KWHC),
+            "KWCH" => Ok(Order4::KWCH),
+            "CKHW" => Ok(Order4::CKHW),
+            "CKWH" => Ok(Order4::CKWH),
+            "CHWK" => Ok(Order4::CHWK),
+            "CHKW" => Ok(Order4::CHKW),
+            "CWKH" => Ok(Order4::CWKH),
+            "CWHK" => Ok(Order4::CWHK),
+            "HKCW" => Ok(Order4::HKCW),
+            "HKWC" => Ok(Order4::HKWC),
+            "HCKW" => Ok(Order4::HCKW),
+            "HCWK" => Ok(Order4::HCWK),
+            "HWCK" => Ok(Order4::HWCK),
+            "HWKC" => Ok(Order4::HWKC),
+            "WKCH" => Ok(Order4::WKCH),
+            "WKHC" => Ok(Order4::WKHC),
+            "WCKH" => Ok(Order4::WCKH),
+            "WCHK" => Ok(Order4::WCHK),
+            "WHCK" => Ok(Order4::WHCK),
+            "WHKC" => Ok(Order4::WHKC),
+            _ => Err(()),
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct Tensor4<T> {
     data: Array4<T>,
