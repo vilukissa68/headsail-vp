@@ -51,7 +51,7 @@ pub fn dense(outputs: usize, input: Tensor3<i8>, weights: Vec<i8>) -> Vec<i32> {
     output.to_buffer()
 }
 
-pub fn conv2d(
+pub fn conv2d<T: DlaOutput + Clone>(
     input: Tensor3<i8>,
     kernels: Tensor4<i8>,
     padding: Option<Padding>,
@@ -59,7 +59,7 @@ pub fn conv2d(
     mac_clip: Option<u32>,
     pp_clip: Option<u32>,
     simd_mode: Option<SimdBitMode>,
-) -> Tensor3<i32> {
+) -> Tensor3<T> {
     run_layers(
         input, kernels, None, false, false, padding, stride, mac_clip, pp_clip, simd_mode,
     )
@@ -117,7 +117,7 @@ pub fn bias(input: Tensor3<i8>, bias: Vec<i16>, pp_clip: Option<u32>) -> Tensor3
     )
 }
 
-pub fn conv2d_relu(
+pub fn conv2d_relu<T: DlaOutput + Clone>(
     input: Tensor3<i8>,
     kernels: Tensor4<i8>,
     padding: Option<Padding>,
@@ -125,13 +125,13 @@ pub fn conv2d_relu(
     mac_clip: Option<u32>,
     pp_clip: Option<u32>,
     simd_mode: Option<SimdBitMode>,
-) -> Tensor3<i8> {
+) -> Tensor3<T> {
     run_layers(
         input, kernels, None, false, true, padding, stride, mac_clip, pp_clip, simd_mode,
     )
 }
 
-pub fn conv2d_bias(
+pub fn conv2d_bias<T: DlaOutput + Clone>(
     input: Tensor3<i8>,
     kernels: Tensor4<i8>,
     bias: Vec<i16>,
@@ -140,7 +140,7 @@ pub fn conv2d_bias(
     mac_clip: Option<u32>,
     pp_clip: Option<u32>,
     simd_mode: Option<SimdBitMode>,
-) -> Tensor3<i8> {
+) -> Tensor3<T> {
     run_layers(
         input,
         kernels,
@@ -155,7 +155,7 @@ pub fn conv2d_bias(
     )
 }
 
-pub fn conv2d_bias_relu(
+pub fn conv2d_bias_relu<T: DlaOutput + Clone>(
     input: Tensor3<i8>,
     kernels: Tensor4<i8>,
     bias: Vec<i16>,
@@ -164,7 +164,7 @@ pub fn conv2d_bias_relu(
     mac_clip: Option<u32>,
     pp_clip: Option<u32>,
     simd_mode: Option<SimdBitMode>,
-) -> Tensor3<i8> {
+) -> Tensor3<T> {
     run_layers(
         input,
         kernels,
