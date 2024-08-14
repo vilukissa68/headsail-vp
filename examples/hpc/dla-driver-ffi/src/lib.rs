@@ -6,182 +6,337 @@
 
 extern crate alloc;
 use alloc::vec::Vec;
-use core::ffi::c_char;
+use core::ffi::{c_char, CStr};
 use core::slice;
-use dla_driver::layers::conv2d;
+use dla_driver::layers::{conv2d, conv2d_bias, conv2d_bias_relu, conv2d_relu};
 use dla_driver::tensor3::{Order3, Tensor3};
 use dla_driver::tensor4::{Order4, Tensor4};
 use dla_driver::{Padding, SimdBitMode, Stride};
 
-#[repr(C)]
-pub struct COrder3 {
-    order: [c_char; 3],
-}
-
-#[repr(C)]
-pub struct COrder4 {
-    order: [c_char; 4],
-}
-
-// FFI-compatible Tensor3 structure:
-#[repr(C)]
-pub struct CTensor3 {
-    data: *const i8, // Pointer to the data
-    channels: usize,
-    height: usize,
-    width: usize,
-    order: COrder3,
-}
-
-// FFI-compatible Tensor4 structure:
-#[repr(C)]
-pub struct CTensor4 {
-    data: *const i8, // Pointer to the data
-    kernels: usize,
-    channels: usize,
-    height: usize,
-    width: usize,
-    order: COrder4,
-}
-
-#[repr(C)]
-pub struct CPadding {
-    top: u32,
-    bottom: u32,
-    left: u32,
-    right: u32,
-    padding_value: i32,
-}
-
-impl From<CPadding> for Padding {
-    fn from(c_padding: CPadding) -> Self {
-        Padding {
-            top: c_padding.top,
-            right: c_padding.right,
-            left: c_padding.left,
-            bottom: c_padding.bottom,
-            padding_value: c_padding.padding_value,
-        }
-    }
-}
-
-impl From<Padding> for CPadding {
-    fn from(padding: Padding) -> Self {
-        CPadding {
-            top: padding.top,
-            right: padding.right,
-            left: padding.left,
-            bottom: padding.bottom,
-            padding_value: padding.padding_value,
-        }
-    }
-}
-
-#[repr(C)]
-pub struct CStride {
-    x: u32,
-    y: u32,
-}
-
-impl From<CStride> for Stride {
-    fn from(c_stride: CStride) -> Self {
-        Stride {
-            x: c_stride.x,
-            y: c_stride.y,
-        }
-    }
-}
-
-impl From<Stride> for CStride {
-    fn from(stride: Stride) -> Self {
-        CStride {
-            x: stride.x,
-            y: stride.y,
-        }
-    }
-}
-
-#[repr(C)]
-pub enum CSimdBitMode {
-    EightBits = 0,
-    FourBits = 1,
-    TwoBits = 2,
-}
-
-impl From<CSimdBitMode> for SimdBitMode {
-    fn from(c_mode: CSimdBitMode) -> Self {
-        match c_mode {
-            CSimdBitMode::EightBits => SimdBitMode::EightBits,
-            CSimdBitMode::FourBits => SimdBitMode::FourBits,
-            CSimdBitMode::TwoBits => SimdBitMode::TwoBits,
-        }
-    }
-}
-
-impl From<SimdBitMode> for CSimdBitMode {
-    fn from(mode: SimdBitMode) -> Self {
-        match mode {
-            SimdBitMode::EightBits => CSimdBitMode::EightBits,
-            SimdBitMode::FourBits => CSimdBitMode::FourBits,
-            SimdBitMode::TwoBits => CSimdBitMode::TwoBits,
-        }
-    }
-}
-
-#[no_mangle]
-pub extern "C" fn conv2d_ffi(
-    input: CTensor3,
-    kernels: CTensor4,
-    padding: CPadding,       // Assuming padding is a pointer (nullable)
-    stride: CStride,         // Assuming stride is a pointer (nullable)
-    mac_clip: u32,           // Nullable pointer for optional values
-    pp_clip: u32,            // Nullable pointer for optional values
-    simd_mode: CSimdBitMode, // Nullable pointer for optional values
-    output: *mut CTensor3,   // Output pointer
-) {
+unsafe fn ffi_data_import(
+    input_data: *const i8,
+    input_channels: usize,
+    input_height: usize,
+    input_width: usize,
+    input_order: *const c_char,
+    kernel_data: *const i8,
+    kernel_amount: usize,
+    kernel_channels: usize,
+    kernel_height: usize,
+    kernel_width: usize,
+    kernel_order: *const c_char,
+) -> (Tensor3<i8>, Tensor4<i8>) {
     let input_data: Vec<i8> = unsafe {
-        slice::from_raw_parts(input.data, input.channels * input.height * input.width).to_vec()
+        slice::from_raw_parts(input_data, input_channels * input_height * input_width).to_vec()
     };
+
+    let input_order_string = unsafe { CStr::from_ptr(input_order).to_str().unwrap_unchecked() };
     let input_tensor = unsafe {
         Tensor3::from_data_buffer(
-            input.channels,
-            input.height,
-            input.width,
+            input_channels,
+            input_height,
+            input_width,
             input_data,
-            Order3::try_from(input.order.order).unwrap_unchecked(),
+            Order3::try_from(input_order_string).unwrap_unchecked(),
         )
         .unwrap_unchecked()
     };
 
     let kernels_data: Vec<i8> = unsafe {
         slice::from_raw_parts(
-            kernels.data,
-            kernels.kernels * kernels.channels * kernels.height * kernels.width,
+            kernel_data,
+            kernel_amount * kernel_channels * kernel_height * kernel_width,
         )
         .to_vec()
     };
 
+    let kernel_order_string = unsafe { CStr::from_ptr(kernel_order).to_str().unwrap_unchecked() };
     let kernels_tensor = unsafe {
         Tensor4::from_data_buffer(
-            kernels.kernels,
-            kernels.channels,
-            kernels.height,
-            kernels.width,
+            kernel_amount,
+            kernel_channels,
+            kernel_height,
+            kernel_width,
             kernels_data,
-            Order4::try_from(kernels.order.order).unwrap_unchecked(),
+            Order4::try_from(kernel_order_string).unwrap_unchecked(),
         )
         .unwrap_unchecked()
     };
 
-    let result = conv2d(
+    (input_tensor, kernels_tensor)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn free_rust_vec(ptr: *mut i8, len: usize) {
+    unsafe {
+        let _ = Vec::from_raw_parts(ptr, len, len);
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dla_init() {
+    headsail_bsp::init_alloc();
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dla_conv2d(
+    input_data: *const i8,
+    input_channels: usize,
+    input_height: usize,
+    input_width: usize,
+    input_order: *const c_char,
+    kernel_data: *const i8,
+    kernel_amount: usize,
+    kernel_channels: usize,
+    kernel_height: usize,
+    kernel_width: usize,
+    kernel_order: *const c_char,
+    pad_top: u32,
+    pad_right: u32,
+    pad_left: u32,
+    pad_bottom: u32,
+    pad_value: i32,
+    stride_x: u32,
+    stride_y: u32,
+    mac_clip: u32,
+    pp_clip: u32,
+    output: *mut i8,
+) {
+    let (input_tensor, kernels_tensor) = unsafe {
+        ffi_data_import(
+            input_data,
+            input_channels,
+            input_height,
+            input_width,
+            input_order,
+            kernel_data,
+            kernel_amount,
+            kernel_channels,
+            kernel_height,
+            kernel_width,
+            kernel_order,
+        )
+    };
+
+    let result: Tensor3<i8> = conv2d(
         input_tensor,
         kernels_tensor,
-        Some(Padding::from(padding)),
-        Some(Stride::from(stride)),
+        Some(Padding {
+            top: pad_top,
+            right: pad_right,
+            left: pad_left,
+            bottom: pad_bottom,
+            padding_value: pad_value,
+        }),
+        Some(Stride {
+            x: stride_x,
+            y: stride_y,
+        }),
         Some(mac_clip),
         Some(pp_clip),
-        Some(SimdBitMode::from(simd_mode)),
+        None,
     );
+    unsafe {
+        core::ptr::copy_nonoverlapping(result.to_buffer().as_mut_ptr(), output, result.get_size())
+    };
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dla_conv2d_relu(
+    input_data: *const i8,
+    input_channels: usize,
+    input_height: usize,
+    input_width: usize,
+    input_order: *const c_char,
+    kernel_data: *const i8,
+    kernel_amount: usize,
+    kernel_channels: usize,
+    kernel_height: usize,
+    kernel_width: usize,
+    kernel_order: *const c_char,
+    pad_top: u32,
+    pad_right: u32,
+    pad_left: u32,
+    pad_bottom: u32,
+    pad_value: i32,
+    stride_x: u32,
+    stride_y: u32,
+    mac_clip: u32,
+    pp_clip: u32,
+    output: *mut i8,
+) {
+    let (input_tensor, kernels_tensor) = unsafe {
+        ffi_data_import(
+            input_data,
+            input_channels,
+            input_height,
+            input_width,
+            input_order,
+            kernel_data,
+            kernel_amount,
+            kernel_channels,
+            kernel_height,
+            kernel_width,
+            kernel_order,
+        )
+    };
+
+    let result: Tensor3<i8> = conv2d_relu(
+        input_tensor,
+        kernels_tensor,
+        Some(Padding {
+            top: pad_top,
+            right: pad_right,
+            left: pad_left,
+            bottom: pad_bottom,
+            padding_value: pad_value,
+        }),
+        Some(Stride {
+            x: stride_x,
+            y: stride_y,
+        }),
+        Some(mac_clip),
+        Some(pp_clip),
+        None,
+    );
+    unsafe {
+        core::ptr::copy_nonoverlapping(result.to_buffer().as_mut_ptr(), output, result.get_size())
+    };
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dla_conv2d_bias(
+    input_data: *const i8,
+    input_channels: usize,
+    input_height: usize,
+    input_width: usize,
+    input_order: *const c_char,
+    kernel_data: *const i8,
+    kernel_amount: usize,
+    kernel_channels: usize,
+    kernel_height: usize,
+    kernel_width: usize,
+    kernel_order: *const c_char,
+    bias: *const i16,
+    bias_length: usize,
+    pad_top: u32,
+    pad_right: u32,
+    pad_left: u32,
+    pad_bottom: u32,
+    pad_value: i32,
+    stride_x: u32,
+    stride_y: u32,
+    mac_clip: u32,
+    pp_clip: u32,
+    output: *mut i8,
+) {
+    let (input_tensor, kernels_tensor) = unsafe {
+        ffi_data_import(
+            input_data,
+            input_channels,
+            input_height,
+            input_width,
+            input_order,
+            kernel_data,
+            kernel_amount,
+            kernel_channels,
+            kernel_height,
+            kernel_width,
+            kernel_order,
+        )
+    };
+
+    let bias: Vec<i16> = unsafe { slice::from_raw_parts(bias, bias_length).to_vec() };
+
+    let result = conv2d_bias(
+        input_tensor,
+        kernels_tensor,
+        bias,
+        Some(Padding {
+            top: pad_top,
+            right: pad_right,
+            left: pad_left,
+            bottom: pad_bottom,
+            padding_value: pad_value,
+        }),
+        Some(Stride {
+            x: stride_x,
+            y: stride_y,
+        }),
+        Some(mac_clip),
+        Some(pp_clip),
+        None,
+    );
+    unsafe {
+        core::ptr::copy_nonoverlapping(result.to_buffer().as_mut_ptr(), output, result.get_size())
+    };
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn dla_conv2d_bias_relu(
+    input_data: *const i8,
+    input_channels: usize,
+    input_height: usize,
+    input_width: usize,
+    input_order: *const c_char,
+    kernel_data: *const i8,
+    kernel_amount: usize,
+    kernel_channels: usize,
+    kernel_height: usize,
+    kernel_width: usize,
+    kernel_order: *const c_char,
+    bias: *const i16,
+    bias_length: usize,
+    pad_top: u32,
+    pad_right: u32,
+    pad_left: u32,
+    pad_bottom: u32,
+    pad_value: i32,
+    stride_x: u32,
+    stride_y: u32,
+    mac_clip: u32,
+    pp_clip: u32,
+    output: *mut i8,
+) {
+    let (input_tensor, kernels_tensor) = unsafe {
+        ffi_data_import(
+            input_data,
+            input_channels,
+            input_height,
+            input_width,
+            input_order,
+            kernel_data,
+            kernel_amount,
+            kernel_channels,
+            kernel_height,
+            kernel_width,
+            kernel_order,
+        )
+    };
+    let bias: Vec<i16> = unsafe { slice::from_raw_parts(bias, bias_length).to_vec() };
+
+    let result = conv2d_bias_relu(
+        input_tensor,
+        kernels_tensor,
+        bias,
+        Some(Padding {
+            top: pad_top,
+            right: pad_right,
+            left: pad_left,
+            bottom: pad_bottom,
+            padding_value: pad_value,
+        }),
+        Some(Stride {
+            x: stride_x,
+            y: stride_y,
+        }),
+        Some(mac_clip),
+        Some(pp_clip),
+        None,
+    );
+    unsafe {
+        core::ptr::copy_nonoverlapping(result.to_buffer().as_mut_ptr(), output, result.get_size())
+    };
 }
 #[panic_handler]
 fn panic(_info: &core::panic::PanicInfo) -> ! {
