@@ -19,15 +19,5 @@ add_custom_command(
     COMMENT "Building dla driver"
 )
 
-add_custom_command(
-    OUTPUT ${DLA_BUILD_DIR_DEBUG}/libdla_driver_ffi.a
-    COMMAND just build-dla-debug
-    WORKING_DIRECTORY ${DLA_PROJECT_DIR}
-    COMMENT "Building dla driver"
-)
-
-
-
 add_custom_target(build_dla DEPENDS ${DLA_BUILD_DIR_RELEASE}/libdla_driver_ffi.a)
-add_custom_target(build_dla-debug DEPENDS ${DLA_BUILD_DIR_DEBUG}/libdla_driver_ffi.a)
 set(DLA_LIBRARIES ${DLA_BUILD_DIR_RELEASE}/libdla_driver_ffi.a)
