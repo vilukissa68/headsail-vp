@@ -11,8 +11,9 @@ use core::slice;
 use dla_driver::layers::{conv2d, conv2d_bias, conv2d_bias_relu, conv2d_relu};
 use dla_driver::tensor3::{Order3, Tensor3};
 use dla_driver::tensor4::{Order4, Tensor4};
-use dla_driver::{Padding, SimdBitMode, Stride};
+use dla_driver::{Padding, Stride};
 
+/// Converts C-types to DLA Tensors for use with the highlevel layer
 unsafe fn ffi_data_import(
     input_data: *const i8,
     input_channels: usize,
@@ -66,18 +67,13 @@ unsafe fn ffi_data_import(
     (input_tensor, kernels_tensor)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn free_rust_vec(ptr: *mut i8, len: usize) {
-    unsafe {
-        let _ = Vec::from_raw_parts(ptr, len, len);
-    }
-}
-
+/// Initializes DLA by setting up necessary head allocator from headsail-bsp. This should be called only once in the program.
 #[no_mangle]
 pub unsafe extern "C" fn dla_init() {
     headsail_bsp::init_alloc();
 }
 
+/// Executes Conv2D on DLA with given parameters and writes result to output buffer.
 #[no_mangle]
 pub unsafe extern "C" fn dla_conv2d(
     input_data: *const i8,
@@ -141,6 +137,7 @@ pub unsafe extern "C" fn dla_conv2d(
     };
 }
 
+/// Executes Conv2D + ReLU on DLA with given parameters and writes result to output buffer.
 #[no_mangle]
 pub unsafe extern "C" fn dla_conv2d_relu(
     input_data: *const i8,
@@ -204,6 +201,7 @@ pub unsafe extern "C" fn dla_conv2d_relu(
     };
 }
 
+/// Executes Conv2D + Bias on DLA with given parameters and writes result to output buffer.
 #[no_mangle]
 pub unsafe extern "C" fn dla_conv2d_bias(
     input_data: *const i8,
@@ -272,6 +270,7 @@ pub unsafe extern "C" fn dla_conv2d_bias(
     };
 }
 
+/// Executes Conv2D + Bias + ReLU on DLA with given parameters and writes result to output buffer.
 #[no_mangle]
 pub unsafe extern "C" fn dla_conv2d_bias_relu(
     input_data: *const i8,
