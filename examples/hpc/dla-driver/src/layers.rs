@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 use crate::utils::{calculate_conv2d_out_param_dim, get_banks_for_layer};
 
 // Define a trait for output handling
-trait DlaOutput: Sized {
+pub trait DlaOutput: Sized {
     fn read_output(dla: &Dla, size: usize) -> Vec<Self>;
 }
 
