@@ -1,6 +1,6 @@
-//! # DLA driver
+//! # DLA driver FFI
 //!
-//! Implements driver for sochub headsail SoC's deep learning accelerator.
+//! Makes DLA's highlevel API availeable from C via FFI.
 #![no_std]
 #![no_main]
 
