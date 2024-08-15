@@ -338,7 +338,3 @@ pub unsafe extern "C" fn dla_conv2d_bias_relu(
         core::ptr::copy_nonoverlapping(result.to_buffer().as_mut_ptr(), output, result.get_size())
     };
 }
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    loop {}
-}
