@@ -17,12 +17,7 @@ cargo run --example uart0 -Fhpc-rt -Fpanic-uart --target riscv64imac-unknown-non
 ### Run DLA example
 
 ```sh
-cd examples/hello-dla
-```
-
-Set renode installation path to RENODE_PATH variable in renode.sh
-
-```sh
+cd examples/hpc/hello-dla
 cargo run --example dla
 ```
 
