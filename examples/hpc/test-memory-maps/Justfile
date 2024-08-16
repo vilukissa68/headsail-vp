@@ -1,2 +1,3 @@
+# See devices.lines for all devices
 run device:
-    DEVICE={{device}} cargo run
+    DEVICE={{device}} cargo run --release

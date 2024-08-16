@@ -8,7 +8,7 @@ use bsp::{
     rt::entry,
     sprint, sprintln,
     tb::{report_fail, report_pass},
-    uart::{putc, uart_write},
+    uart::putc,
     ufmt::{self, uDebug},
 };
 use panic_halt as _;
@@ -56,18 +56,24 @@ fn main() -> ! {
     let cases = &tests::TEST_CASES;
     let longest_uid = cases.iter().map(|t| t.uid.chars().count()).max().unwrap();
     let count = cases.len();
+    let mut failures = 0;
     for (idx, t) in cases.iter().enumerate() {
         print_test_case_info(idx, count, longest_uid, t.uid, t.addr);
         if let Err(e) = (t.function)() {
             sprintln!("  {:?}", Error(e));
             // Report failure but run to completion
             report_fail();
+            failures += 1;
         } else {
             sprintln!("  reset value ok")
         }
     }
 
-    report_pass();
+    if failures == 0 {
+        report_pass();
+    } else {
+        report_fail();
+    }
 
     loop {
         wfi();
