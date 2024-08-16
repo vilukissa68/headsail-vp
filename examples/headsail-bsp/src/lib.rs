@@ -2,6 +2,8 @@
 #![no_std]
 
 pub mod sprintln;
+#[cfg(feature = "sysctrl")]
+pub mod sysctrl;
 pub mod uart;
 pub mod timer {
     /*!
@@ -38,8 +40,6 @@ pub mod alloc;
 #[cfg(feature = "hpc")]
 mod hpc;
 mod mmap;
-#[cfg(feature = "sysctrl")]
-mod sysctrl;
 #[cfg(feature = "panic-uart")]
 mod ufmt_panic;
 
@@ -67,6 +67,25 @@ pub fn read_u32(addr: usize) -> u32 {
 #[inline(always)]
 pub fn write_u32(addr: usize, val: u32) {
     unsafe { core::ptr::write_volatile(addr as *mut _, val) }
+}
+
+#[inline(always)]
+pub fn mask_u32(addr: usize, mask: u32) {
+    let r = unsafe { core::ptr::read_volatile(addr as *const u32) };
+    unsafe { core::ptr::write_volatile(addr as *mut _, r | mask) }
+}
+
+#[inline(always)]
+pub fn unmask_u32(addr: usize, unmask: u32) {
+    let r = unsafe { core::ptr::read_volatile(addr as *const u32) };
+    unsafe { core::ptr::write_volatile(addr as *mut _, r & !unmask) }
+}
+
+#[inline(always)]
+pub fn toggle_u32(addr: usize, toggle_bits: u32) {
+    let mut r = read_u32(addr);
+    r ^= toggle_bits;
+    write_u32(addr, r);
 }
 
 #[cfg(feature = "alloc")]
