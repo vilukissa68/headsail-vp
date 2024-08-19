@@ -1,0 +1,5 @@
+build-dla:
+    cargo objcopy --target=riscv64imac-unknown-none-elf --release --lib -- --weaken
+
+build-dla-debug:
+    cargo objcopy --target=riscv64imac-unknown-none-elf --lib -- --weaken

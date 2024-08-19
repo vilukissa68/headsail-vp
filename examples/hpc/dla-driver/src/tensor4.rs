@@ -1,4 +1,5 @@
 use alloc::vec::*;
+use core::ffi::c_char;
 use ndarray::{Array, Array4};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -56,6 +57,73 @@ impl Order4 {
             Order4::WCHK => [3, 1, 2, 0],
             Order4::WHCK => [3, 2, 0, 1],
             Order4::WHKC => [3, 2, 1, 0],
+        }
+    }
+}
+
+impl TryFrom<&str> for Order4 {
+    type Error = ();
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s {
+            "KCHW" => Ok(Order4::KCHW),
+            "KCWH" => Ok(Order4::KCWH),
+            "KHWC" => Ok(Order4::KHWC),
+            "KHCW" => Ok(Order4::KHCW),
+            "KWHC" => Ok(Order4::KWHC),
+            "KWCH" => Ok(Order4::KWCH),
+            "CKHW" => Ok(Order4::CKHW),
+            "CKWH" => Ok(Order4::CKWH),
+            "CHWK" => Ok(Order4::CHWK),
+            "CHKW" => Ok(Order4::CHKW),
+            "CWKH" => Ok(Order4::CWKH),
+            "CWHK" => Ok(Order4::CWHK),
+            "HKCW" => Ok(Order4::HKCW),
+            "HKWC" => Ok(Order4::HKWC),
+            "HCKW" => Ok(Order4::HCKW),
+            "HCWK" => Ok(Order4::HCWK),
+            "HWCK" => Ok(Order4::HWCK),
+            "HWKC" => Ok(Order4::HWKC),
+            "WKCH" => Ok(Order4::WKCH),
+            "WKHC" => Ok(Order4::WKHC),
+            "WCKH" => Ok(Order4::WCKH),
+            "WCHK" => Ok(Order4::WCHK),
+            "WHCK" => Ok(Order4::WHCK),
+            "WHKC" => Ok(Order4::WHKC),
+            _ => Err(()),
+        }
+    }
+}
+
+impl TryFrom<[c_char; 4]> for Order4 {
+    type Error = ();
+    fn try_from(s: [c_char; 4]) -> Result<Self, Self::Error> {
+        match s {
+            // K = 0x4B, C = 0x43, H = 0x48, W = 0x57
+            [0x4B, 0x43, 0x48, 0x57] => Ok(Order4::KCHW),
+            [0x4B, 0x43, 0x57, 0x48] => Ok(Order4::KCWH),
+            [0x4B, 0x48, 0x57, 0x43] => Ok(Order4::KHWC),
+            [0x4B, 0x48, 0x43, 0x57] => Ok(Order4::KHCW),
+            [0x4B, 0x57, 0x48, 0x43] => Ok(Order4::KWHC),
+            [0x4B, 0x57, 0x43, 0x48] => Ok(Order4::KWCH),
+            [0x43, 0x4B, 0x48, 0x57] => Ok(Order4::CKHW),
+            [0x43, 0x4B, 0x57, 0x48] => Ok(Order4::CKWH),
+            [0x43, 0x48, 0x57, 0x4B] => Ok(Order4::CHWK),
+            [0x43, 0x48, 0x4B, 0x57] => Ok(Order4::CHKW),
+            [0x43, 0x57, 0x4B, 0x48] => Ok(Order4::CWKH),
+            [0x43, 0x57, 0x48, 0x4B] => Ok(Order4::CWHK),
+            [0x48, 0x4B, 0x43, 0x57] => Ok(Order4::HKCW),
+            [0x48, 0x4B, 0x57, 0x43] => Ok(Order4::HKWC),
+            [0x48, 0x43, 0x4B, 0x57] => Ok(Order4::HCKW),
+            [0x48, 0x43, 0x57, 0x4B] => Ok(Order4::HCWK),
+            [0x48, 0x57, 0x43, 0x4B] => Ok(Order4::HWCK),
+            [0x48, 0x57, 0x4B, 0x43] => Ok(Order4::HWKC),
+            [0x57, 0x4B, 0x43, 0x48] => Ok(Order4::WKCH),
+            [0x57, 0x4B, 0x48, 0x43] => Ok(Order4::WKHC),
+            [0x57, 0x43, 0x4B, 0x48] => Ok(Order4::WCKH),
+            [0x57, 0x43, 0x48, 0x4B] => Ok(Order4::WCHK),
+            [0x57, 0x48, 0x43, 0x4B] => Ok(Order4::WHCK),
+            [0x57, 0x48, 0x4B, 0x43] => Ok(Order4::WHKC),
+            _ => Err(()),
         }
     }
 }

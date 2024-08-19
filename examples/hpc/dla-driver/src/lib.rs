@@ -95,7 +95,7 @@ pub struct Padding {
     pub right: u32,
     pub left: u32,
     pub bottom: u32,
-    pub padding_value: u32,
+    pub padding_value: i32,
 }
 
 /// Conv2d stride
