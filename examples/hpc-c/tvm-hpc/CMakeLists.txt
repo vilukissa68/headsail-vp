@@ -2,18 +2,12 @@ cmake_minimum_required(VERSION 3.13)
 set(CMAKE_SYSTEM_NAME Generic)
 set(CMAKE_SYSTEM_PROCESSOR riscv64)
 
-set(XLEN 64)
-set(CMAKE_C_COMPILER $ENV{CC})
-set(CMAKE_CXX_COMPILER $ENV{CXX})
-message(CMAKE_C_COMPILER="${CMAKE_C_COMPILER}")
-set(LIBGCC "/opt/homebrew/opt/riscv-gnu-toolchain/lib/gcc/riscv64-unknown-elf/13.2.0/rv64imac/lp64/libgcc.a")
-
-set(CMAKE_SYSTEM_NAME Generic)
-set(CMAKE_SYSTEM_PROCESSOR riscv64)
-set(ARCH rv64imac)
-set(ABI lp64)
-
 project(headsail-tvm C ASM)
+
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../cmake")
+find_package(RiscvGcc REQUIRED)
+find_package(DlaDriver REQUIRED)
+find_package(Newlib REQUIRED)
 
 # Choose target model
 option(USE_MOBILENET "Use mobilenet" OFF)
@@ -77,7 +71,7 @@ set(CRT0 ${CMAKE_CURRENT_SOURCE_DIR}/../crt0)
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../cmake")
 
 # Set GCC compile options for RISC-V 64-bit architecture with IMAC extensions
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 -march=${ARCH} -mabi=${ABI} -Fuse-ld=riscv-none-elf-ld -nostdlib -T${CRT0}/linker_sdram.lds -mcmodel=medany")
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 -march=rv64imac -mabi=lp64 -nostdlib -T${CRT0}/linker_sdram.lds -mcmodel=medany")
 
 # Gather all lib*.c files from a specific directory
 file(GLOB LIB_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/lib*.c)
@@ -93,6 +87,7 @@ set(SOURCE_FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/devc.o
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/graph_c.json.c
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/params_c.bin.c
+    ${LIB_SOURCES}
     #${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/stimulus.c
     $ENV{TVM_HOME}/build/standalone_crt/src/runtime/crt/common/crt_runtime_api.c
     $ENV{TVM_HOME}/build/standalone_crt/src/runtime/crt/graph_executor/graph_executor.c
@@ -106,15 +101,12 @@ set(SOURCE_FILES
 )
 
 # Add the executable target
-add_executable(${CMAKE_PROJECT_NAME} ${SOURCE_FILES})
+add_executable(${CMAKE_PROJECT_NAME} ${SOURCE_FILES} ${LIB_PATH}/crt0.o)
 
 # Link newlib
-set(NEWLIB /Users/vainogranat/work/newlib-build/build/riscv64-unknown-elf/lib/${ARCH}/${ABI})
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${NEWLIB}/crt0.o)
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${NEWLIB}/libc.a)
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${NEWLIB}/libm.a)
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${NEWLIB}/libgloss.a)
-target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${LIBGCC})
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${LIB_PATH}/libc.a)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${LIB_PATH}/libm.a)
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${LIB_PATH}/libgloss.a)
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE -lc -lm -lgloss -lgcc)
 
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE /Users/vainogranat/work/headsail-newlib/libgloss/riscv)
@@ -124,3 +116,8 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $ENV{TVM_HOME}/build/st
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $ENV{TVM_HOME}/build/standalone_crt/include/dlpack)
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $ENV{TVM_HOME}/build/standalone_crt/include/tvm)
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $ENV{TVM_HOME}/build/crt_config)
+
+# Include DLA-FFI
+add_dependencies(${CMAKE_PROJECT_NAME} build_dla)
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE ${DLA_INCLUDE_DIR})
+target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${DLA_LIBRARIES})

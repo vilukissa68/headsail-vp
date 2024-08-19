@@ -28,6 +28,12 @@ def normalize(v):
        return v
     return v / norm
 
+def quantize(mod, params, quantize_arg="int8"):
+    print("Quantizing model")
+    with relay.quantize.qconfig(calibrate_mode='global_scale', dtype_input=quantize_arg, dtype_weight=quantize_arg, dtype_activation=quantize_arg, global_scale=8.0):
+        modd = relay.quantize.quantize(mod, params)
+        return modd
+
 def write_c_stimulus(data, len_symbol="stimulus_c_len", payload_symbol="stimulus_c", payload_type="unsigned char"):
     c_file = open("model_c/stimulus" + ".c", "w")
     len_line = "unsigned int {len_symbol} = {data_len};\n".format(len_symbol=len_symbol, data_len=len(data))
@@ -92,7 +98,7 @@ def headsail_annotate(mod):
     mod = relay.transform.AnnotateTarget(["headsail"])(mod) # Output: Figure 2
     mod = relay.transform.MergeCompilerRegions()(mod) # Output: Figure 3
     mod = relay.transform.PartitionGraph()(mod) # Output: Figure 4
-    mod = relay.transform.InferType()(mod)
+    #mod = relay.transform.InferType()(mod)
     return mod
 
 def export_annotated_library(mod, params, build_dir):
@@ -154,9 +160,14 @@ def build_model(opts, shape_dict):
         print("Error! Unsupported model", opts.model_path)
         return
 
+    # TVM quantization
+    if opts.annotate_graph:
+        mod = quantize(mod, params)
+
     # Annotate model with headsail tags
     if opts.annotate_graph:
         mod = headsail_annotate(mod)
+        print(mod)
 
     # Write mod log to output
     with open(
@@ -184,7 +195,7 @@ def build_model(opts, shape_dict):
     # Generate stimulus
     if opts.stimulus != None:
         opts.stimulus = opts.stimulus.strip()
-        export_stimulus(opts.stimulus, opts.input_type)
+        #export_stimulus(opts.stimulus, opts.input_type)
     os.chdir(build_dir)
 
     # Convert graph and weights to hexdumps
@@ -212,14 +223,14 @@ if __name__ == "__main__":
     elif opts.model == "perf_image_classification":
         build_model(opts, shape_dict=SHAPES["perf_ic"])
         os.chdir(os.path.abspath("../"))
-        write_c_stimulus(get_ic_stimulus(), "uint8_t")
+        write_c_stimulus(get_ic_stimulus(), "int8_t")
     elif opts.model == "perf_visual_wakeup_word":
         build_model(opts, shape_dict=SHAPES["perf_vww"])
         os.chdir(os.path.abspath("../"))
-        write_c_stimulus(get_vww_stimulus(), "uint8_t")
+        write_c_stimulus(get_vww_stimulus(), "int8_t")
     elif opts.model == "perf_keyword_spotting":
         build_model(opts, shape_dict=SHAPES["perf_kws"])
         os.chdir(os.path.abspath("../"))
-        write_c_stimulus(get_kws_stimulus(), "uint8_t")
+        write_c_stimulus(get_kws_stimulus(), "int8_t")
     else:
         print("No such model", opts.model, "Availeable models: add, mobilenet")
