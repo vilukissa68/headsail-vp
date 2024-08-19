@@ -17,7 +17,7 @@ build: configure
     make
 
 run: build
-    {{root_dir}}/scripts/run_on_hpc.sh {{justfile_directory()}}/build/test-bsp-ffi
+    {{root_dir}}/scripts/run_on_hpc.sh {{justfile_directory()}}/build/test-dla-driver-ffi
 
 clean:
     rm -rf build/
