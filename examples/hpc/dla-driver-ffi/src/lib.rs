@@ -67,7 +67,7 @@ unsafe fn ffi_data_import(
     (input_tensor, kernels_tensor)
 }
 
-/// Initializes DLA by setting up necessary head allocator from headsail-bsp. This should be called only once in the program.
+/// Initializes DLA by setting up necessary heap allocator from headsail-bsp. This should be called only once in the program.
 #[no_mangle]
 pub unsafe extern "C" fn dla_init() {
     headsail_bsp::init_alloc();
