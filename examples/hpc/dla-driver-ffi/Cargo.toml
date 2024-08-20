@@ -7,8 +7,15 @@ edition = "2021"
 crate-type = ["staticlib"]
 
 [dependencies]
-dla-driver = { version = "0.1.0", path = "../dla-driver", features = ["hpc", "vp"] }
-headsail-bsp = { version = "0.1.0", path = "../../headsail-bsp", features = ["alloc", "sdram", "panic-uart"]}
+dla-driver = { version = "0.1.0", path = "../dla-driver", features = [
+    "hpc",
+    "vp",
+] }
+headsail-bsp = { version = "0.1.0", path = "../../headsail-bsp", features = [
+    "alloc",
+    "sdram",
+    "panic-apb-uart0",
+] }
 
 [build-dependencies]
 cbindgen = "0.26.0"

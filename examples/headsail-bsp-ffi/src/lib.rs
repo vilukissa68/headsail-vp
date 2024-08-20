@@ -31,5 +31,5 @@ unsafe fn rust_main() -> ! {
 
 #[no_mangle]
 pub extern "C" fn putc(byte: u8) {
-    headsail_bsp::uart::putc(byte)
+    headsail_bsp::apb_uart::putc(byte)
 }

@@ -2,8 +2,8 @@
 #![no_main]
 
 #[cfg(feature = "asic")]
-use headsail_bsp::uart::init_uart;
-use headsail_bsp::{rt::entry, sysctrl::soc_ctrl, uart::uart_write};
+use headsail_bsp::apb_uart::init_uart;
+use headsail_bsp::{apb_uart::uart_write, rt::entry, sysctrl::soc_ctrl};
 use panic_halt as _;
 
 #[entry]

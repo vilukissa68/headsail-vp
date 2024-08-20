@@ -18,7 +18,7 @@ impl uDisplay for PanicInfoWrapper<'_> {
     }
 }
 
-#[cfg(feature = "panic-uart")]
+#[cfg(feature = "panic-apb-uart0")]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     sprintln!("{}", PanicInfoWrapper(info));

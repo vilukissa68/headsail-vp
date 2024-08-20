@@ -4,11 +4,11 @@
 mod tests;
 
 use bsp::{
+    apb_uart::putc,
     riscv::asm::wfi,
     rt::entry,
     sprint, sprintln,
     tb::{report_fail, report_pass},
-    uart::putc,
     ufmt::{self, uDebug},
 };
 use panic_halt as _;

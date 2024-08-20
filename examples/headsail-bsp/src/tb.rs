@@ -1,6 +1,6 @@
 //! Common testbench definitions to retain a consistent test setup
 
-use crate::uart::uart_write;
+use crate::apb_uart::uart_write;
 
 pub const TAG_FAIL: &str = "[FAIL]";
 pub const TAG_PASS: &str = "[PASS]";

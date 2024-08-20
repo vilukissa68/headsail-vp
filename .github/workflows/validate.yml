@@ -39,10 +39,10 @@ jobs:
       run: cargo check -Fsysctrl-rt -Fvp
     - name: Check BSP examples (-Fsysctrl-rt)
       working-directory: ./examples/headsail-bsp
-      run: cargo check --examples -Fsysctrl-rt -Fpanic-uart
+      run: cargo check --examples -Fsysctrl-rt -Fpanic-apb-uart0
     - name: Check BSP examples (-Fsysctrl-rt -Fvp)
       working-directory: ./examples/headsail-bsp
-      run: cargo check --examples -Fsysctrl-rt -Fvp -Fpanic-uart
+      run: cargo check --examples -Fsysctrl-rt -Fvp -Fpanic-apb-uart0
 
     - name: Check BSP (-Fhpc-rt)
       working-directory: ./examples/headsail-bsp
@@ -52,10 +52,10 @@ jobs:
       run: cargo check -Fhpc-rt -Fvp
     - name: Check BSP examples (-Fhpc-rt)
       working-directory: ./examples/headsail-bsp
-      run: cargo check --examples -Fhpc-rt -Fpanic-uart
+      run: cargo check --examples -Fhpc-rt -Fpanic-apb-uart0
     - name: Check BSP examples (-Fhpc-rt -Fvp)
       working-directory: ./examples/headsail-bsp
-      run: cargo check --examples -Fhpc-rt -Fvp -Fpanic-uart
+      run: cargo check --examples -Fhpc-rt -Fvp -Fpanic-apb-uart0
 
   build-dla-example:
     runs-on: ubuntu-latest
@@ -173,7 +173,7 @@ jobs:
       run: rustup target add riscv64imac-unknown-none-elf riscv32im-unknown-none-elf
     - name: Build FFI without RT on SysCtrl
       working-directory: ./examples/headsail-bsp-ffi
-      run: cargo build --target=riscv32im-unknown-none-elf -Fpanic-uart
+      run: cargo build --target=riscv32im-unknown-none-elf -Fpanic-apb-uart0
     - name: Build FFI without RT on HPC
       working-directory: ./examples/headsail-bsp-ffi
-      run: cargo build --target=riscv64imac-unknown-none-elf -Fpanic-uart
+      run: cargo build --target=riscv64imac-unknown-none-elf -Fpanic-apb-uart0

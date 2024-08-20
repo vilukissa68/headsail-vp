@@ -13,7 +13,7 @@ sysctrl-rt = [
     "riscv-rt/single-hart",
     "riscv/critical-section-single-hart",
 ]
-panic-uart = []
+panic-apb-uart0 = []
 hpc = []
 sysctrl = []
 alloc = ["dep:good_memory_allocator", "hpc"]
@@ -36,7 +36,7 @@ bit_field = "0.10.2"
 [[example]]
 name = "panic"
 path = "examples/panic.rs"
-required-features = ["panic-uart", "rt"]
+required-features = ["panic-apb-uart0", "rt"]
 
 [[example]]
 name = "uart0"
@@ -61,12 +61,12 @@ required-features = ["alloc", "rt", "sdram"]
 [[example]]
 name = "timer0"
 path = "examples/timer0.rs"
-required-features = ["panic-uart", "rt"]
+required-features = ["panic-apb-uart0", "rt"]
 
 [[example]]
 name = "interrupts"
 path = "examples/interrupts.rs"
-required-features = ["panic-uart", "hpc-rt"]
+required-features = ["panic-apb-uart0", "hpc-rt"]
 
 [profile.dev]
 panic = "abort"

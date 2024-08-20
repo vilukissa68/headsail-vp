@@ -6,8 +6,8 @@ extern crate alloc;
 use dla_driver::utils::generate_output_tensor;
 use dla_driver::*;
 use headsail_bsp::{
-    init_alloc, rt::entry, sprint, sprintln, tb::report_fail, tb::report_ok, tb::report_pass,
-    uart::uart_read_to_heap,
+    apb_uart::uart_read_to_heap, init_alloc, rt::entry, sprint, sprintln, tb::report_fail,
+    tb::report_ok, tb::report_pass,
 };
 use panic_halt as _;
 

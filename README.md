@@ -11,7 +11,7 @@
 
 ```sh
 cd examples/headsail-bsp
-cargo run --example uart0 -Fhpc-rt -Fpanic-uart --target riscv64imac-unknown-none-elf
+cargo run --example uart0 -Fhpc-rt -Fpanic-apb-uart0 --target riscv64imac-unknown-none-elf
 ```
 
 ### Run DLA example

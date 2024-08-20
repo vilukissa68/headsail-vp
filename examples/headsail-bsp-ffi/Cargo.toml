@@ -13,8 +13,8 @@ crate-type = ["staticlib"]
 hpc-rt = ["headsail-bsp/hpc-rt", "rt"]
 sysctrl-rt = ["headsail-bsp/sysctrl-rt", "rt"]
 
-rt = ["headsail-bsp/panic-uart"]
-panic-uart = ["headsail-bsp/panic-uart"]
+rt = ["headsail-bsp/panic-apb-uart0"]
+panic-apb-uart0 = ["headsail-bsp/panic-apb-uart0"]
 
 [dependencies]
 headsail-bsp = { version = "0.1.0", path = "../headsail-bsp" }

@@ -1,10 +1,10 @@
 //! A light-weight memory map based board support package for Headsail.
 #![no_std]
 
+pub mod apb_uart;
 pub mod sprintln;
 #[cfg(feature = "sysctrl")]
 pub mod sysctrl;
-pub mod uart;
 pub mod timer {
     /*!
      * Timer module for Headsail. When running on the Renode
@@ -40,7 +40,7 @@ pub mod alloc;
 #[cfg(feature = "hpc")]
 mod hpc;
 mod mmap;
-#[cfg(feature = "panic-uart")]
+#[cfg(feature = "panic-apb-uart0")]
 mod ufmt_panic;
 
 /// # Safety

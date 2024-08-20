@@ -6,10 +6,10 @@ Minimal BSP for testing the virtual prototype.
 
 ```sh
 # HPC
-RUSTFLAGS="-C link-arg=-Tmem_hpc.x -C link-arg=-Tlink.x" cargo build --examples -Fpanic-uart -Fhpc-rt -Falloc --target riscv64imac-unknown-none-elf
+RUSTFLAGS="-C link-arg=-Tmem_hpc.x -C link-arg=-Tlink.x" cargo build --examples -Fpanic-apb-uart0 -Fhpc-rt -Falloc --target riscv64imac-unknown-none-elf
 
 # SysCtrl
-RUSTFLAGS="-C link-arg=-Tmem_sysctrl.x -C link-arg=-Tlink.x" cargo build --examples -Fpanic-uart -Fsysctrl-rt --target riscv32im-unknown-none-elf
+RUSTFLAGS="-C link-arg=-Tmem_sysctrl.x -C link-arg=-Tlink.x" cargo build --examples -Fpanic-apb-uart0 -Fsysctrl-rt --target riscv32im-unknown-none-elf
 ```
 
 ## Running examples

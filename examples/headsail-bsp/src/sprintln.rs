@@ -1,5 +1,5 @@
 //! Macros to implement Rust-style print formatting using `print`/`println`
-use crate::uart::uart_write;
+use crate::apb_uart::uart_write;
 
 pub struct Uart;
 
