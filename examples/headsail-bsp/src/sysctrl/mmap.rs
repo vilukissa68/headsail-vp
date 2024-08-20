@@ -1,4 +1,4 @@
-/// SysCtrl-specific memory maps
+/// SysCtrl-specific, SysCtrl internal memory maps
 
 pub(crate) const SYSCTRL_ADDR: usize = 0x1a10_0000;
 
