@@ -1,17 +1,16 @@
 //! Macros to implement Rust-style print formatting using `print`/`println`
-use crate::apb_uart::uart_write;
-
-pub struct Uart;
+use crate::apb_uart::ApbUart0;
+pub const UART: ApbUart0 = unsafe { ApbUart0::instance() };
 
 #[macro_export]
 macro_rules! sprint {
     ($s:expr) => {{
         use $crate::{sprintln, ufmt};
-        ufmt::uwrite!(sprintln::Uart {}, $s).unwrap()
+        ufmt::uwrite!(sprintln::UART, $s).unwrap()
     }};
     ($($tt:tt)*) => {{
         use $crate::{sprintln, ufmt};
-        ufmt::uwrite!(sprintln::Uart, $($tt)*).unwrap()
+        ufmt::uwrite!(sprintln::UART, $($tt)*).unwrap()
     }};
 }
 
@@ -29,11 +28,11 @@ macro_rules! sprintln {
     }};
 }
 
-impl ufmt::uWrite for Uart {
+impl ufmt::uWrite for ApbUart0 {
     type Error = core::convert::Infallible;
 
     fn write_str(&mut self, s: &str) -> Result<(), Self::Error> {
-        uart_write(s);
+        self.write_str(s);
         Ok(())
     }
 }

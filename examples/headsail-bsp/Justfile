@@ -1,2 +1,14 @@
 run example target='riscv64imac':
 	cargo run --example {{example}} -Fhpc-rt -Fpanic-apb-uart0 --target {{target}}-unknown-none-elf
+
+check-hpc:
+    cargo check --examples -Fhpc-rt -Fpanic-apb-uart0 -Falloc --target riscv64imac-unknown-none-elf
+
+check-sysctrl:
+    cargo check --examples -Fsysctrl-rt -Fpanic-apb-uart0 --target riscv32im-unknown-none-elf
+
+clippy-hpc:
+    cargo clippy --examples -Fhpc-rt -Fpanic-apb-uart0 -Falloc --target riscv64imac-unknown-none-elf -- -Dclippy::style
+
+clippy-sysctrl:
+    cargo clippy --examples -Fsysctrl-rt -Fpanic-apb-uart0 --target riscv32im-unknown-none-elf -- -Dclippy::style

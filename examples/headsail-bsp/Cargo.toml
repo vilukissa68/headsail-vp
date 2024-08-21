@@ -44,8 +44,8 @@ path = "examples/uart0.rs"
 required-features = ["rt"]
 
 [[example]]
-name = "uart0-read"
-path = "examples/uart0-read.rs"
+name = "uart0_read"
+path = "examples/uart0_read.rs"
 required-features = ["alloc", "rt", "sdram"]
 
 [[example]]

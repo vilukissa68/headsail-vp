@@ -5,9 +5,9 @@ extern crate alloc;
 
 use dla_driver::utils::generate_output_tensor;
 use dla_driver::*;
+use headsail_bsp::apb_uart::ApbUart0;
 use headsail_bsp::{
-    apb_uart::uart_read_to_heap, init_alloc, rt::entry, sprint, sprintln, tb::report_fail,
-    tb::report_ok, tb::report_pass,
+    init_alloc, rt::entry, sprint, sprintln, tb::report_fail, tb::report_ok, tb::report_pass,
 };
 use panic_halt as _;
 
@@ -16,14 +16,16 @@ use dla_driver::tensor3::{Order3, Tensor3};
 use dla_driver::tensor4::{Order4, Tensor4};
 
 fn validate_conv2d_tiny() -> bool {
+    let mut uart = unsafe { ApbUart0::instance() };
     sprintln!("din\r\n");
-    let din: Vec<i8> = uart_read_to_heap(75).into_iter().map(|x| x as i8).collect();
+    let din: Vec<i8> = uart.read_to_heap(75).into_iter().map(|x| x as i8).collect();
 
     sprintln!("wgt\r\n");
-    let wgt: Vec<i8> = uart_read_to_heap(54).into_iter().map(|x| x as i8).collect();
+    let wgt: Vec<i8> = uart.read_to_heap(54).into_iter().map(|x| x as i8).collect();
 
     sprintln!("dout\r\n");
-    let dout_i32: Vec<i32> = uart_read_to_heap(18)
+    let dout_i32: Vec<i32> = uart
+        .read_to_heap(18)
         .into_iter()
         .map(|x| x as i8)
         .map(i32::from)
@@ -47,20 +49,23 @@ fn validate_conv2d_tiny() -> bool {
 }
 
 fn validate_conv2d() -> bool {
+    let mut uart = unsafe { ApbUart0::instance() };
     sprintln!("din\r\n");
-    let din: Vec<i8> = uart_read_to_heap(4096)
+    let din: Vec<i8> = uart
+        .read_to_heap(4096)
         .into_iter()
         .map(|x| x as i8)
         .collect();
 
     sprintln!("wgt\r\n");
-    let wgt: Vec<i8> = uart_read_to_heap(2304)
+    let wgt: Vec<i8> = uart
+        .read_to_heap(2304)
         .into_iter()
         .map(|x| x as i8)
         .collect();
 
     sprintln!("dout\r\n");
-    let dout: Vec<u8> = uart_read_to_heap(3136 * 4);
+    let dout: Vec<u8> = uart.read_to_heap(3136 * 4);
     let mut dout_i32: Vec<i32> = Vec::with_capacity(3136);
 
     for chunk in dout.chunks(4) {
@@ -89,26 +94,30 @@ fn validate_conv2d() -> bool {
 }
 
 fn validate_conv2d_bias() -> bool {
+    let mut uart = unsafe { ApbUart0::instance() };
     sprintln!("din\r\n");
-    let din: Vec<i8> = uart_read_to_heap(4096)
+    let din: Vec<i8> = uart
+        .read_to_heap(4096)
         .into_iter()
         .map(|x| x as i8)
         .collect();
 
     sprintln!("wgt\r\n");
-    let wgt: Vec<i8> = uart_read_to_heap(2304)
+    let wgt: Vec<i8> = uart
+        .read_to_heap(2304)
         .into_iter()
         .map(|x| x as i8)
         .collect();
 
     sprintln!("dout\r\n");
-    let dout: Vec<i8> = uart_read_to_heap(1024)
+    let dout: Vec<i8> = uart
+        .read_to_heap(1024)
         .into_iter()
         .map(|x| x as i8)
         .collect();
 
     sprintln!("bias\r\n");
-    let bias: Vec<u8> = uart_read_to_heap(16 * 2);
+    let bias: Vec<u8> = uart.read_to_heap(16 * 2);
 
     let mut bias_i16: Vec<i16> = Vec::with_capacity(16);
     for chunk in bias.chunks(2) {
@@ -174,6 +183,7 @@ fn validate_conv2d_bias() -> bool {
 #[entry]
 fn main() -> ! {
     init_alloc();
+    let mut _uart = ApbUart0::init(30_000_000, 115_200);
     sprintln!("Validate conv2d");
     let mut succesful_test = 0;
 

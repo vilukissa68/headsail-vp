@@ -1,9 +1,7 @@
 #![no_std]
 #![no_main]
 
-#[cfg(feature = "asic")]
-use headsail_bsp::apb_uart::init_uart;
-use headsail_bsp::{apb_uart::uart_write, rt::entry, sysctrl::soc_ctrl};
+use headsail_bsp::{apb_uart::ApbUart0, rt::entry, sysctrl::soc_ctrl};
 use panic_halt as _;
 
 #[entry]
@@ -21,9 +19,9 @@ fn main() -> ! {
     let conf_val = 0b1001;
     soc_ctrl::clk3_set(conf_val);
 
-    #[cfg(feature = "asic")]
-    init_uart(30_000_000, 9600);
-    uart_write("Hello world!");
+    let (soc_freq, baud) = (30_000_000, 9600);
+    let mut uart = ApbUart0::init(soc_freq, baud);
+    uart.write(b"Hello world!");
 
     loop {}
 }

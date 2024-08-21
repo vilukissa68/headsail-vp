@@ -31,5 +31,6 @@ unsafe fn rust_main() -> ! {
 
 #[no_mangle]
 pub extern "C" fn putc(byte: u8) {
-    headsail_bsp::apb_uart::putc(byte)
+    let mut uart = unsafe { headsail_bsp::apb_uart::ApbUart0::instance() };
+    uart.putc(byte)
 }
