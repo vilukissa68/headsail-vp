@@ -6,6 +6,7 @@
 //#include "headsail_bsp.h"
 #include "bundle.h"
 #include <tvm/runtime/c_runtime_api.h>
+#include "dla_driver.h"
 
 #ifdef IMAGE_CLASSIFICATION
 #define HEIGHT 32
@@ -42,10 +43,11 @@ extern char uart8250_getc(void);
 extern char uart8250_putc(char ch);
 
 void read_stimulus(int8_t* buf, size_t len) {
-    printf("Waiting for stimulus...\n");
+    printf("Waiting for stimulus of length %d...\n", (int)len);
     for(size_t i = 0; i < len; i++) {
         buf[i] = (int8_t)uart8250_getc();
     }
+    printf("Got stimulus...\n");
 }
 
 void write_prediction(int8_t* prediction, size_t len) {
@@ -57,6 +59,7 @@ void write_prediction(int8_t* prediction, size_t len) {
 }
 
 void* init_tvm() {
+    dla_init();
     char *json_data = (char *)(graph_c_json);
     char *params_data = (char *)(params_c_bin);
     uint64_t params_size = params_c_bin_len;

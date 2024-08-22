@@ -77,11 +77,12 @@ pub unsafe extern "C" fn dla_init() {
 #[no_mangle]
 pub unsafe extern "C" fn dla_conv2d(
     input_data: *const i8,
+    kernel_data: *const i8,
+    output: *mut i8,
     input_channels: usize,
     input_height: usize,
     input_width: usize,
     input_order: *const c_char,
-    kernel_data: *const i8,
     kernel_amount: usize,
     kernel_channels: usize,
     kernel_height: usize,
@@ -96,7 +97,6 @@ pub unsafe extern "C" fn dla_conv2d(
     stride_y: u32,
     mac_clip: u32,
     pp_clip: u32,
-    output: *mut i8,
 ) {
     let (input_tensor, kernels_tensor) = unsafe {
         ffi_data_import(
@@ -141,11 +141,12 @@ pub unsafe extern "C" fn dla_conv2d(
 #[no_mangle]
 pub unsafe extern "C" fn dla_conv2d_relu(
     input_data: *const i8,
+    kernel_data: *const i8,
+    output: *mut i8,
     input_channels: usize,
     input_height: usize,
     input_width: usize,
     input_order: *const c_char,
-    kernel_data: *const i8,
     kernel_amount: usize,
     kernel_channels: usize,
     kernel_height: usize,
@@ -160,7 +161,6 @@ pub unsafe extern "C" fn dla_conv2d_relu(
     stride_y: u32,
     mac_clip: u32,
     pp_clip: u32,
-    output: *mut i8,
 ) {
     let (input_tensor, kernels_tensor) = unsafe {
         ffi_data_import(
@@ -205,17 +205,18 @@ pub unsafe extern "C" fn dla_conv2d_relu(
 #[no_mangle]
 pub unsafe extern "C" fn dla_conv2d_bias(
     input_data: *const i8,
+    kernel_data: *const i8,
+    bias: *const i32, // NOTE: bias is actually i16 in hardware, here we use 32 for TVM compatability
+    output: *mut i8,
     input_channels: usize,
     input_height: usize,
     input_width: usize,
     input_order: *const c_char,
-    kernel_data: *const i8,
     kernel_amount: usize,
     kernel_channels: usize,
     kernel_height: usize,
     kernel_width: usize,
     kernel_order: *const c_char,
-    bias: *const i16,
     bias_length: usize,
     pad_top: u32,
     pad_right: u32,
@@ -226,7 +227,6 @@ pub unsafe extern "C" fn dla_conv2d_bias(
     stride_y: u32,
     mac_clip: u32,
     pp_clip: u32,
-    output: *mut i8,
 ) {
     let (input_tensor, kernels_tensor) = unsafe {
         ffi_data_import(
@@ -244,7 +244,7 @@ pub unsafe extern "C" fn dla_conv2d_bias(
         )
     };
 
-    let bias: Vec<i16> = unsafe { slice::from_raw_parts(bias, bias_length).to_vec() };
+    let bias: Vec<i16> = unsafe { slice::from_raw_parts(bias as *const i16, bias_length).to_vec() };
 
     let result = conv2d_bias(
         input_tensor,
@@ -274,17 +274,18 @@ pub unsafe extern "C" fn dla_conv2d_bias(
 #[no_mangle]
 pub unsafe extern "C" fn dla_conv2d_bias_relu(
     input_data: *const i8,
+    kernel_data: *const i8,
+    bias: *const i32,
+    output: *mut i8,
     input_channels: usize,
     input_height: usize,
     input_width: usize,
     input_order: *const c_char,
-    kernel_data: *const i8,
     kernel_amount: usize,
     kernel_channels: usize,
     kernel_height: usize,
     kernel_width: usize,
     kernel_order: *const c_char,
-    bias: *const i16,
     bias_length: usize,
     pad_top: u32,
     pad_right: u32,
@@ -295,7 +296,6 @@ pub unsafe extern "C" fn dla_conv2d_bias_relu(
     stride_y: u32,
     mac_clip: u32,
     pp_clip: u32,
-    output: *mut i8,
 ) {
     let (input_tensor, kernels_tensor) = unsafe {
         ffi_data_import(
@@ -312,7 +312,7 @@ pub unsafe extern "C" fn dla_conv2d_bias_relu(
             kernel_order,
         )
     };
-    let bias: Vec<i16> = unsafe { slice::from_raw_parts(bias, bias_length).to_vec() };
+    let bias: Vec<i16> = unsafe { slice::from_raw_parts(bias as *const i16, bias_length).to_vec() };
 
     let result = conv2d_bias_relu(
         input_tensor,

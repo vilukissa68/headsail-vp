@@ -35,10 +35,6 @@ def send_stimulus(data, label=None):
     if label is not None:
         print("Expected label: {}".format(label))
     ser = serial.Serial(UART, 9600)
-
-
-    wait_start = time.time()
-    wait_time = time.time() - wait_start
     print("Sending stimulus...")
     ser.write(bytes(data))
     ser.close()

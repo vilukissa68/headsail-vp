@@ -98,15 +98,17 @@ def headsail_annotate(mod):
     mod = relay.transform.AnnotateTarget(["headsail"])(mod) # Output: Figure 2
     mod = relay.transform.MergeCompilerRegions()(mod) # Output: Figure 3
     mod = relay.transform.PartitionGraph()(mod) # Output: Figure 4
-    #mod = relay.transform.InferType()(mod)
+    mod = relay.transform.FoldConstant(fold_qnn=True)(mod)
+    mod = relay.transform.InferType()(mod)
     return mod
 
 def export_annotated_library(mod, params, build_dir):
     file_format_str = "{name}_c.{ext}"
     RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : True})
     TARGET = tvm.target.Target("llvm -mtriple=riscv64-unknown-elf -mcpu=generic-rv64 -mabi=lp64 -mattr=+64bit")
+    #EXECUTOR = Executor("aot")
     with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
-        lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params)
+        lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params, executor=EXECUTOR)
 
 
     headsail_contrib = "/Users/vainogranat/work/tvm/src/runtime/contrib/headsail/codegen.cc"
@@ -160,14 +162,14 @@ def build_model(opts, shape_dict):
         print("Error! Unsupported model", opts.model_path)
         return
 
-    # TVM quantization
-    if opts.annotate_graph:
-        mod = quantize(mod, params)
+    #TVM quantization (only for tflite?)
+    # if opts.annotate_graph:
+    #     mod = quantize(mod, params)
 
     # Annotate model with headsail tags
     if opts.annotate_graph:
         mod = headsail_annotate(mod)
-        print(mod)
+    print(mod)
 
     # Write mod log to output
     with open(
@@ -195,7 +197,7 @@ def build_model(opts, shape_dict):
     # Generate stimulus
     if opts.stimulus != None:
         opts.stimulus = opts.stimulus.strip()
-        #export_stimulus(opts.stimulus, opts.input_type)
+        export_stimulus(opts.stimulus, opts.input_type)
     os.chdir(build_dir)
 
     # Convert graph and weights to hexdumps
