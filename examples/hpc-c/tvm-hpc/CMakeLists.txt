@@ -79,9 +79,9 @@ set(SOURCE_FILES
     src/main.c
     src/bundle_static.c
     ${MODEL_INFERENCE_SRC}
-    ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/lib0.o
-    ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/lib1.o
-    ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/devc.o
+    #${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/lib0.o
+    #${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/lib1.o
+    #${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/devc.o
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/graph_c.json.c
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/params_c.bin.c
     ${LIB_SOURCES}

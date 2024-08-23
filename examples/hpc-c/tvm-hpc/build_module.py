@@ -104,11 +104,13 @@ def headsail_annotate(mod):
 
 def export_annotated_library(mod, params, build_dir):
     file_format_str = "{name}_c.{ext}"
-    RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : True})
-    TARGET = tvm.target.Target("llvm -mtriple=riscv64-unknown-elf -mcpu=generic-rv64 -mabi=lp64 -mattr=+64bit")
-    #EXECUTOR = Executor("aot")
+    RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : False})
+    #TARGET = tvm.target.Target("llvm -mtriple=riscv64-unknown-elf -mcpu=generic-rv64 -mabi=lp64 -mattr=+64bit")
+    TARGET = tvm.target.Target("c")
+    EXECUTOR = tvm.relay.backend.Executor("aot")
     with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
-        lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params, executor=EXECUTOR)
+        graph, lib, params = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params, executor=EXECUTOR)
+        #module = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params, executor=EXECUTOR)
 
 
     headsail_contrib = "/Users/vainogranat/work/tvm/src/runtime/contrib/headsail/codegen.cc"
@@ -117,7 +119,7 @@ def export_annotated_library(mod, params, build_dir):
 
     lib_file_name = os.path.join(build_dir, file_format_str.format(name="model", ext="tar"))
     lib.export_library(lib_file_name)
-    return lib, lib_file_name
+    return lib, lib_file_name, graph, params
 
 def generate_hex_dumps(lib_file_name, build_dir):
     owd = os.getcwd()
@@ -179,20 +181,22 @@ def build_model(opts, shape_dict):
 
 
     # Export library
-    lib, lib_file_name = export_annotated_library(mod, params, build_dir)
+    lib, lib_file_name, graph, low_params = export_annotated_library(mod, params, build_dir)
     file_format_str = "{name}_c.{ext}"
 
     # Export graph
-    with open(
-        os.path.join(build_dir, file_format_str.format(name="graph", ext="json")), "w"
-    ) as f_graph_json:
-        f_graph_json.write(lib.get_graph_json())
+    # with open(
+    #     os.path.join(build_dir, file_format_str.format(name="graph", ext="json")), "w"
+    # ) as f_graph_json:
+    #     #f_graph_json.write(lib.get_graph_json())
+    #     f_graph_json.write(graph)
 
     # Export weights
     with open(
         os.path.join(build_dir, file_format_str.format(name="params", ext="bin")), "wb"
     ) as f_params:
-        f_params.write(runtime.save_param_dict(lib.get_params()))
+        #f_params.write(runtime.save_param_dict(lib.get_params()))
+        f_params.write(runtime.save_param_dict(low_params))
 
     # Generate stimulus
     if opts.stimulus != None:
