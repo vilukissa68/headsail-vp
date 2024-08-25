@@ -13,3 +13,5 @@ pub(crate) const PADMUX1: usize = SOC_CONTROL_ADDR + 0x14;
 pub(crate) const SS_RESET_EN: usize = SOC_CONTROL_ADDR + 0xb0;
 pub(crate) const SS_CLK_CTRL2: usize = SOC_CONTROL_ADDR + 0x9c;
 pub(crate) const SS_CLK_CTRL3: usize = SOC_CONTROL_ADDR + 0xb8;
+
+pub(crate) const PERIPH_CLK_DIV: usize = SOC_CONTROL_ADDR + 0xA8;

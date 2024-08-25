@@ -1,8 +1,7 @@
 #![no_std]
 #![no_main]
 
-use headsail_bsp::{apb_uart::ApbUart0, rt::entry, sysctrl::soc_ctrl};
-use panic_halt as _;
+use headsail_bsp::{apb_uart::ApbUart, rt::entry, sysctrl::soc_ctrl};
 
 #[entry]
 fn main() -> ! {
@@ -20,7 +19,7 @@ fn main() -> ! {
     soc_ctrl::clk3_set(conf_val);
 
     let (soc_freq, baud) = (30_000_000, 9600);
-    let mut uart = ApbUart0::init(soc_freq, baud);
+    let mut uart = ApbUart::<0xFFF00000>::init(soc_freq, baud);
     uart.write(b"Hello world!");
 
     loop {}

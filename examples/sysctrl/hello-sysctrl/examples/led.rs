@@ -3,13 +3,12 @@
 //! | Date              | Status    | Changes   |
 //! | :-                | :-:       | :-        |
 //! | 2024-08-15        | *Works*   |           |
-//! | 2024-08-15T1530   | Untested  | Use HAL   |
+//! | 2024-08-23        | *Works*   | Use HAL   |
 #![no_std]
 #![no_main]
 
 use headsail_bsp::{rt::entry, sysctrl::soc_ctrl};
 use hello_sysctrl::NOPS_PER_SEC;
-use panic_halt as _;
 
 #[entry]
 fn main() -> ! {

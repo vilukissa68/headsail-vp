@@ -1,3 +1,6 @@
 [workspace]
 members = ["hello-sysctrl"]
 resolver = "2"
+
+[profile.release]
+debug = true

@@ -101,3 +101,12 @@ pub fn clk2_set(conf_val: u32) {
 pub fn clk3_set(conf_val: u32) {
     write_u32(mmap::SS_CLK_CTRL3, conf_val);
 }
+
+/// # Parameters
+///
+/// * `div` - value to set the `div` register to. Divider will be 1 << `div`
+///   (unverified).
+pub fn periph_clk_div_set(div: u32) {
+    let valid_bit = 0x400;
+    write_u32(mmap::PERIPH_CLK_DIV, valid_bit | div)
+}

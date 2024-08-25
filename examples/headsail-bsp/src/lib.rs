@@ -22,6 +22,10 @@ pub mod timer {
     pub use crate::timer_unit::*;
 }
 pub mod tb;
+#[cfg(feature = "hpc-pac")]
+pub use headsail_hpc_pac as pac;
+#[cfg(feature = "sysctrl-pac")]
+pub use headsail_sysctrl_pac as pac;
 
 #[cfg(not(feature = "vp"))]
 mod apb_timer;
@@ -75,6 +79,7 @@ pub fn mask_u32(addr: usize, mask: u32) {
     unsafe { core::ptr::write_volatile(addr as *mut _, r | mask) }
 }
 
+/// Unmasks supplied bits from given register
 #[inline(always)]
 pub fn unmask_u32(addr: usize, unmask: u32) {
     let r = unsafe { core::ptr::read_volatile(addr as *const u32) };

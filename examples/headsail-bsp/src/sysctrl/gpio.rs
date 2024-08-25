@@ -26,25 +26,19 @@ pub struct Gpio<const IDX: u32, State: GpioState = Uninit> {
 
 pub type Gpio9<S> = Gpio<9, S>;
 
-#[repr(u32)]
-enum Dir {
-    In = 0,
-    Out = 1,
-}
-
 impl<const IDX: u32> Gpio<IDX, Uninit> {
     pub(crate) fn new() -> Self {
         Self { _pd: PhantomData }
     }
 
     pub fn into_input(self) -> Gpio<IDX, Input> {
-        mask_u32(mmap::GPIO_DIR, Dir::In as u32);
+        unmask_u32(mmap::GPIO_DIR, 1 << IDX);
 
         Gpio { _pd: PhantomData }
     }
 
     pub fn into_output(self) -> Gpio<IDX, Output> {
-        mask_u32(mmap::GPIO_DIR, Dir::Out as u32);
+        mask_u32(mmap::GPIO_DIR, 1 << IDX);
 
         Gpio { _pd: PhantomData }
     }

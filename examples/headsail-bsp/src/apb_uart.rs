@@ -32,12 +32,13 @@ impl<const BASE_ADDR: usize> ApbUart<BASE_ADDR> {
     pub fn init(soc_freq: u32, baud: u32) -> Self {
         #[cfg(feature = "asic")]
         {
-            const PERIPH_CLK_DIV: u32 = 2;
-            let divisor: u32 = soc_freq / PERIPH_CLK_DIV / (baud << 4);
             use crate::mmap::{
                 UART_DIV_LSB_OFFSET, UART_DIV_MSB_OFFSET, UART_FIFO_CONTROL_OFFSET,
                 UART_INTERRUPT_ENABLE_OFFSET, UART_LINE_CONTROL_OFFSET, UART_MODEM_CONTROL_OFFSET,
             };
+
+            const PERIPH_CLK_DIV: u32 = 2;
+            let divisor: u32 = soc_freq / PERIPH_CLK_DIV / (baud << 4);
 
             // Safety: unknown; we don't know if 8-bit writes will succeed
             unsafe {

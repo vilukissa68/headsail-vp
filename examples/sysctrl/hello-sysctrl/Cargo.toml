@@ -11,5 +11,6 @@ asic = ["headsail-bsp/asic"]
 [dependencies]
 headsail-bsp = { version = "0.1.0", path = "../../headsail-bsp", features = [
     "sysctrl-rt",
+    "sysctrl-pac",
+    "panic-apb-uart0",
 ] }
-panic-halt = "0.2.0"
