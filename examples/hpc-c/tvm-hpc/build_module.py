@@ -13,6 +13,8 @@ import numpy as np
 from pathlib import Path
 from tiny_perf_benchmark import get_ic_stimulus, get_kws_stimulus, get_vww_stimulus
 
+tvm._ffi._init_api("relay.ext.cmsisnn.transform", __name__)
+
 SHAPES = {
     "mobilenet": {"input" :(1, 3, 224, 224)},
     "conv2dbasic": {"input" :(1, 3, 32, 32)},
@@ -90,27 +92,40 @@ def import_tf_model(path_to_model, shape_dict, input_type):
     return mod, params
 
 
-def headsail_annotate(mod):
+def headsail_annotate(mod, params):
     print("Annotating graph for Headsail DLA")
     headsail_patterns = get_pattern_table("headsail")
-    mod = relay.transform.InferType()(mod)
-    mod = relay.transform.MergeComposite(headsail_patterns)(mod)
-    mod = relay.transform.AnnotateTarget(["headsail"])(mod) # Output: Figure 2
-    mod = relay.transform.MergeCompilerRegions()(mod) # Output: Figure 3
-    mod = relay.transform.PartitionGraph()(mod) # Output: Figure 4
-    mod = relay.transform.FoldConstant(fold_qnn=True)(mod)
-    mod = relay.transform.InferType()(mod)
+
+    mod["main"] = relay.build_module.bind_params_by_name(mod["main"], params)
+    annotation_pass = tvm.transform.Sequential(
+        [
+            relay.transform.InferType(),
+            relay.transform.SimplifyInference(),
+            relay.transform.FoldConstant(),
+            relay.transform.FoldScaleAxis(),
+            relay.transform.MergeComposite(headsail_patterns),
+            relay.transform.AnnotateTarget("headsail", True), # Output: Figure 2
+            relay.transform.MergeCompilerRegions(), # Output: Figure 3
+            relay.transform.PartitionGraph(bind_constants=True), # Output: Figure 4
+            # GenerateCMSISNNConstants(),
+            # CMSISNNFusePads(),
+            # ScalarToTensorConstants(),
+            # ExtractConstantsFromPartitionedFunction(),
+            relay.transform.InferType(),
+        ])
+    mod = annotation_pass(mod)
+
     return mod
 
 def export_annotated_library(mod, params, build_dir):
     file_format_str = "{name}_c.{ext}"
-    RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : False})
+    RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : True})
     #TARGET = tvm.target.Target("llvm -mtriple=riscv64-unknown-elf -mcpu=generic-rv64 -mabi=lp64 -mattr=+64bit")
     TARGET = tvm.target.Target("c")
-    EXECUTOR = tvm.relay.backend.Executor("aot")
+    #EXECUTOR = tvm.relay.backend.Executor("aot")
     with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
-        graph, lib, params = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params, executor=EXECUTOR)
-        #module = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params, executor=EXECUTOR)
+        lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params)
+        #lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params, executor=EXECUTOR)
 
 
     headsail_contrib = "/Users/vainogranat/work/tvm/src/runtime/contrib/headsail/codegen.cc"
@@ -119,7 +134,7 @@ def export_annotated_library(mod, params, build_dir):
 
     lib_file_name = os.path.join(build_dir, file_format_str.format(name="model", ext="tar"))
     lib.export_library(lib_file_name)
-    return lib, lib_file_name, graph, params
+    return lib, lib_file_name
 
 def generate_hex_dumps(lib_file_name, build_dir):
     owd = os.getcwd()
@@ -170,7 +185,7 @@ def build_model(opts, shape_dict):
 
     # Annotate model with headsail tags
     if opts.annotate_graph:
-        mod = headsail_annotate(mod)
+        mod = headsail_annotate(mod, params)
     print(mod)
 
     # Write mod log to output
@@ -181,22 +196,20 @@ def build_model(opts, shape_dict):
 
 
     # Export library
-    lib, lib_file_name, graph, low_params = export_annotated_library(mod, params, build_dir)
+    lib, lib_file_name = export_annotated_library(mod, params, build_dir)
     file_format_str = "{name}_c.{ext}"
 
     # Export graph
-    # with open(
-    #     os.path.join(build_dir, file_format_str.format(name="graph", ext="json")), "w"
-    # ) as f_graph_json:
-    #     #f_graph_json.write(lib.get_graph_json())
-    #     f_graph_json.write(graph)
+    with open(
+        os.path.join(build_dir, file_format_str.format(name="graph", ext="json")), "w"
+    ) as f_graph_json:
+        f_graph_json.write(lib.get_graph_json())
 
     # Export weights
     with open(
         os.path.join(build_dir, file_format_str.format(name="params", ext="bin")), "wb"
     ) as f_params:
-        #f_params.write(runtime.save_param_dict(lib.get_params()))
-        f_params.write(runtime.save_param_dict(low_params))
+        f_params.write(runtime.save_param_dict(lib.get_params()))
 
     # Generate stimulus
     if opts.stimulus != None:

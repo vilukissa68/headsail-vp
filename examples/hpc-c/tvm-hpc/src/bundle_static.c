@@ -32,9 +32,9 @@
 #include "bundle.h"
 
 //#define CRT_MEMORY_NUM_PAGES 48 // changed from 16384
-#define CRT_MEMORY_NUM_PAGES 16384 // changed from 16384
+//#define CRT_MEMORY_NUM_PAGES 16384 // changed from 16384
 //#define CRT_MEMORY_NUM_PAGES 24 * 1024 // changed from 16384
-//#define CRT_MEMORY_NUM_PAGES 256000 // changed from 16384
+#define CRT_MEMORY_NUM_PAGES 256000 // changed from 16384
 //#define CRT_MEMORY_NUM_PAGES 128000 // changed from 16384
 #define CRT_MEMORY_PAGE_SIZE_LOG2 10
 

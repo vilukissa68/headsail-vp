@@ -33,8 +33,8 @@ int64_t SHAPE[4] = {1, HEIGHT, WIDTH, CHANNELS};
 
 
 // build_module.py script generates C sources that provide these symbols
-//extern const char graph_c_json[];
-//extern unsigned int graph_c_json_len;
+extern const char graph_c_json[];
+extern unsigned int graph_c_json_len;
 extern const char params_c_bin[];
 extern unsigned int params_c_bin_len;
 

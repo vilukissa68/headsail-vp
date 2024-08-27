@@ -109,10 +109,10 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE -lc -lm -lgloss -lgcc)
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE /Users/vainogranat/work/headsail-newlib/libgloss/riscv)
 
 # Include TVM headers
+target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC src)
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $ENV{TVM_HOME}/build/standalone_crt/include)
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $ENV{TVM_HOME}/build/standalone_crt/include/dlpack)
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $ENV{TVM_HOME}/build/standalone_crt/include/tvm)
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $ENV{TVM_HOME}/build/crt_config)
 
 # Include DLA-FFI
 add_dependencies(${CMAKE_PROJECT_NAME} build_dla)
