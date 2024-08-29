@@ -70,8 +70,8 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/../cmake")
 # Set GCC compile options for RISC-V 64-bit architecture with IMAC extensions
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 -march=rv64imac -mabi=lp64 -nostdlib -T${CRT0}/linker_sdram.lds -mcmodel=medany")
 
-set(TVM_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c)
-#set(TVM_SOURCES $ENV{TVM_HOME}/build/standalone_crt/src)
+#set(TVM_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c)
+set(TVM_SOURCES $ENV{TVM_HOME}/build/standalone_crt/src)
 set(TVM_CODEGEN ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/codegen/host)
 
 # Gather all lib*.c files from a specific directory
@@ -81,34 +81,33 @@ message(GLOB="${LIB_SOURCES}")
 
 # Add the source files
 set(SOURCE_FILES
-    #src/main.c
-    #src/bundle_static.c
-    src/bundle_aot.c
-    src/aot.c
+    src/main.c
+    src/bundle_static.c
+    #src/bundle_aot.c
+    #src/aot.c
     ${MODEL_INFERENCE_SRC}
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/graph_c.json.c
     ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/params_c.bin.c
     #${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/stimulus.c
     ${LIB_SOURCES}
-    ${TVM_SOURCES}/runtime/src/runtime/crt/common/crt_runtime_api.c
-    ${TVM_SOURCES}/runtime/src/runtime/crt/aot_executor/aot_executor.c
-    ${TVM_SOURCES}/runtime/src/runtime/crt/aot_executor_module/aot_executor_module.c
-    ${TVM_SOURCES}/runtime/src/runtime/crt/memory/page_allocator.c
-    ${TVM_SOURCES}/runtime/src/runtime/crt/common/packed_func.c
-    ${TVM_SOURCES}/runtime/src/runtime/crt/common/func_registry.c
-    ${TVM_SOURCES}/runtime/src/runtime/crt/graph_executor/load_json.c
-    ${TVM_SOURCES}/runtime/src/runtime/crt/common/ndarray.c
-    ${TVM_SOURCES}/runtime/src/runtime/crt/common/crt_backend_api.c
+    # ${TVM_SOURCES}/runtime/src/runtime/crt/graph_executor/graph_executor.c
+    # ${TVM_SOURCES}/runtime/src/runtime/crt/graph_executor_module/graph_executor_module.c
+    # ${TVM_SOURCES}/runtime/src/runtime/crt/common/crt_backend_api.c
+    # ${TVM_SOURCES}/runtime/src/runtime/crt/common/crt_runtime_api.c
+    # ${TVM_SOURCES}/runtime/src/runtime/crt/common/func_registry.c
+    # ${TVM_SOURCES}/runtime/src/runtime/crt/common/ndarray.c
+    # ${TVM_SOURCES}/runtime/src/runtime/crt/common/packed_func.c
+    # ${TVM_SOURCES}/runtime/src/runtime/crt/memory/page_allocator.c
 
-    # ${TVM_SOURCES}/runtime/crt/common/crt_runtime_api.c
-    # ${TVM_SOURCES}/runtime/crt/graph_executor/graph_executor.c
-    # ${TVM_SOURCES}/runtime/crt/graph_executor_module/graph_executor_module.c
-    # ${TVM_SOURCES}/runtime/crt/memory/page_allocator.c
-    # ${TVM_SOURCES}/runtime/crt/common/packed_func.c
-    # ${TVM_SOURCES}/runtime/crt/common/func_registry.c
-    # ${TVM_SOURCES}/runtime/crt/graph_executor/load_json.c
-    # ${TVM_SOURCES}/runtime/crt/common/ndarray.c
-    # ${TVM_SOURCES}/runtime/crt/common/crt_backend_api.c
+    ${TVM_SOURCES}/runtime/crt/common/crt_runtime_api.c
+    ${TVM_SOURCES}/runtime/crt/graph_executor/graph_executor.c
+    ${TVM_SOURCES}/runtime/crt/graph_executor_module/graph_executor_module.c
+    ${TVM_SOURCES}/runtime/crt/memory/page_allocator.c
+    ${TVM_SOURCES}/runtime/crt/common/packed_func.c
+    ${TVM_SOURCES}/runtime/crt/common/func_registry.c
+    ${TVM_SOURCES}/runtime/crt/graph_executor/load_json.c
+    ${TVM_SOURCES}/runtime/crt/common/ndarray.c
+    ${TVM_SOURCES}/runtime/crt/common/crt_backend_api.c
 )
 
 # Add the executable target
@@ -124,14 +123,15 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE /Users/vainogranat/work
 
 # Include TVM headers
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC src)
-# target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $ENV{TVM_HOME}/build/standalone_crt/include)
-# target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $ENV{TVM_HOME}/build/standalone_crt/include/dlpack)
-# target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $ENV{TVM_HOME}/build/standalone_crt/include/tvm)
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $ENV{TVM_HOME}/build/standalone_crt/include)
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $ENV{TVM_HOME}/build/standalone_crt/include/dlpack)
+target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $ENV{TVM_HOME}/build/standalone_crt/include/tvm)
 
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ${TVM_CODEGEN}/include)
-target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ${TVM_SOURCES}/runtime/include/dlpack)
-target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ${TVM_SOURCES}/runtime/include/tvm)
-target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ${TVM_SOURCES}/runtime/include)
+# target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ${TVM_SOURCES}/runtime/include/dlpack)
+# target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ${TVM_SOURCES}/runtime/include/dmlc)
+# target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ${TVM_SOURCES}/runtime/include/tvm)
+# target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC ${TVM_SOURCES}/runtime/include)
 
 
 # Include DLA-FFI
