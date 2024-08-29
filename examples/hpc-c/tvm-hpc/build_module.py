@@ -6,6 +6,7 @@ from tvm import relay
 import tvm
 from tvm import runtime
 from tvm.relay.op.contrib.register import get_pattern_table
+from tvm.micro import export_model_library_format
 import tvm.micro
 import logging
 import onnx
@@ -97,16 +98,23 @@ def headsail_annotate(mod, params):
     headsail_patterns = get_pattern_table("headsail")
 
     mod["main"] = relay.build_module.bind_params_by_name(mod["main"], params)
+    #from tvm.relay.quantize.quantize import _bind_params
+    #mod["main"] = _bind_params(mod["main"], params)
     annotation_pass = tvm.transform.Sequential(
         [
             relay.transform.InferType(),
-            relay.transform.SimplifyInference(),
-            relay.transform.FoldConstant(),
-            relay.transform.FoldScaleAxis(),
+            #relay.transform.SimplifyInference(),
+            #relay.transform.FoldConstant(),
+            #relay.transform.FoldScaleAxis(),
+            # relay.transform.Legalize('FTVMQnnLegalize'),
+            # relay.transform.Legalize('FTVMQnnCanonicalize'),
+            # relay.transform.ConvertLayout({'nn.conv2d': ['NCHW', 'OIHW']}),
+            # relay.transform.Legalize(),
+            # relay.transform.AlterOpLayout(),
             relay.transform.MergeComposite(headsail_patterns),
-            relay.transform.AnnotateTarget("headsail", True), # Output: Figure 2
+            relay.transform.AnnotateTarget(["headsail"]), # Output: Figure 2
             relay.transform.MergeCompilerRegions(), # Output: Figure 3
-            relay.transform.PartitionGraph(bind_constants=True), # Output: Figure 4
+            relay.transform.PartitionGraph(), # Output: Figure 4
             # GenerateCMSISNNConstants(),
             # CMSISNNFusePads(),
             # ScalarToTensorConstants(),
@@ -119,13 +127,15 @@ def headsail_annotate(mod, params):
 
 def export_annotated_library(mod, params, build_dir):
     file_format_str = "{name}_c.{ext}"
-    RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : True})
+    #RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : True})
+    RUNTIME = tvm.relay.backend.Runtime("crt")
     #TARGET = tvm.target.Target("llvm -mtriple=riscv64-unknown-elf -mcpu=generic-rv64 -mabi=lp64 -mattr=+64bit")
     TARGET = tvm.target.Target("c")
-    #EXECUTOR = tvm.relay.backend.Executor("aot")
+    print(tvm.target.Target.list_kinds())
+    EXECUTOR = tvm.relay.backend.Executor("aot", {"unpacked-api": True, "interface-api": "c", "link-params": False})
+    #EXECUTOR = tvm.relay.backend.Executor("graph", {"link-params": True})
     with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
-        lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params)
-        #lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params, executor=EXECUTOR)
+        lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params, executor=EXECUTOR)
 
 
     headsail_contrib = "/Users/vainogranat/work/tvm/src/runtime/contrib/headsail/codegen.cc"
@@ -133,15 +143,16 @@ def export_annotated_library(mod, params, build_dir):
     kwargs["options"] = ["-O2", "-std=c++14", "-I" + headsail_contrib]
 
     lib_file_name = os.path.join(build_dir, file_format_str.format(name="model", ext="tar"))
-    lib.export_library(lib_file_name)
+    #lib.export_library(lib_file_name)
+    export_model_library_format(lib, lib_file_name)
     return lib, lib_file_name
 
 def generate_hex_dumps(lib_file_name, build_dir):
     owd = os.getcwd()
     os.chdir(build_dir)
+    os.system("tar -zxvf {lib}".format(lib=lib_file_name))
     graph_path_rel = os.path.relpath("{name}_c.{ext}".format(name="graph", ext="json"))
     params_path_rel = os.path.relpath("{name}_c.{ext}".format(name="params", ext="bin"))
-    os.system("tar -zxvf {lib}".format(lib=lib_file_name))
     os.system("xxd -i {graph} > {graphc} ".format(graph=graph_path_rel, graphc=(graph_path_rel + ".c")))
     os.system("xxd -i {params} > {paramsc} ".format(params=params_path_rel, paramsc=(params_path_rel + ".c")))
     os.chdir(owd)
@@ -157,9 +168,9 @@ def export_stimulus(stimulus, input_type):
 def build_model(opts, shape_dict):
 
     # Make sure that TVM can find headsail codegen if annotation is used
-    if opts.annotate_graph and not tvm.get_global_func("relay.ext.headsail", True):
-        print("skip because headsail codegen is not available")
-        return
+    # if opts.annotate_graph and not tvm.get_global_func("relay.ext.headsail", True):
+    #     print("skip because headsail codegen is not available")
+    #     return
 
     # Create build dir for model files
     build_dir = os.path.abspath(opts.out_dir)
@@ -200,11 +211,12 @@ def build_model(opts, shape_dict):
     file_format_str = "{name}_c.{ext}"
 
     # Export graph
-    with open(
-        os.path.join(build_dir, file_format_str.format(name="graph", ext="json")), "w"
-    ) as f_graph_json:
-        f_graph_json.write(lib.get_graph_json())
+    # with open(
+    #     os.path.join(build_dir, file_format_str.format(name="graph", ext="json")), "w"
+    # ) as f_graph_json:
+    #     f_graph_json.write(lib.get_graph_json())
 
+    print("Params", params)
     # Export weights
     with open(
         os.path.join(build_dir, file_format_str.format(name="params", ext="bin")), "wb"
