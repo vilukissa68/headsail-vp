@@ -98,7 +98,6 @@ def headsail_annotate(mod, params):
     print("Annotating graph for Headsail DLA")
     headsail_patterns = get_pattern_table("headsail")
 
-    #mod["main"] = relay.build_module.bind_params_by_name(mod["main"], params)
     #from tvm.relay.quantize.quantize import _bind_params
     #mod["main"] = _bind_params(mod["main"], params)
     mod = legalize_qnn_for_headsail(mod)
@@ -121,27 +120,28 @@ def headsail_annotate(mod, params):
             # CMSISNNFusePads(),
             # ScalarToTensorConstants(),
             # ExtractConstantsFromPartitionedFunction(),
-            #relay.transform.InferType(),
+            relay.transform.InferType(),
         ])
     mod = annotation_pass(mod)
 
     return mod
 
 def export_annotated_library(mod, params, build_dir):
+    print(tvm.target.Target.list_kinds())
     file_format_str = "{name}_c.{ext}"
-    RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : True})
+    RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : False})
     #RUNTIME = tvm.relay.backend.Runtime("crt")
     #TARGET = tvm.target.Target("llvm -mtriple=riscv64-unknown-elf -mcpu=generic-rv64 -mabi=lp64 -mattr=+64bit")
     TARGET = tvm.target.Target("c")
-    print(tvm.target.Target.list_kinds())
-    #EXECUTOR = tvm.relay.backend.Executor("aot", {"unpacked-api": True, "interface-api": "c", "link-params": False})
-    EXECUTOR = tvm.relay.backend.Executor("graph", {"link-params": True})
-    with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True, "relay.backend.tir_converter": "allow_extern"}):
+    #TARGET = tvm.target.target.micro("host")
+    EXECUTOR = tvm.relay.backend.Executor("aot", {"unpacked-api": True, "interface-api": "c", "link-params": True})
+    #EXECUTOR = tvm.relay.backend.Executor("graph", {"link-params": True})
+    with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True, "tir.usmp.enable": True}):
         lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params, executor=EXECUTOR)
 
-    headsail_contrib = "/Users/vainogranat/work/tvm/src/runtime/contrib/headsail/codegen.cc"
-    kwargs = {}
-    kwargs["options"] = ["-O2", "-std=c++14", "-I" + headsail_contrib]
+    # headsail_contrib = "/Users/vainogranat/work/tvm/src/runtime/contrib/headsail/codegen.cc"
+    # kwargs = {}
+    # kwargs["options"] = ["-O2", "-std=c++14", "-I" + headsail_contrib]
 
     lib_file_name = os.path.join(build_dir, file_format_str.format(name="model", ext="tar"))
     #lib.export_library(lib_file_name)
@@ -152,10 +152,10 @@ def generate_hex_dumps(lib_file_name, build_dir):
     owd = os.getcwd()
     os.chdir(build_dir)
     os.system("tar -xvf {lib}".format(lib=lib_file_name))
-    graph_path_rel = os.path.relpath("{name}_c.{ext}".format(name="graph", ext="json"))
-    params_path_rel = os.path.relpath("{name}_c.{ext}".format(name="params", ext="bin"))
-    os.system("xxd -i {graph} > {graphc} ".format(graph=graph_path_rel, graphc=(graph_path_rel + ".c")))
-    os.system("xxd -i {params} > {paramsc} ".format(params=params_path_rel, paramsc=(params_path_rel + ".c")))
+    # graph_path_rel = os.path.relpath("{name}_c.{ext}".format(name="graph", ext="json"))
+    # params_path_rel = os.path.relpath("{name}_c.{ext}".format(name="params", ext="bin"))
+    # os.system("xxd -i {graph} > {graphc} ".format(graph=graph_path_rel, graphc=(graph_path_rel + ".c")))
+    # os.system("xxd -i {params} > {paramsc} ".format(params=params_path_rel, paramsc=(params_path_rel + ".c")))
     os.chdir(owd)
 
 def export_stimulus(stimulus, input_type):
@@ -212,17 +212,17 @@ def build_model(opts, shape_dict):
     file_format_str = "{name}_c.{ext}"
 
     # Export graph
-    with open(
-        os.path.join(build_dir, file_format_str.format(name="graph", ext="json")), "w"
-    ) as f_graph_json:
-        f_graph_json.write(lib.get_graph_json())
+    # with open(
+    #     os.path.join(build_dir, file_format_str.format(name="graph", ext="json")), "w"
+    # ) as f_graph_json:
+    #     f_graph_json.write(lib.get_graph_json())
 
-    print("Params", params)
-    # Export weights
-    with open(
-        os.path.join(build_dir, file_format_str.format(name="params", ext="bin")), "wb"
-    ) as f_params:
-        f_params.write(runtime.save_param_dict(lib.get_params()))
+    # print("Params", params)
+    # # Export weights
+    # with open(
+    #     os.path.join(build_dir, file_format_str.format(name="params", ext="bin")), "wb"
+    # ) as f_params:
+    #     f_params.write(runtime.save_param_dict(lib.get_params()))
 
     # Generate stimulus
     if opts.stimulus != None:

@@ -2,8 +2,11 @@
 #include <assert.h>
 #include <float.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #include "dla_driver.h"
+#include <tvm/runtime/crt/error_codes.h>
+#include <tvmgen_default.h>
 
 #ifdef IMAGE_CLASSIFICATION
 #define HEIGHT 32
@@ -28,16 +31,11 @@ int64_t SHAPE[4] = {1, HEIGHT, WIDTH, CHANNELS};
 int64_t SHAPE[4] = {1, HEIGHT, WIDTH, CHANNELS};
 #endif
 
-
-// build_module.py script generates C sources that provide these symbols
-/* extern const char graph_c_json[]; */
-/* extern unsigned int graph_c_json_len; */
-/* extern const char params_c_bin[]; */
-/* extern unsigned int params_c_bin_len; */
-
 // Headsail newlib provides these symbols
 extern char uart8250_getc(void);
 extern char uart8250_putc(char ch);
+
+extern tvm_crt_error_t TVMPlatformInitialize();
 
 void read_stimulus(int8_t* buf, size_t len) {
     printf("Waiting for stimulus of length %d...\n", (int)len);
@@ -57,7 +55,7 @@ void write_prediction(int8_t* prediction, size_t len) {
 
 void init_tvm() {
     dla_init();
-    //TVMInitialize();
+    TVMPlatformInitialize();
     /* char *json_data = (char *)(graph_c_json); */
     /* char *params_data = (char *)(params_c_bin); */
     /* uint64_t params_size = params_c_bin_len; */
@@ -67,30 +65,38 @@ void init_tvm() {
 }
 
 void run_inference() {
-    int8_t stimulus[HEIGHT * WIDTH * CHANNELS];
+    printf("Running inferences\n");
+    int8_t stimulus[HEIGHT * WIDTH * CHANNELS] = {0};
     signed char output[OUTPUT_SIZE];
 
-    read_stimulus(stimulus, HEIGHT * WIDTH * CHANNELS);
-/*     struct tvmgen_default_inputs inputs = { */
-/*     .input_1_int8 = (void*)&stimulus */
-/* }; */
-/*     struct tvmgen_default_outputs outputs = { */
-/*     .Identity_int8 = (void*)&output, */
-/*     }; */
+    //read_stimulus(stimulus, HEIGHT * WIDTH * CHANNELS);
+    struct tvmgen_default_inputs inputs = {
+    .input_1_int8 = (void*)&stimulus
+};
+    struct tvmgen_default_outputs outputs = {
+    .Identity_int8 = (void*)&output,
+    };
 
-    printf("Running inferences");
+    printf("Inputs set\n");
 
-    TVMExecute(&stimulus, &output);
-    //tvmgen_default_run(&inputs, &outputs);
+    //TVMExecute(&stimulus, &output);
+    tvmgen_default_run(&inputs, &outputs);
+    for(int i = 0; i < OUTPUT_SIZE; ++i) {
+        printf("%d ", output[i]);
+    }
+    printf("\n");
     write_prediction(output, OUTPUT_SIZE);
-    printf("Inference ran");
+    printf("Inference ran\n");
 }
 
 int main(void)
 {
+    printf("Program started!\n");
     init_tvm();
+    run_inference();
+
+    printf("Done");
     for(;;) {
-        run_inference();
     }
     return 0;
 }

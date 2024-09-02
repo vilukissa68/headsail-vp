@@ -81,13 +81,13 @@ message(GLOB="${LIB_SOURCES}")
 
 # Add the source files
 set(SOURCE_FILES
-    src/main.c
-    src/bundle_static.c
-    #src/bundle_aot.c
-    #src/aot.c
+    #src/main.c
+    #src/bundle_static.c
+    src/aot.c
+    src/bundle_aot.c
     ${MODEL_INFERENCE_SRC}
-    ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/graph_c.json.c
-    ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/params_c.bin.c
+    #${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/graph_c.json.c
+    #${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/params_c.bin.c
     #${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/stimulus.c
     ${LIB_SOURCES}
     # ${TVM_SOURCES}/runtime/src/runtime/crt/graph_executor/graph_executor.c
@@ -99,15 +99,17 @@ set(SOURCE_FILES
     # ${TVM_SOURCES}/runtime/src/runtime/crt/common/packed_func.c
     # ${TVM_SOURCES}/runtime/src/runtime/crt/memory/page_allocator.c
 
-    ${TVM_SOURCES}/runtime/crt/common/crt_runtime_api.c
-    ${TVM_SOURCES}/runtime/crt/graph_executor/graph_executor.c
-    ${TVM_SOURCES}/runtime/crt/graph_executor_module/graph_executor_module.c
+    #${TVM_SOURCES}/runtime/crt/common/crt_runtime_api.c
+    #${TVM_SOURCES}/runtime/crt/graph_executor/graph_executor.c
+    #${TVM_SOURCES}/runtime/crt/graph_executor_module/graph_executor_module.c
+    # ${TVM_SOURCES}/runtime/crt/aot_executor/aot_executor.c
+    # ${TVM_SOURCES}/runtime/crt/aot_executor_module/aot_executor_module.c
     ${TVM_SOURCES}/runtime/crt/memory/page_allocator.c
-    ${TVM_SOURCES}/runtime/crt/common/packed_func.c
-    ${TVM_SOURCES}/runtime/crt/common/func_registry.c
-    ${TVM_SOURCES}/runtime/crt/graph_executor/load_json.c
-    ${TVM_SOURCES}/runtime/crt/common/ndarray.c
-    ${TVM_SOURCES}/runtime/crt/common/crt_backend_api.c
+    # ${TVM_SOURCES}/runtime/crt/common/packed_func.c
+    # ${TVM_SOURCES}/runtime/crt/common/func_registry.c
+    # ${TVM_SOURCES}/runtime/crt/graph_executor/load_json.c
+    # ${TVM_SOURCES}/runtime/crt/common/ndarray.c
+    #${TVM_SOURCES}/runtime/crt/common/crt_backend_api.c
 )
 
 # Add the executable target
