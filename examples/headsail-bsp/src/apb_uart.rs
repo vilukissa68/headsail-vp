@@ -1,5 +1,7 @@
+use core::arch::asm;
+
 use crate::{
-    mmap::{UART0_ADDR, UART1_ADDR},
+    mmap::{UART0_ADDR, UART1_ADDR, UART_LSR_RX_FIFO_VALID, UART_RBR_THR_DLL_OFS},
     read_u8, write_u8,
 };
 
@@ -32,30 +34,50 @@ impl<const BASE_ADDR: usize> ApbUart<BASE_ADDR> {
     pub fn init(soc_freq: u32, baud: u32) -> Self {
         #[cfg(feature = "asic")]
         {
-            use crate::mmap::{
-                UART_DIV_LSB_OFFSET, UART_DIV_MSB_OFFSET, UART_FIFO_CONTROL_OFFSET,
-                UART_INTERRUPT_ENABLE_OFFSET, UART_LINE_CONTROL_OFFSET, UART_MODEM_CONTROL_OFFSET,
+            use crate::{
+                mask_u8,
+                mmap::{
+                    UART_FCR_FIFO_EN_BIT, UART_FCR_FIFO_RX_RESET_BIT, UART_FCR_FIFO_TX_RESET_BIT,
+                    UART_FCR_TRIG_RX_LSB, UART_FCR_TRIG_RX_MSB, UART_IER_DLM_OFS, UART_IIR_FCR_OFS,
+                    UART_LCR_DLAB_BIT, UART_LCR_OFS, UART_RBR_THR_DLL_OFS,
+                },
+                unmask_u8,
             };
 
-            const PERIPH_CLK_DIV: u32 = 2;
+            #[repr(u8)]
+            pub enum UartLcrDataBits {
+                /*
+                Bits5 = 0b00,
+                Bits6 = 0b01,
+                Bits7 = 0b10,
+                */
+                Bits8 = 0b11,
+            }
+
+            const PERIPH_CLK_DIV: u32 = 1;
             let divisor: u32 = soc_freq / PERIPH_CLK_DIV / (baud << 4);
 
-            // Safety: unknown; we don't know if 8-bit writes will succeed
+            // Safety: all PULP APB UART registers are 4-byte aligned so no bus can stop us
             unsafe {
-                // Disable all interrupts
-                write_u8(BASE_ADDR + UART_INTERRUPT_ENABLE_OFFSET, 0x00);
-                // Enable DLAB (set baud rate divisor)
-                write_u8(BASE_ADDR + UART_LINE_CONTROL_OFFSET, 0x80);
-                // Divisor (lo byte)
-                write_u8(BASE_ADDR + UART_DIV_LSB_OFFSET, divisor as u8);
-                // Divisor (hi byte)
-                write_u8(BASE_ADDR + UART_DIV_MSB_OFFSET, (divisor >> 8) as u8);
-                // 8 bits, no parity, one stop bit
-                write_u8(BASE_ADDR + UART_LINE_CONTROL_OFFSET, 0x03);
-                // Enable FIFO, clear them, with 14-byte threshold
-                write_u8(BASE_ADDR + UART_FIFO_CONTROL_OFFSET, 0xC7);
-                // Autoflow mode
-                write_u8(BASE_ADDR + UART_MODEM_CONTROL_OFFSET, 0x20);
+                // Enable DLAB (to set baud rate divisor)
+                mask_u8(BASE_ADDR + UART_LCR_OFS, UART_LCR_DLAB_BIT);
+                // Set low & high byte of divisor
+                write_u8(BASE_ADDR + UART_RBR_THR_DLL_OFS, divisor as u8);
+                write_u8(BASE_ADDR + UART_IER_DLM_OFS, (divisor >> 8) as u8);
+                // Data is 8 bits, one stop bit, no parity
+                write_u8(BASE_ADDR + UART_LCR_OFS, UartLcrDataBits::Bits8 as u8);
+                // Restore DLAB state
+                unmask_u8(BASE_ADDR + UART_LCR_OFS, UART_LCR_DLAB_BIT);
+
+                // Enable FIFO, clear RX & TX, use 14-byte threshold
+                write_u8(
+                    BASE_ADDR + UART_IIR_FCR_OFS,
+                    UART_FCR_FIFO_EN_BIT
+                        | UART_FCR_FIFO_RX_RESET_BIT
+                        | UART_FCR_FIFO_TX_RESET_BIT
+                        | UART_FCR_TRIG_RX_LSB
+                        | UART_FCR_TRIG_RX_MSB,
+                );
             }
         }
         Self {}
@@ -73,8 +95,10 @@ impl<const BASE_ADDR: usize> ApbUart<BASE_ADDR> {
     #[cfg(feature = "asic")]
     #[inline]
     fn is_transmit_empty(&self) -> bool {
-        // Safety: UART_LINE_STATUS is 4-byte aligned
-        unsafe { (read_u8(BASE_ADDR + crate::mmap::UART_LINE_STATUS_OFFSET) & 0x20) != 0 }
+        use crate::mmap::{UART_LSR_OFS, UART_LSR_TX_FIFO_EMPTY_BIT};
+
+        // Safety: UART_LSR is 4-byte aligned
+        (unsafe { read_u8(BASE_ADDR + UART_LSR_OFS) } & UART_LSR_TX_FIFO_EMPTY_BIT) != 0
     }
 
     #[inline]
@@ -104,14 +128,20 @@ impl<const BASE_ADDR: usize> ApbUart<BASE_ADDR> {
         #[cfg(feature = "asic")]
         while !self.is_transmit_empty() {}
 
+        for _ in 0..20_000 {
+            unsafe { asm!("nop") };
+        }
+
         // Safety: UART_THR is 4-byte aligned
-        unsafe { write_u8(BASE_ADDR + crate::mmap::UART_THR_OFFSET, c) };
+        unsafe { write_u8(BASE_ADDR + UART_RBR_THR_DLL_OFS, c) };
     }
 
     #[inline]
     pub fn getc(&mut self) -> u8 {
         // Wait for data to become ready
-        while unsafe { read_u8(UART0_ADDR + crate::mmap::UART_DATA_READY_OFFSET) } & 1 == 0 {}
+        while unsafe { read_u8(UART0_ADDR + crate::mmap::UART_LSR_OFS) } & UART_LSR_RX_FIFO_VALID
+            == 0
+        {}
 
         // SAFETY: UART0_ADDR is 4-byte aligned
         unsafe { read_u8(UART0_ADDR) }

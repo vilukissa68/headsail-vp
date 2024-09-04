@@ -5,4 +5,4 @@ pub mod soc_ctrl;
 pub mod udma;
 
 mod interrupt;
-mod mmap;
+pub mod mmap;

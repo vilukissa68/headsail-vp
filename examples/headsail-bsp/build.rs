@@ -4,6 +4,8 @@
 use std::{env, fs, path};
 
 fn main() {
+    println!("cargo:rerun-if-changed=build.rs");
+
     // Put link script in our output directory and ensure it's on the linker search path
     let out = &path::PathBuf::from(env::var_os("OUT_DIR").unwrap());
     fs::copy("mem_hpc.x", out.join("mem_hpc.x")).unwrap();

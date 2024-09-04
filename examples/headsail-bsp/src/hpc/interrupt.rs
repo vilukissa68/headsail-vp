@@ -29,7 +29,7 @@ unsafe impl PriorityNumber for Priority {
             Err(number)
         } else {
             // SAFETY: valid priority number
-            Ok(unsafe { core::mem::transmute(number) })
+            Ok(unsafe { core::mem::transmute::<u8, Priority>(number) })
         }
     }
 }

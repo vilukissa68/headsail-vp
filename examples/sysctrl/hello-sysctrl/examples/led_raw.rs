@@ -9,7 +9,7 @@ use headsail_bsp::rt::entry;
 
 // Below addresses are in SysCtrl memory space
 const GPIO: usize = 0x1a10_1000;
-const GPIO_DIR: usize = GPIO + 0x0;
+const GPIO_DIR: usize = GPIO;
 const GPIO_OUT: usize = GPIO + 0xc;
 const SOC_CONTROL: usize = 0x1a10_4000;
 const PADMUX0: usize = SOC_CONTROL + 0x10;

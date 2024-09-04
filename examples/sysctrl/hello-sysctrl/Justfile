@@ -1,0 +1,10 @@
+build-asic example *args:
+    cargo build -Fasic --example {{example}} {{args}}
+
+run-asic example *args:
+    cargo build -Fasic --example {{example}} {{args}}
+
+clippy-asic *args:
+    cargo clippy -Fasic --examples -- -Dclippy::style
+
+alias asic := run-asic

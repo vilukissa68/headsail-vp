@@ -12,3 +12,6 @@ clippy-hpc:
 
 clippy-sysctrl:
     cargo clippy --examples -Fsysctrl-rt -Fpanic-apb-uart0 --target riscv32im-unknown-none-elf -- -Dclippy::style
+
+clippy: clippy-sysctrl clippy-hpc
+

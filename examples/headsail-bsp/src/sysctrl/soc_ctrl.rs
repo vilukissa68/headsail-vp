@@ -49,6 +49,11 @@ impl Pads {
         })
     }
 
+    /// # Safety
+    ///
+    /// Pins object is retrieved in unknown state and without knowledge of other
+    /// concurrent users. Make sure to configure pins as GPIO or alternate
+    /// function as appropriate.
     #[inline]
     pub unsafe fn steal() -> Self {
         Self {

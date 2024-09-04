@@ -11,7 +11,7 @@ impl uDisplay for PanicInfoWrapper<'_> {
         W: crate::ufmt::uWrite + ?Sized,
     {
         if let Some(msg) = self.0.payload().downcast_ref::<&str>() {
-            f.write_str(&msg)
+            f.write_str(msg)
         } else {
             f.write_str("panic occurred")
         }

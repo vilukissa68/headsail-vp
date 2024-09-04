@@ -1,3 +1,6 @@
+//! | Date              | Status     | Changes   |
+//! | :-                | :-:        | :-        |
+//! | 2024-09-04        | *Untested* |           |
 #![no_std]
 #![no_main]
 

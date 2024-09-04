@@ -24,7 +24,7 @@ unsafe impl HartIdNumber for HartId {
             Err(number)
         } else {
             // SAFETY: valid context number
-            Ok(unsafe { core::mem::transmute(number) })
+            Ok(unsafe { core::mem::transmute::<u16, HartId>(number) })
         }
     }
 }

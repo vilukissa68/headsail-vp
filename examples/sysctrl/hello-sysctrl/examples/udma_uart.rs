@@ -2,12 +2,21 @@
 #![no_std]
 #![no_main]
 
-use headsail_bsp::{pac, rt::entry, sysctrl::udma::Udma};
+use core::arch::asm;
+
+use headsail_bsp::{
+    pac,
+    rt::entry,
+    sysctrl::{soc_ctrl, udma::Udma},
+};
+use hello_sysctrl::NOPS_PER_SEC;
 
 #[entry]
 fn main() -> ! {
     let sysctrl = unsafe { pac::Sysctrl::steal() };
     let udma = Udma(sysctrl.udma());
+
+    soc_ctrl::periph_clk_div_set(0);
 
     // Set the bit length, enable TX, set clk_div
     let (soc_freq, baud) = (30_000_000, 9600_u32);
@@ -32,7 +41,11 @@ fn main() -> ! {
         }
     });
 
-    uart.write(b"Hello uDMA UART HAL\r\n");
+    loop {
+        uart.write(b"Hello uDMA UART HAL\r\n");
 
-    loop {}
+        for _ in 0..NOPS_PER_SEC {
+            unsafe { asm!("nop") };
+        }
+    }
 }
