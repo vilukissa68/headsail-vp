@@ -5,5 +5,23 @@ macro reset
     sysbus LoadELF $bin false true sysbus.cpu_hpc0
 """
 
+:sysbus.cpu_hpc0 CreateExecutionTracing "tracer" "./trace" Disassembly True
+:sysbus.cpu_hpc0 EnableProfilerCollapsedStack "stack_profile"
+sysbus.cpu_hpc0 EnableOpcodesCounting true
+sysbus.cpu_hpc0 EnableRiscvOpcodesCounting "./src/Infrastructure/src/Emulator/Cores/RiscV/opcodes/opcodes-system"
+sysbus.cpu_hpc0 EnableRiscvOpcodesCounting "./src/Infrastructure/src/Emulator/Cores/RiscV/opcodes/opcodes-svinval"
+sysbus.cpu_hpc0 EnableRiscvOpcodesCounting "./src/Infrastructure/src/Emulator/Cores/RiscV/opcodes/opcodes-pseudo"
+sysbus.cpu_hpc0 EnableRiscvOpcodesCounting "./src/Infrastructure/src/Emulator/Cores/RiscV/opcodes/opcodes-rv64i"
+sysbus.cpu_hpc0 EnableRiscvOpcodesCounting "./src/Infrastructure/src/Emulator/Cores/RiscV/opcodes/opcodes-rv64m"
+sysbus.cpu_hpc0 EnableRiscvOpcodesCounting "./src/Infrastructure/src/Emulator/Cores/RiscV/opcodes/opcodes-rv64a"
+sysbus.cpu_hpc0 EnableRiscvOpcodesCounting "./src/Infrastructure/src/Emulator/Cores/RiscV/opcodes/opcodes-rv64c"
+sysbus.cpu_hpc0 EnableRiscvOpcodesCounting "./src/Infrastructure/src/Emulator/Cores/RiscV/opcodes/opcodes-rv32i"
+sysbus.cpu_hpc0 EnableRiscvOpcodesCounting "./src/Infrastructure/src/Emulator/Cores/RiscV/opcodes/opcodes-rv32m"
+sysbus.cpu_hpc0 EnableRiscvOpcodesCounting "./src/Infrastructure/src/Emulator/Cores/RiscV/opcodes/opcodes-rv32a"
+sysbus.cpu_hpc0 EnableRiscvOpcodesCounting "./src/Infrastructure/src/Emulator/Cores/RiscV/opcodes/opcodes-rv32c"
+
+sysbus.cpu_hpc0 InstallOpcodeCounterPattern "Nops"  "****************1010000000000001"
+sysbus.cpu_hpc0 InstallOpcodeCounterPattern "Nops zeros"  "0000000000000000"
+sysbus.cpu_hpc0 InstallOpcodeCounterPattern "All (exc nops)"  "********************************"
 runMacro $reset;
 start;
