@@ -1,0 +1,55 @@
+#+title: Gridmap Results
+
+#+BEGIN_SRC elisp
+(require 'cl-lib)
+(defun sum-numbers-in-region (start end)
+  (interactive "r")
+  (message "%s"
+           (cl-reduce #'+
+                      (split-string (buffer-substring start
+                                                      end))
+                      :key #'string-to-number)))
+#+END_SRC
+
+#+RESULTS:
+: sum-numbers-in-region
+
+* Gridmap benchmark results from renode with headail-vp hpc0
+Note due to renode, last digit is unaccurate
+[10,200] [-25,25]
+| Tristan test setup | Datset | Resolution | Width    |        Cycles |
+|--------------------+--------+------------+----------+---------------|
+| 1m resolution      | Small  |        1.0 | [10,200] |             ? |
+| 50cm resolution    | Small  |        0.5 | [10,200] | 1_689_918_801 |
+| 25cm resolution    | Small  |       0.25 | [10,200] | 1_691_209_888 |
+| 12cm resolution    | Small  |       0.12 | [10,200] | 1_701_475_117 |
+| 5cm resolution     | Small  |       0.05 | [10,200] | 1_764_528_795 |
+| 2cm resolution     | Small  |       0.02 | [10,200] |             0 |
+| 1cm resolution     | Small  |       0.01 | [10,200] |             0 |
+| 1m resolution      | Large  |        1.0 | [10,200] |             0 |
+| 50cm resolution    | Large  |        0.5 | [10,200] |             0 |
+| 25cm resolution    | Large  |       0.25 | [10,200] |             0 |
+| 12cm resolution    | Large  |       0.12 | [10,200] |             0 |
+| 5cm resolution     | Large  |       0.05 | [10,200] |             0 |
+| 1cm resolution     | Large  |       0.01 | [10,200] |             0 |
+
+
+[10,200] [10,200]
+| Tristan test setup | Datset | Resolution | Width    | Cycles         | Notes                         |
+|--------------------+--------+------------+----------+----------------+-------------------------------|
+| 99cm resolution    | Small  |       1.01 | [10,200] | 1_716_908_158  |                               |
+| 1m resolution      | Small  |        1.0 | [10,200] | ?              | Crashes for unknown reason    |
+| 99cm resolution    | Small  |       0.99 | [10,200] | 1_714_824_747  |                               |
+| 99cm resolution    | Small  |       0.75 | [10,200] | 1_714_824_747  |                               |
+| 50cm resolution    | Small  |        0.5 | [10,200] | 1_723_065_116  |                               |
+| 25cm resolution    | Small  |       0.25 | [10,200] | 1_756_169_007  |                               |
+| 12cm resolution    | Small  |       0.12 | [10,200] | 1_930_058_043  |                               |
+| 5cm resolution     | Small  |       0.05 | [10,200] | 2_811_077_016  |                               |
+| 1cm resolution     | Small  |       0.01 | [10,200] | ?              | Not enough memory in headsail |
+| 1m resolution      | Large  |        1.0 | [10,200] | 0              |                               |
+| 50cm resolution    | Large  |        0.5 | [10,200] | 24_417_770_660 |                               |
+| 25cm resolution    | Large  |       0.25 | [10,200] | 24_821_552_040 |                               |
+| 12cm resolution    | Large  |       0.12 | [10,200] | 26_617_757_507 |                               |
+| 5cm resolution     | Large  |       0.05 | [10,200] | 29_141_202_169 |                               |
+| 1cm resolution     | Large  |       0.01 | [10,200] | 0              |                               |
+
