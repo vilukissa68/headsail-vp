@@ -8,6 +8,7 @@ panic-halt = "0.2.0"
 bsp = { version = "0.1.0", path = "../../headsail-bsp", package = "headsail-bsp", features = [
     "hpc-rt",
     "vp",
+    "sprint-apb-uart0",
 ] }
 
 [build-dependencies]

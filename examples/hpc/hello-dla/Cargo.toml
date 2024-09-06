@@ -9,4 +9,5 @@ edition = "2021"
 panic-halt = "0.2.0"
 headsail-bsp = { version = "0.1.0", path = "../../headsail-bsp", features = [
     "hpc-rt",
+    "sprint-apb-uart0",
 ] }

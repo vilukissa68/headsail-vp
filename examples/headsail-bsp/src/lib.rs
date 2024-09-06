@@ -2,6 +2,7 @@
 #![no_std]
 
 pub mod apb_uart;
+#[cfg(feature = "sprint-apb-uart0")]
 pub mod sprintln;
 #[cfg(feature = "sysctrl")]
 pub mod sysctrl;
@@ -44,7 +45,7 @@ pub mod alloc;
 #[cfg(feature = "hpc")]
 mod hpc;
 pub mod mmap;
-#[cfg(feature = "panic-apb-uart0")]
+#[cfg(any(feature = "panic-apb-uart0", feature = "panic-sysctrl-uart"))]
 mod ufmt_panic;
 
 /// # Safety

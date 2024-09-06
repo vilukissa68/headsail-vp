@@ -26,7 +26,7 @@ impl<'u> UdmaUart<'u, Disabled> {
         udma.uart_setup().write(|w| unsafe { w.bits(0) });
         udma.uart_setup().write(setup_spec);
 
-        UdmaUart::<Enabled>(self.0, PhantomData::default())
+        UdmaUart::<Enabled>(self.0, PhantomData)
     }
 }
 
@@ -34,7 +34,7 @@ impl<'u> UdmaUart<'u, Enabled> {
     #[inline]
     pub fn disable(self) -> UdmaUart<'u, Disabled> {
         self.0.ctrl_cfg_cg().modify(|_r, w| w.cg_uart().clear_bit());
-        UdmaUart::<Disabled>(self.0, PhantomData::default())
+        UdmaUart::<Disabled>(self.0, PhantomData)
     }
 
     /// # Safety
@@ -42,7 +42,7 @@ impl<'u> UdmaUart<'u, Enabled> {
     /// This will not configure the UART in any way.
     #[inline]
     pub unsafe fn steal(udma: &'static pac::sysctrl::Udma) -> Self {
-        Self(udma, PhantomData::default())
+        Self(udma, PhantomData)
     }
 
     #[inline]
@@ -68,5 +68,14 @@ impl<'u> UdmaUart<'u, Enabled> {
     #[inline]
     pub fn write_str(&mut self, s: &str) {
         self.write(s.as_bytes());
+    }
+}
+
+impl<'a> ufmt_write::uWrite for UdmaUart<'a, Enabled> {
+    type Error = core::convert::Infallible;
+
+    fn write_str(&mut self, s: &str) -> Result<(), Self::Error> {
+        self.write(s.as_bytes());
+        Ok(())
     }
 }

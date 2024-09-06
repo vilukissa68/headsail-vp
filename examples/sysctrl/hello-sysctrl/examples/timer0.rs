@@ -7,6 +7,7 @@
 use core::arch::asm;
 
 use headsail_bsp::{self as bsp, pac::Sysctrl, rt::entry, sysctrl::soc_ctrl, ufmt};
+use hello_sysctrl::sysctrl_print;
 
 struct UdmaUart;
 
@@ -14,7 +15,7 @@ impl ufmt::uWrite for UdmaUart {
     type Error = core::convert::Infallible;
 
     fn write_str(&mut self, s: &str) -> Result<(), Self::Error> {
-        print(s.as_bytes());
+        sysctrl_print(s.as_bytes());
         Ok(())
     }
 }
@@ -41,25 +42,6 @@ macro_rules! sprintln {
         sprint!($($tt)*);
         sprint!("\r\n");
     }};
-}
-
-fn print(buf: &[u8]) {
-    let sysctrl = Sysctrl::ptr();
-    let udma = unsafe { (*sysctrl).udma() };
-
-    udma.uart_tx_saddr()
-        .write(|w| unsafe { w.bits(buf.as_ptr() as u32) });
-    udma.uart_tx_size()
-        .write(|w| unsafe { w.bits(buf.len() as u32) });
-
-    // (3) Dispatch transmission
-    udma.uart_tx_cfg().write(
-        |w| w.en().set_bit(), // If we want "continuous mode". In continuous mode, uDMA reloads the address and transmits it again
-                              //.continous().set_bit()
-    );
-
-    // (4) Poll until finished
-    while udma.uart_tx_saddr().read().bits() != 0 {}
 }
 
 #[entry]

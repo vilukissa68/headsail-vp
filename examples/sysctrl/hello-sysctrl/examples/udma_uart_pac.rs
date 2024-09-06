@@ -58,6 +58,6 @@ fn main() -> ! {
     while udma.uart_tx_saddr().read().bits() != 0 {}
 
     loop {
-        continue;
+        unsafe { core::arch::asm!("wfi") };
     }
 }

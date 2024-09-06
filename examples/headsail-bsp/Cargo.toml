@@ -6,19 +6,25 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [features]
-hpc-rt = ["hpc", "rt", "dep:riscv-peripheral", "dep:riscv-pac"]
+hpc-rt = ["hpc", "rt"]
 sysctrl-rt = [
     "sysctrl",
     "rt",
     "riscv-rt/single-hart",
     "riscv/critical-section-single-hart",
 ]
-panic-apb-uart0 = []
-hpc = []
+panic-apb-uart0 = ["sprint-apb-uart0"]
+panic-sysctrl-uart = ["sysctrl-pac"]
+sprint-apb-uart0 = []
+hpc = ["dep:riscv-pac", "dep:riscv-peripheral"]
 sysctrl = []
 alloc = ["dep:good_memory_allocator", "hpc"]
 sdram = []
-vp = []
+vp = [
+    # VP only supports printing over APB UART0 since uDMA is not implemented on it so we force it
+    # here to avoid accidents.
+    "sprint-apb-uart0",
+]
 asic = []
 sysctrl-pac = ["dep:headsail-sysctrl-pac", "sysctrl", "pac"]
 hpc-pac = ["dep:headsail-hpc-pac", "hpc", "pac"]
@@ -29,6 +35,7 @@ pac = []
 
 [dependencies]
 ufmt = "0.2.0"
+ufmt-write = "0.1.0"
 riscv-rt = { version = "0.12.2", optional = true }
 riscv = { version = "0.11.1" }
 riscv-peripheral = { version = "0.1.0", optional = true }
@@ -56,7 +63,7 @@ required-features = ["alloc", "rt", "sdram"]
 [[example]]
 name = "sprintln"
 path = "examples/sprintln.rs"
-required-features = ["rt"]
+required-features = ["rt", "sprint-apb-uart0"]
 
 [[example]]
 name = "alloc"

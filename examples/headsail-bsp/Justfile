@@ -1,17 +1,22 @@
 run example target='riscv64imac':
-	cargo run --example {{example}} -Fhpc-rt -Fpanic-apb-uart0 --target {{target}}-unknown-none-elf
+	cargo run -Fvp --example {{example}} -Fhpc-rt -Fpanic-apb-uart0 --target {{target}}-unknown-none-elf
 
-check-hpc:
-    cargo check --examples -Fhpc-rt -Fpanic-apb-uart0 -Falloc --target riscv64imac-unknown-none-elf
+check-hpc *args:
+    cargo check -Fhpc -Falloc --target riscv64imac-unknown-none-elf {{args}}
+    cargo check --examples -Fhpc-rt -Fpanic-apb-uart0 -Falloc --target riscv64imac-unknown-none-elf {{args}}
 
-check-sysctrl:
-    cargo check --examples -Fsysctrl-rt -Fpanic-apb-uart0 --target riscv32im-unknown-none-elf
+check-sysctrl *args:
+    cargo check -Fsysctrl --target riscv32im-unknown-none-elf {{args}}
+    cargo check --examples -Fsysctrl-rt -Fpanic-sysctrl-uart --target riscv32im-unknown-none-elf {{args}}
 
-clippy-hpc:
-    cargo clippy --examples -Fhpc-rt -Fpanic-apb-uart0 -Falloc --target riscv64imac-unknown-none-elf -- -Dclippy::style
+check *args: (check-hpc args) (check-sysctrl args)
 
-clippy-sysctrl:
-    cargo clippy --examples -Fsysctrl-rt -Fpanic-apb-uart0 --target riscv32im-unknown-none-elf -- -Dclippy::style
+clippy-hpc *args:
+    cargo clippy -Fhpc -Falloc --target riscv64imac-unknown-none-elf {{args}} -- -Dclippy::style
+    cargo clippy --examples -Fhpc-rt -Fpanic-apb-uart0 -Falloc --target riscv64imac-unknown-none-elf {{args}}  -- -Dclippy::style
 
-clippy: clippy-sysctrl clippy-hpc
+clippy-sysctrl *args:
+    cargo clippy -Fsysctrl --target riscv32im-unknown-none-elf {{args}} -- -Dclippy::style
+    cargo clippy --examples -Fsysctrl-rt -Fsysctrl-rt -Fpanic-sysctrl-uart --target riscv32im-unknown-none-elf {{args}} -- -Dclippy::style
 
+clippy *args: (clippy-sysctrl args) (clippy-hpc args)

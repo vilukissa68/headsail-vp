@@ -156,3 +156,12 @@ impl<const BASE_ADDR: usize> ApbUart<BASE_ADDR> {
         result
     }
 }
+
+impl ufmt_write::uWrite for crate::apb_uart::ApbUart0 {
+    type Error = core::convert::Infallible;
+
+    fn write_str(&mut self, s: &str) -> Result<(), Self::Error> {
+        self.write_str(s);
+        Ok(())
+    }
+}

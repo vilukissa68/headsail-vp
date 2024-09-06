@@ -24,7 +24,7 @@ pub struct UdmaParts<'u> {
 impl<'u> Udma<'u> {
     pub fn split(self) -> UdmaParts<'u> {
         UdmaParts {
-            uart: UdmaUart::<Disabled>(self.0, PhantomData::default()),
+            uart: UdmaUart::<Disabled>(self.0, PhantomData),
         }
     }
 }
