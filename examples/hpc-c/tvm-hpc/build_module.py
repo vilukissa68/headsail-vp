@@ -94,12 +94,19 @@ def import_tf_model(path_to_model, shape_dict, input_type):
     return mod, params
 
 
-def headsail_annotate(mod, params):
+def headsail_annotate(mod):
     print("Annotating graph for Headsail DLA")
     headsail_patterns = get_pattern_table("headsail")
 
     #from tvm.relay.quantize.quantize import _bind_params
     #mod["main"] = _bind_params(mod["main"], params)
+    # Pre process
+    desired_layouts = {'qnn.conv2d': ['NCHW', 'OIHW']}
+    preprocessor_pass = tvm.transform.Sequential([relay.transform.InferType(),
+                                                  relay.transform.ConvertLayout(desired_layouts),
+                                                  relay.transform.SimplifyExpr()])
+    print(mod)
+
     mod = legalize_qnn_for_headsail(mod)
     annotation_pass = tvm.transform.Sequential(
         [
@@ -120,7 +127,7 @@ def headsail_annotate(mod, params):
             # CMSISNNFusePads(),
             # ScalarToTensorConstants(),
             # ExtractConstantsFromPartitionedFunction(),
-            relay.transform.InferType(),
+            # relay.transform.InferType(),
         ])
     mod = annotation_pass(mod)
 
@@ -136,7 +143,7 @@ def export_annotated_library(mod, params, build_dir):
     #TARGET = tvm.target.target.micro("host")
     EXECUTOR = tvm.relay.backend.Executor("aot", {"unpacked-api": True, "interface-api": "c", "link-params": True})
     #EXECUTOR = tvm.relay.backend.Executor("graph", {"link-params": True})
-    with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True, "tir.usmp.enable": True}):
+    with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
         lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params, executor=EXECUTOR)
 
     # headsail_contrib = "/Users/vainogranat/work/tvm/src/runtime/contrib/headsail/codegen.cc"
@@ -197,7 +204,7 @@ def build_model(opts, shape_dict):
 
     # Annotate model with headsail tags
     if opts.annotate_graph:
-        mod = headsail_annotate(mod, params)
+        mod = headsail_annotate(mod)
     print(mod)
 
     # Write mod log to output

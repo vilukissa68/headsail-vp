@@ -405,6 +405,7 @@ impl Dla {
         // TODO Add support for writing to arbitrary memory location instead of dla memory banks
         let mut bytes = Vec::with_capacity(bias.len() * 2);
         for &x in bias {
+            sprint!(" {}" x);
             bytes.push((x & 0xFF) as u8);
             bytes.push((x >> 8) as u8);
         }

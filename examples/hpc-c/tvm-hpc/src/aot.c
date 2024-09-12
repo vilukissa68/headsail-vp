@@ -55,7 +55,7 @@ void write_prediction(int8_t* prediction, size_t len) {
 
 void init_tvm() {
     dla_init();
-    TVMPlatformInitialize();
+    //TVMPlatformInitialize();
     /* char *json_data = (char *)(graph_c_json); */
     /* char *params_data = (char *)(params_c_bin); */
     /* uint64_t params_size = params_c_bin_len; */
@@ -69,7 +69,8 @@ void run_inference() {
     int8_t stimulus[HEIGHT * WIDTH * CHANNELS] = {0};
     signed char output[OUTPUT_SIZE];
 
-    //read_stimulus(stimulus, HEIGHT * WIDTH * CHANNELS);
+    read_stimulus(stimulus, HEIGHT * WIDTH * CHANNELS);
+
     struct tvmgen_default_inputs inputs = {
     .input_1_int8 = (void*)&stimulus
 };
@@ -93,10 +94,10 @@ int main(void)
 {
     printf("Program started!\n");
     init_tvm();
-    run_inference();
 
-    printf("Done");
     for(;;) {
+        run_inference();
     }
+    printf("Done");
     return 0;
 }

@@ -73,6 +73,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -g -O0 -march=rv64imac -mabi=lp64 -nostdlib 
 #set(TVM_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c)
 set(TVM_SOURCES $ENV{TVM_HOME}/build/standalone_crt/src)
 set(TVM_CODEGEN ${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/codegen/host)
+#set(TVM_CODEGEN $ENV{TVM_HOME}/apps/uma/headsail/model_c/codegen/host)
 
 # Gather all lib*.c files from a specific directory
 file(GLOB LIB_SOURCES ${TVM_CODEGEN}/src/default_lib*.c)
@@ -84,7 +85,7 @@ set(SOURCE_FILES
     #src/main.c
     #src/bundle_static.c
     src/aot.c
-    src/bundle_aot.c
+    # src/bundle_aot.c
     ${MODEL_INFERENCE_SRC}
     #${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/graph_c.json.c
     #${CMAKE_CURRENT_SOURCE_DIR}/build/model_c/params_c.bin.c
@@ -104,7 +105,7 @@ set(SOURCE_FILES
     #${TVM_SOURCES}/runtime/crt/graph_executor_module/graph_executor_module.c
     # ${TVM_SOURCES}/runtime/crt/aot_executor/aot_executor.c
     # ${TVM_SOURCES}/runtime/crt/aot_executor_module/aot_executor_module.c
-    ${TVM_SOURCES}/runtime/crt/memory/page_allocator.c
+    # ${TVM_SOURCES}/runtime/crt/memory/page_allocator.c
     # ${TVM_SOURCES}/runtime/crt/common/packed_func.c
     # ${TVM_SOURCES}/runtime/crt/common/func_registry.c
     # ${TVM_SOURCES}/runtime/crt/graph_executor/load_json.c

@@ -12,6 +12,7 @@ use dla_driver::layers::{conv2d, conv2d_bias, conv2d_bias_relu, conv2d_relu};
 use dla_driver::tensor3::{Order3, Tensor3};
 use dla_driver::tensor4::{Order4, Tensor4};
 use dla_driver::{Padding, Stride};
+use headsail_bsp::{sprint, sprintln};
 
 /// Converts C-types to DLA Tensors for use with the highlevel layer
 unsafe fn ffi_data_import(
@@ -30,6 +31,14 @@ unsafe fn ffi_data_import(
     let input_data: Vec<i8> = unsafe {
         slice::from_raw_parts(input_data, input_channels * input_height * input_width).to_vec()
     };
+
+    sprintln!(
+        "Kernels shape: {} {} {} {}",
+        kernel_amount,
+        kernel_channels,
+        kernel_height,
+        kernel_width
+    );
 
     let input_order_string = unsafe { CStr::from_ptr(input_order).to_str().unwrap_unchecked() };
     let input_tensor = unsafe {
@@ -312,12 +321,14 @@ pub unsafe extern "C" fn dla_conv2d_bias_relu(
             kernel_order,
         )
     };
-    let bias: Vec<i16> = unsafe { slice::from_raw_parts(bias as *const i16, bias_length).to_vec() };
+
+    let bias: Vec<i32> = unsafe { slice::from_raw_parts(bias as *const i32, bias_length).to_vec() };
+    let bias_i16: Vec<i16> = bias.into_iter().map(|x| clip_i32_to_i16(x)).collect();
 
     let result = conv2d_bias_relu(
         input_tensor,
         kernels_tensor,
-        bias,
+        bias_i16,
         Some(Padding {
             top: pad_top,
             right: pad_right,
@@ -333,7 +344,25 @@ pub unsafe extern "C" fn dla_conv2d_bias_relu(
         Some(pp_clip),
         None,
     );
+
+    let input_order_string = unsafe { CStr::from_ptr(input_order).to_str().unwrap_unchecked() };
     unsafe {
-        core::ptr::copy_nonoverlapping(result.to_buffer().as_mut_ptr(), output, result.get_size())
+        core::ptr::copy_nonoverlapping(
+            result
+                .to_buffer_with_order(Order3::try_from(input_order_string).unwrap_unchecked())
+                .as_mut_ptr(),
+            output,
+            result.get_size(),
+        )
     };
+}
+
+fn clip_i32_to_i16(value: i32) -> i16 {
+    if value > i16::MAX as i32 {
+        return i16::MAX;
+    } else if value < i16::MIN as i32 {
+        return i16::MIN;
+    } else {
+        return value as i16;
+    }
 }

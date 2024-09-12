@@ -279,7 +279,7 @@ def reshape(tensor, shape):
         return [construct(flat[i * sub_size: (i + 1) * sub_size], shape[1:]) for i in range(shape[0])]
 
     output = zeroes(shape)
-    assert get_size(output) == get_size(tensor)
+    assert get_size(output) == get_size(tensor), "Assert failed! Reshape incompatible dimensions"
     flat = flatten(tensor)
 
     return construct(flat, shape)
@@ -299,7 +299,7 @@ def flatten_tensor(data):
 
 def flat_to_CWH(data, channels, width, height):
     """Takes in 1d array of length C*W*H and reshapes it to tensor of format CWH"""
-    assert channels * width * height == len(data)
+    assert channels * width * height == len(data), "Assert failed! Flatten input wrong size"
     output = [[[0 for _ in range(height)] for _ in range(width)] for _ in range(channels)]
     i = 0
     for ch in range(channels):
@@ -318,7 +318,7 @@ def cast_long_to_signed_byte(value):
     Returns:
     byte -- Int Signed value in range -128..127
     """
-    assert(0 <= value <= 255)
+    assert(0 <= value <= 255), "Assert failed! Value doesn't fit byte"
     value = value & 0xFF
     if value <= 127:
         return value
@@ -333,7 +333,7 @@ def cast_long_to_signed_16(value):
     Returns:
     byte -- Int Signed value in range -128..127
     """
-    assert(0 <= value <= 65535)
+    assert(0 <= value <= 65535), "Assert failed! Value doesn't fit 2 bytes"
     value = value & 0xFFFF
     if value <= 32767:
         return value
@@ -452,7 +452,12 @@ def rounding(value):
     Return:
     rounded -- Int Rounded value
     """
-    return round(value)
+    if value > 127:
+        return 127
+    elif value < -128:
+        return -128
+    else:
+        return value
 
 class Padding:
     def __init__(self, left, right, top, bottom):
@@ -494,7 +499,7 @@ class MemoryBank:
         Params:
         data -- [Int] data to write to bank
         """
-        assert(offset < self.size)
+        assert(offset < self.size), "Assert failed! Offset overflow on bank write"
         self.mem[offset] = data
 
 
@@ -679,7 +684,7 @@ class Dla:
         while bytes_written < len(data):
             if offset > bank.size:
                 bank_idx = bank_idx + 1
-                assert(bank_idx < len(self.banks))
+                assert(bank_idx < len(self.banks)), "Assert failed! Bank indexing overflow"
                 bank = self.banks[bank_idx]
                 offset = 0
             bank.write(offset, data[bytes_written])
@@ -724,7 +729,7 @@ class Dla:
         data = column_wise
 
         addr = self.get_output_addr()
-        print("Writing output to:{:x}".format(addr))
+        print("Writing output to:{:x} with bit width{}".format(addr, bit_width))
 
         # Allow writing to memory space of data banks
         if MEMORY_BANK_ADDR <= addr and addr < (MEMORY_BANK_ADDR + (NO_MEMORY_BANKS * MEMORY_BANK_SIZE)):
@@ -738,7 +743,7 @@ class Dla:
                 # Bank switching when current bank is filled
                 if offset > bank.size:
                     bank_idx = bank_idx + 1
-                    assert(bank_idx < len(self.banks))
+                    assert(bank_idx < len(self.banks)), "Assert failed!, Bank indexing overflow"
                     bank = self.banks[bank_idx]
                     offset = 0
 
@@ -799,7 +804,7 @@ class Dla:
         while bytes_written < len(data):
             if offset > bank.size:
                 bank_idx = bank_idx + 1
-                assert(bank_idx < len(self.banks))
+                assert(bank_idx < len(self.banks)), "Assert failed!, Bank indexing overflow"
                 bank = self.banks[bank_idx]
                 offset = 0
             bank.write(offset, data[bytes_written])
@@ -855,11 +860,13 @@ class Dla:
                     for w in range(width):
                         idx = c + (f * input_channels) + (input_channels*filter_amount) * w + (input_channels * filter_amount * width) * h
                         column_wise.append(data[idx])
-        print('[{}]'.format(', '.join("{:2}".format(hex(x & 0xff)[2:-1]) for x in column_wise)))
+        #print('[{}]'.format(', '.join("{:2}".format(hex(x & 0xff)[2:-1]) for x in column_wise)))
 
         column_wise = reshape(column_wise, (filter_amount, input_channels, height, width))
 
-        print_matrix(column_wise[0][0], "flat kernel:", pformat="hexadecimal")
+        print_matrix(column_wise[0][0], "flat kernel:", pformat="decimal")
+        print_matrix(column_wise[0][1], "flat kernel:", pformat="decimal")
+        print_matrix(column_wise[0][2], "flat kernel:", pformat="decimal")
         return filter_amount, s_channels, width, height, column_wise
 
     def get_input_data(self):
@@ -911,7 +918,9 @@ class Dla:
                     column_wise.append(data[idx])
 
         column_wise = reshape(column_wise, (channels, height, width))
-        print_matrix(column_wise[0], "flat input:", pformat="hexadecimal")
+        print_matrix(column_wise[0], "flat input:", pformat="decimal")
+        print_matrix(column_wise[1], "flat input:", pformat="decimal")
+        print_matrix(column_wise[2], "flat input:", pformat="decimal")
         return channels, width, height, column_wise
 
     def get_bias(self, values_to_read):
@@ -935,7 +944,7 @@ class Dla:
                 # Bank switching when current bank is filled
                 if offset > bank.size:
                     bank_idx = bank_idx + 1
-                    assert(bank_idx < len(self.banks))
+                    assert(bank_idx < len(self.banks)), "Assert failed! Bank indexing overflow"
                     bank = self.banks[bank_idx]
                     offset = 0
                 low_byte = bank.read(offset) & 0xFF
@@ -943,7 +952,7 @@ class Dla:
                 value = (high_byte << 8) + low_byte
                 bias.append(cast_long_to_signed_16(value))
                 offset += 2 # 16 bit width
-            print(bias)
+            #print(bias)
             return bias
         else:
             print("WARNING: trying to read bias outside of VP memory region as address: {:x}".format(bias_addr))
@@ -1042,6 +1051,7 @@ class Dla:
         print("padding:", padding)
         print("dilation:", dilation)
         print("stride:", stride)
+        print("CONV2D")
 
 
         # Pack output according to clipping
@@ -1053,10 +1063,11 @@ class Dla:
             padding_value = self.get_register(BUF_PAD, BUF_PAD_VALUE_OFFSET, 8)
             res = self.mac.conv2d(input_data, kernel_data, padding, dilation, stride, padding_value=padding_value)
 
+            i = 0
             # Clip results
             res = dla.mac_clip(res)
-            for i, r in enumerate(res):
-                print_matrix(r, "{} MAC:".format(i))
+            # for i, r in enumerate(res):
+            print_matrix(res[0], "{} MAC:".format(i))
 
         if self.get_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1):
             if self.get_register(HANDSHAKE, HANDSHAKE_BIAS_ENABLE_OFFSET, 1):
@@ -1074,28 +1085,30 @@ class Dla:
                     tmp.append(a)
 
                 res = tmp
-                for (i, r) in enumerate(res):
-                    print_matrix(r, "{} BIAS:".format(i))
+                # for (i, r) in enumerate(res):
+                print_matrix(res[0], "{} BIAS:".format(i))
 
             # ReLU (active low)
             if self.get_register(HANDSHAKE, HANDSHAKE_ACTIVE_ENABLE_OFFSET, 1):
+                print("RELU")
                 res = execute_for_all_elements(self.mac.relu_native, res)
-                for (i, r) in enumerate(res):
-                    print_matrix(r, "{} ReLU:".format(i))
+                # for (i, r) in enumerate(res):
+                print_matrix(res[0], "{} ReLU:".format(i))
 
             # Clipping and rounding
             res = dla.pp_clip(res)
-            #res = dla.round(res)
-            for (i, r) in enumerate(res):
-                print_matrix(r, "{} PP:".format(i))
+            #res = execute_for_all_elements(rounding, res)
+            #for (i, r) in enumerate(res):
+            print_matrix(res[0], "{} PP:".format(i))
 
             output_bit_width = 32 - self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5) # Pack output according to clipping
 
         # After calculating one layer the device needs new configuration
-        if output_bit_width == 32:
-            self.write_output(res, 32)
-        else:
-            self.write_output(res, 8)
+        # if output_bit_width == 32:
+        #     self.write_output(res, 32)
+        # else:
+        #     self.write_output(res, 8)
+        self.write_output(res, 8)
 
         # Set Done status
         self.set_register(STATUS_ADDR, BUF_DONE_OFFSET, 1, 1)
@@ -1274,7 +1287,7 @@ class DlaMac:
         if not isinstance(A, list) and not isinstance(B, list):
             return A + B
 
-        assert len(A) == len(B)
+        assert len(A) == len(B), "Assert failed! Different sized operands in matsum"
         C = []
         for a, b in zip(A, B):
             C.append(self.matsum_element_wise(a, b))
@@ -1296,7 +1309,7 @@ class DlaMac:
         if not isinstance(A, list) and not isinstance(B, list):
             return A * B
 
-        assert len(A) == len(B)
+        assert len(A) == len(B), "Assert failed! Different sized operands in matmul"
         C = []
         for a, b in zip(A, B):
             C.append(self.matmul_element_wise(a, b))
@@ -1345,8 +1358,8 @@ class DlaMac:
 #     API     #
 
 def write(request, dla):
-    self.NoisyLog("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
-    print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
+    #self.NoisyLog("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
+    #print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
     request.absolute = request.absolute & 0xFFFFFFFF # Normalize address to global address space by removing possible HPC external bit
     if int(request.absolute) >= DLA_ADDR:
         dla.set_register(request.offset, 0, 32, request.value, preserve_register=False)
@@ -1364,8 +1377,8 @@ def read(request, dla):
         request.value = tmp
 
     request.absolute = original_absolute # Answer to original address
-    self.NoisyLog("Reading request: %s at 0x%x, value 0x%x" % (str(request.type), request.absolute, request.value))
-    print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
+    #self.NoisyLog("Reading request: %s at 0x%x, value 0x%x" % (str(request.type), request.absolute, request.value))
+    #print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
 
 if __name__ == "__main__":
     print("Running as independent module")

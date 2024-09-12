@@ -2,6 +2,7 @@ use crate::tensor3::{Order3, Tensor3};
 use crate::tensor4::{Order4, Tensor4};
 use crate::{Dla, InputSize, KernelSize, LayerConfig, Padding, SimdBitMode, Stride};
 use alloc::vec::Vec;
+use headsail_bsp::sprintln;
 
 use crate::utils::{calculate_conv2d_out_param_dim, get_banks_for_layer};
 
@@ -13,6 +14,7 @@ pub trait DlaOutput: Sized {
 // Implement the trait for i8
 impl DlaOutput for i8 {
     fn read_output(dla: &Dla, size: usize) -> Vec<Self> {
+        sprintln!("Size of output: {}" size);
         dla.read_output_i8(size)
     }
 }
@@ -199,6 +201,19 @@ fn run_layers<T: DlaOutput + Clone>(
     );
 
     let dla = Dla::new();
+    sprintln!(
+        "Input channels: {}, Input width: {}, input height: {}",
+        input.channels(),
+        input.width(),
+        input.height()
+    );
+    sprintln!(
+        "Kernel amounts: {}, Kernel channels: {}, Kernel width: {}, kernel height: {}",
+        kernels.kernels(),
+        kernels.channels(),
+        kernels.width(),
+        kernels.height()
+    );
 
     let banks = get_banks_for_layer(
         input.get_size(),
@@ -248,6 +263,10 @@ fn run_layers<T: DlaOutput + Clone>(
 
     while !dla.handle_handshake() {}
     let output_buffer = T::read_output(&dla, output_size.0 * output_size.1 * kernels.kernels());
+    sprintln!(
+        "Output size: {}",
+        &output_size.0 * &output_size.1 * &kernels.kernels()
+    );
 
     Tensor3::from_data_buffer(
         kernels.kernels(),

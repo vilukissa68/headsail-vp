@@ -3,6 +3,7 @@ use crate::tensor3::{Order3, Tensor3};
 use crate::tensor4::Tensor4;
 use crate::{MemoryBank, Padding, Stride, DEFAULT_PADDING, DEFAULT_STRIDE, MEMORY_BANK_BASE_ADDR};
 use alloc::vec::Vec;
+use headsail_bsp::sprintln;
 
 /// Calculates the output size of Conv2D for a single channel based on size of the inputs
 ///
@@ -18,6 +19,15 @@ pub fn calculate_conv2d_out_param_dim(
 ) -> (usize, usize) {
     let padding = padding.unwrap_or(DEFAULT_PADDING);
     let stride = stride.unwrap_or(DEFAULT_STRIDE);
+
+    sprintln!(
+        "input {}, pad_right {}, pad_left {}, kernel {}, stride {}",
+        input.0,
+        padding.right,
+        padding.left,
+        kernel.0,
+        stride.x
+    );
 
     let output_width =
         (input.0 + padding.right + padding.left - 1 * (kernel.0 - 1) - 1) / stride.x + 1;
@@ -77,6 +87,12 @@ pub fn get_banks_for_layer(
     kernels_size: usize,
     output_size: usize,
 ) -> (MemoryBank, MemoryBank, MemoryBank, Option<u32>) {
+    sprintln!(
+        "Input_size {}, kernels_size {}, output_size {}",
+        input_size,
+        kernels_size,
+        output_size
+    );
     let num_input_banks = calculate_number_of_banks_needed(input_size);
     let num_kernel_banks = calculate_number_of_banks_needed(kernels_size);
     let num_output_banks = calculate_number_of_banks_needed(output_size);

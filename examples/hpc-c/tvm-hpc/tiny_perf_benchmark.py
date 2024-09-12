@@ -13,8 +13,6 @@ from sklearn.metrics import accuracy_score, confusion_matrix, classification_rep
 import tensorflow as tf
 import time
 
-
-
 UART = '/tmp/uart0'
 ROOT_PATH = Path(__file__).parents[0]
 DATA_DIR = ROOT_PATH / "dev_data"
@@ -24,6 +22,23 @@ VWW_NON_PERSON_DATA_DIR =  VWW_DATA_DIR / "non_person"
 VWW_PERSON_DATA_DIR = VWW_DATA_DIR / "person"
 IC_DATA_DIR = DATA_DIR / "cifar-10-batches-py"
 AD_DATA_DIR = DATA_DIR / "ToyCar" / "test"
+
+import numpy as np
+
+def print_matrix(arr, format_type='signed'):
+    for row in arr:
+        for elem in row:
+            if format_type == 'signed':
+                print(f"{int(elem):d}", end="\t")  # Signed decimal
+            elif format_type == 'unsigned':
+                print(f"{int(elem) & 0xFFFFFFFF:d}", end="\t")  # Unsigned decimal
+            elif format_type == 'hex':
+                print(f"{int(elem) & 0xFFFFFFFF:08x}", end="\t")  # Hexadecimal
+            else:
+                raise ValueError("Invalid format_type. Use 'signed', 'unsigned', or 'hex'.")
+        print()
+
+
 
 def accuracy_report(gt, prediction):
     print("Accuracy: {:.3f}".format(accuracy_score(gt, prediction)))
@@ -142,8 +157,9 @@ def run_ic():
         #FROM CHW to HWC
         print("Running inference for image {}/{}".format(i, len(data[b'data'])))
         image = np.reshape(image, (3, 32, 32))
-        image = np.rollaxis(image, 0, 3)
         image = image - 128
+        #print_matrix(image[0], 'signed')
+        image = np.rollaxis(image, 0, 3)
         image = np.reshape(image, (3072))
         label = data[b'labels'][i]
         from matplotlib import pyplot as plt

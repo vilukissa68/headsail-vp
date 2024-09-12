@@ -195,14 +195,18 @@ impl<T: Clone> Tensor4<T> {
 
         let standard_shape = [kernels, channels, height, width];
         let dim_order: [usize; 4] = order.into_position();
-        let kernels_ordered =
-            standard_shape[unsafe { dim_order.iter().position(|&r| r == 0).unwrap_unchecked() }];
-        let channels_ordered =
-            standard_shape[unsafe { dim_order.iter().position(|&r| r == 1).unwrap_unchecked() }];
-        let height_ordered =
-            standard_shape[unsafe { dim_order.iter().position(|&r| r == 2).unwrap_unchecked() }];
-        let width_ordered =
-            standard_shape[unsafe { dim_order.iter().position(|&r| r == 3).unwrap_unchecked() }];
+        // let kernels_ordered =
+        //     standard_shape[unsafe { dim_order.iter().position(|&r| r == 0).unwrap_unchecked() }];
+        // let channels_ordered =
+        //     standard_shape[unsafe { dim_order.iter().position(|&r| r == 1).unwrap_unchecked() }];
+        // let height_ordered =
+        //     standard_shape[unsafe { dim_order.iter().position(|&r| r == 2).unwrap_unchecked() }];
+        // let width_ordered =
+        //     standard_shape[unsafe { dim_order.iter().position(|&r| r == 3).unwrap_unchecked() }];
+        let kernels_ordered = standard_shape[dim_order[0]];
+        let channels_ordered = standard_shape[dim_order[1]];
+        let height_ordered = standard_shape[dim_order[2]];
+        let width_ordered = standard_shape[dim_order[3]];
 
         let data = Array::from_shape_vec(
             (
