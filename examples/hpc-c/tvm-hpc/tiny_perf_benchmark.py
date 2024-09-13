@@ -10,6 +10,7 @@ import librosa as lb
 import re
 import serial
 from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
+from matplotlib import pyplot as plt
 import tensorflow as tf
 import time
 
@@ -157,12 +158,11 @@ def run_ic():
         #FROM CHW to HWC
         print("Running inference for image {}/{}".format(i, len(data[b'data'])))
         image = np.reshape(image, (3, 32, 32))
+        image = np.rollaxis(image, 0, 3)
         image = image - 128
         #print_matrix(image[0], 'signed')
-        image = np.rollaxis(image, 0, 3)
         image = np.reshape(image, (3072))
         label = data[b'labels'][i]
-        from matplotlib import pyplot as plt
         send_stimulus(image.tobytes(), label)
 
         # Wait for inference result

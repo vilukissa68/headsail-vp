@@ -1097,7 +1097,7 @@ class Dla:
 
             # Clipping and rounding
             res = dla.pp_clip(res)
-            #res = execute_for_all_elements(rounding, res)
+            res = execute_for_all_elements(rounding, res)
             #for (i, r) in enumerate(res):
             print_matrix(res[0], "{} PP:".format(i))
 
@@ -1194,6 +1194,7 @@ class DlaMac:
 
         # Apply each kernel to input_img
         for (kernel_idx, kernel) in enumerate(kernels):
+                first_pass = True
                 if w_middle_zero:
                     center_x_0 = h_kernel_max_offset * dilation[0]
                 else:
@@ -1235,13 +1236,16 @@ class DlaMac:
 
                             # print("w:", w, "h:", h, "mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
                             # print_matrix(mat_sub, "sub_matrix", "hexadecimal")
-                            # print_matrix(kernel[channel_idx], "kernel", "hexadecimal")
+                            # if (kernel_idx < 2 and first_pass):
+                            #     print_matrix(kernel[channel_idx], "kernel CH:{}, kernel_idx:{}".format(channel_idx, kernel_idx), "decimal")
                             channel_res = self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
                             channel_sum += channel_res
 
 
                         output_filters[kernel_idx][w][h] = channel_sum
                         # print("Output:", output_filters[kernel_idx][w][h])
+                    first_pass = False
+
 
         return output_filters
 

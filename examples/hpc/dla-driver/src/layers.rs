@@ -2,7 +2,7 @@ use crate::tensor3::{Order3, Tensor3};
 use crate::tensor4::{Order4, Tensor4};
 use crate::{Dla, InputSize, KernelSize, LayerConfig, Padding, SimdBitMode, Stride};
 use alloc::vec::Vec;
-use headsail_bsp::sprintln;
+use headsail_bsp::{sprint, sprintln};
 
 use crate::utils::{calculate_conv2d_out_param_dim, get_banks_for_layer};
 
@@ -249,9 +249,9 @@ fn run_layers<T: DlaOutput + Clone>(
     };
 
     dla.init_layer(config);
-
     dla.write_input(&mut input.to_buffer_with_order(Order3::HWC));
-    dla.write_kernel(&mut kernels.to_buffer_with_order(Order4::HWKC));
+    //dla.write_kernel(&mut kernels.to_buffer_with_order(Order4::HWKC));
+    dla.write_kernel(&mut kernels.tvm_layout_to_headsail());
 
     if let Some(bias) = bias {
         dla.write_bias(&bias)
@@ -263,10 +263,6 @@ fn run_layers<T: DlaOutput + Clone>(
 
     while !dla.handle_handshake() {}
     let output_buffer = T::read_output(&dla, output_size.0 * output_size.1 * kernels.kernels());
-    sprintln!(
-        "Output size: {}",
-        &output_size.0 * &output_size.1 * &kernels.kernels()
-    );
 
     Tensor3::from_data_buffer(
         kernels.kernels(),

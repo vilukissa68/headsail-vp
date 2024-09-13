@@ -332,4 +332,28 @@ impl<T: Clone> Tensor4<T> {
         data.permute(order);
         data.to_buffer()
     }
+
+    /// Convert HWIO (HWCK) order to HWOI (HWKC) for headsail
+    pub fn tvm_layout_to_headsail(&self) -> Vec<T> {
+        let data = self.to_buffer();
+
+        let mut hwoi_flat =
+            Vec::with_capacity(self.height() * self.width() * self.channels() * self.kernels());
+        // Iterate and assign values from HWIO to HWOI format
+        for h_idx in 0..self.height() {
+            for w_idx in 0..self.width() {
+                for o_idx in 0..self.kernels() {
+                    for i_idx in 0..self.channels() {
+                        let hwio_index = h_idx * self.width() * self.channels() * self.kernels()
+                            + w_idx * self.channels() * self.kernels()
+                            + i_idx * self.kernels()
+                            + o_idx;
+                        hwoi_flat.push(data[hwio_index].clone());
+                    }
+                }
+            }
+        }
+
+        hwoi_flat
+    }
 }
