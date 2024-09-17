@@ -13,6 +13,7 @@ pub const PADMUX0: usize = SOC_CONTROL_ADDR + 0x10;
 pub const PADMUX1: usize = SOC_CONTROL_ADDR + 0x14;
 
 pub const SS_RESET_EN: usize = SOC_CONTROL_ADDR + 0xb0;
+pub const SS_CLK_CTRL1: usize = SOC_CONTROL_ADDR + 0x98;
 pub const SS_CLK_CTRL2: usize = SOC_CONTROL_ADDR + 0x9c;
 pub const SS_CLK_CTRL3: usize = SOC_CONTROL_ADDR + 0xb8;
 
