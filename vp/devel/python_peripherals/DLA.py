@@ -989,7 +989,7 @@ class Dla:
         """Clip pp values if register is set"""
         clip_amount = self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5)
         if clip_amount > 0:
-            return execute_for_all_elements(clip, values, clip_amount, 8)
+            return execute_for_all_elements(clip, values, clip_amount, 16)
         return values
 
     def mac_clip(self, values):

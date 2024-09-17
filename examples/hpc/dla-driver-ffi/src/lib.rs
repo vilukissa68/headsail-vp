@@ -14,6 +14,16 @@ use dla_driver::tensor4::{Order4, Tensor4};
 use dla_driver::{Padding, Stride};
 use headsail_bsp::{sprint, sprintln};
 
+fn scale_as_i16(input: i8, factor: i16) -> i8 {
+    let new_value = input as i16 + factor;
+    if new_value > 127 {
+        return 127;
+    } else if new_value < -128 {
+        return -128;
+    }
+    return new_value as i8;
+}
+
 /// Converts C-types to DLA Tensors for use with the highlevel layer
 unsafe fn ffi_data_import(
     input_data: *const i8,
@@ -28,9 +38,14 @@ unsafe fn ffi_data_import(
     kernel_width: usize,
     kernel_order: *const c_char,
 ) -> (Tensor3<i8>, Tensor4<i8>) {
-    let input_data: Vec<i8> = unsafe {
+    let mut input_data: Vec<i8> = unsafe {
         slice::from_raw_parts(input_data, input_channels * input_height * input_width).to_vec()
     };
+
+    // input_data = input_data
+    //     .into_iter()
+    //     .map(|x| scale_as_i16(x, 128))
+    //     .collect();
 
     sprintln!(
         "Kernels shape: {} {} {} {}",
@@ -346,6 +361,7 @@ pub unsafe extern "C" fn dla_conv2d_bias_relu(
     );
 
     let input_order_string = unsafe { CStr::from_ptr(input_order).to_str().unwrap_unchecked() };
+
     unsafe {
         core::ptr::copy_nonoverlapping(
             result

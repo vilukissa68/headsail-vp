@@ -119,6 +119,7 @@ def headsail_annotate(mod):
             # relay.transform.ConvertLayout({'nn.conv2d': ['NCHW', 'OIHW']}),
             # relay.transform.Legalize(),
             # relay.transform.AlterOpLayout(),
+            #relay.qnn.transform.CanonicalizeOps(),
             relay.transform.MergeComposite(headsail_patterns),
             relay.transform.AnnotateTarget(["headsail"]), # Output: Figure 2
             relay.transform.MergeCompilerRegions(), # Output: Figure 3
