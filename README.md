@@ -3,7 +3,7 @@
 ## Software testing requirements
 
 1. Renode 1.14, the high-level hardware simulator <https://github.com/renode/renode>
-2. Rust <https://rustup.rs/>
+2. Rust <https://rustup.rs/>, MSRV 1.81
 3. Codegen backend for target cores
     * HPC
         * `rustup target add riscv64imac-unknown-none-elf`
