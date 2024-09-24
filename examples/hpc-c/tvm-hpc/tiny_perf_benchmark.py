@@ -40,7 +40,6 @@ def print_matrix(arr, format_type='signed'):
         print()
 
 
-
 def accuracy_report(gt, prediction):
     print("Accuracy: {:.3f}".format(accuracy_score(gt, prediction)))
     print("Confusion matrix:\n{}".format(confusion_matrix(gt, prediction)))
@@ -66,11 +65,11 @@ def wait_for_result():
     output = bytearray(output)
     results = []
     for x in output:
-        # Append signed
-        results.append(((x & 0xff) ^ 0x80) - 0x80)
+        results.append(((x & 0xff) ^ 0x80) - 0x80) # Append signed
     results = results[:-1] # Remove line break
     print(results)
     print("Predicted class: {}".format(np.argmax(results)))
+    print("\n")
     return results
 
 def read_kws_file(path):
@@ -136,10 +135,6 @@ def run_vww():
     accuracy_report(gt, predictions)
 
 def get_vww_stimulus():
-    # items = os.listdir(VWW_PERSON_DATA_DIR)
-    # persons = [item for item in items if os.path.isfile(os.path.join(VWW_PERSON_DATA_DIR, item)) and item.startswith("COCO_val")]
-    # data = read_vww_file(VWW_PERSON_DATA_DIR / persons[1])
-
     items = os.listdir(VWW_NON_PERSON_DATA_DIR)
     non_persons = [item for item in items if os.path.isfile(os.path.join(VWW_NON_PERSON_DATA_DIR, item)) and item.startswith("COCO_val")]
     data = read_vww_file(VWW_NON_PERSON_DATA_DIR / non_persons[0])
@@ -160,7 +155,6 @@ def run_ic():
         image = np.reshape(image, (3, 32, 32))
         image = np.rollaxis(image, 0, 3)
         image = image - 128
-        #print_matrix(image[0], 'signed')
         image = np.reshape(image, (3072))
         label = data[b'labels'][i]
         send_stimulus(image.tobytes(), label)

@@ -154,6 +154,30 @@ HANDSHAKE_POOL_ENABLE_OFFSET = 7
 HANDSHAKE_BIAS_ENABLE_OFFSET = 8
 HANDSHAKE_BYPASS_ENABLE_OFFSET = 9
 
+
+def value_to_ansi_gray(value, min_value, max_value):
+    """
+    Map input values from a custom range [min_value, max_value] to ANSI grayscale color codes (232 to 255).
+    """
+    # Ensure the value is within the specified range
+    value = max(min_value, min(max_value, value))
+
+    # Normalize the value from [min_value, max_value] to a range of 0 to 23 (grayscale range 232-255 has 24 values)
+    normalized_value = int(((value - min_value) / (max_value - min_value)) * 23)
+
+    # Map the normalized value to the ANSI grayscale color codes (232 to 255)
+    ansi_gray_code = 232 + normalized_value
+
+    return ansi_gray_code
+
+def grayscale_block(value, min_value=-128, max_value=127):
+    """
+    Print a grayscale block corresponding to the input value in the range [min_value, max_value].
+    """
+    ansi_code = value_to_ansi_gray(value, min_value, max_value)
+    block = "\033[48;5;{}m  \033[0m".format(ansi_code)
+    return block
+
 # Utilities
 def reshape_to_cwh(data):
     """Takes tensor in [height, width, channel] format and reshapes it to [channel, width, height]"""
@@ -285,30 +309,6 @@ def reshape(tensor, shape):
     return construct(flat, shape)
 
 
-def flatten_tensor(data):
-    """Expect tensor in data CWH format and return 1d array"""
-    in_height = len(data[0][0])
-    in_width = len(data[0])
-    in_channels = len(data)
-    output = []
-    for ch in range(in_channels):
-        for w in range(in_width):
-            for h in range(in_height):
-                output.append(data[ch][w][h])
-    return output
-
-def flat_to_CWH(data, channels, width, height):
-    """Takes in 1d array of length C*W*H and reshapes it to tensor of format CWH"""
-    assert channels * width * height == len(data), "Assert failed! Flatten input wrong size"
-    output = [[[0 for _ in range(height)] for _ in range(width)] for _ in range(channels)]
-    i = 0
-    for ch in range(channels):
-        for w in range(width):
-            for h in range(height):
-                output[ch][w][h] = data[i]
-                i = i + 1
-    return output
-
 def cast_long_to_signed_byte(value):
     """Bitwise cast of unsigned char to signed char.
 
@@ -383,6 +383,8 @@ def print_matrix(A, name="", pformat="decimal"):
             row = " ".join("{:4}".format(value) for value in A)
         elif pformat=="hexadecimal":
             row = " ".join("{:4}".format(hex(value & 0xff)[2:-1]) for value in A)
+        elif pformat=="color":
+            row = " ".join("{}".format(grayscale_block(value, min(A), max(A))) for value in A)
         else:
             row = "invalid pformat {}".format(pformat)
         print(row)
@@ -393,6 +395,8 @@ def print_matrix(A, name="", pformat="decimal"):
             row = " ".join("{:4}".format(value) for value in A[x])
         elif pformat=="hexadecimal":
             row = " ".join("{:4}".format(hex(value & 0xff)[2:-1]) for value in A[x])
+        elif pformat=="color":
+            row = " ".join("{}".format(grayscale_block(value, min(flatten(A)), max(flatten(A)))) for value in A[x])
         else:
             row = "invalid pformat {}".format(pformat)
         print(row)
@@ -833,7 +837,7 @@ class Dla:
         chunk = []
         while len(data) + len(chunk) < (filter_amount * input_channels * width * height):
             # Move to next bank
-            if offset > bank.size:
+            if offset >= bank.size:
                 bank_idx = bank_idx + 1
                 bank = self.banks[bank_idx]
                 offset = 0
@@ -864,9 +868,17 @@ class Dla:
 
         column_wise = reshape(column_wise, (filter_amount, input_channels, height, width))
 
-        print_matrix(column_wise[0][0], "flat kernel:", pformat="decimal")
-        print_matrix(column_wise[0][1], "flat kernel:", pformat="decimal")
-        print_matrix(column_wise[0][2], "flat kernel:", pformat="decimal")
+        print_matrix(column_wise[0][0], "flat kernel K0 C0:", pformat="decimal")
+        print_matrix(column_wise[0][1], "flat kernel K0 C1:", pformat="decimal")
+        print_matrix(column_wise[0][2], "flat kernel K0 C2:", pformat="decimal")
+        print_matrix(column_wise[1][0], "flat kernel K1 C0:", pformat="decimal")
+        print_matrix(column_wise[1][1], "flat kernel K1 C1:", pformat="decimal")
+        print_matrix(column_wise[1][2], "flat kernel K1 C2:", pformat="decimal")
+        print_matrix(column_wise[2][0], "flat kernel K2 C0:", pformat="decimal")
+        print_matrix(column_wise[2][1], "flat kernel K2 C1:", pformat="decimal")
+        print_matrix(column_wise[2][2], "flat kernel K2 C2:", pformat="decimal")
+
+
         return filter_amount, s_channels, width, height, column_wise
 
     def get_input_data(self):
@@ -892,7 +904,7 @@ class Dla:
         chunk = []
         while len(data) + len(chunk) < (channels * width * height):
             # Move to next bank
-            if offset > bank.size:
+            if offset >= bank.size:
                 bank_idx = bank_idx + 1
                 bank = self.banks[bank_idx]
                 offset = 0
@@ -1193,58 +1205,54 @@ class DlaMac:
 
 
         # Apply each kernel to input_img
+        first_pass = True
         for (kernel_idx, kernel) in enumerate(kernels):
-                first_pass = True
+            if w_middle_zero:
+                center_x_0 = h_kernel_max_offset * dilation[0]
+            else:
+                center_x_0 = h_kernel_max_offset * dilation[0] -1
+
+            if h_middle_zero:
+                center_y_0 = w_kernel_max_offset * dilation[1]
+            else:
+                center_y_0 = w_kernel_max_offset * dilation[1] - 1
+
+            for w in range(w_out):
                 if w_middle_zero:
-                    center_x_0 = h_kernel_max_offset * dilation[0]
+                    center_x = center_x_0 + (w * stride[0])
+                    range_x = [center_x + k * dilation[0] for k in range(-w_kernel_max_offset, w_kernel_max_offset + 1)]
                 else:
-                    center_x_0 = h_kernel_max_offset * dilation[0] -1
+                    center_x = center_x_0 + (w * stride[0])
+                    range_x = [center_x + k * dilation[0] for k in range(0, w_kernel_max_offset + 1)]
 
-                if h_middle_zero:
-                    center_y_0 = w_kernel_max_offset * dilation[1]
-                else:
-                    center_y_0 = w_kernel_max_offset * dilation[1] - 1
-
-                for w in range(w_out):
-                    if w_middle_zero:
-                        center_x = center_x_0 + (w * stride[0])
-                        range_x = [center_x + k * dilation[0] for k in range(-w_kernel_max_offset, w_kernel_max_offset + 1)]
+                for h in range(h_out):
+                    if h_middle_zero:
+                        center_y = center_y_0 + (h * stride[1])
+                        range_y = [center_y + k * dilation[1] for k in range(-h_kernel_max_offset, h_kernel_max_offset + 1)]
                     else:
-                        center_x = center_x_0 + (w * stride[0])
-                        range_x = [center_x + k * dilation[0] for k in range(0, w_kernel_max_offset + 1)]
+                        center_y = center_y_0 + (h * stride[1]) # Calculate from top left of center
+                        range_y = [center_y + k * dilation[1] for k in range(0, h_kernel_max_offset + 1)]
 
-                    for h in range(h_out):
-                        if h_middle_zero:
-                            center_y = center_y_0 + (h * stride[1])
-                            range_y = [center_y + k * dilation[1] for k in range(-h_kernel_max_offset, h_kernel_max_offset + 1)]
-                        else:
-                            center_y = center_y_0 + (h * stride[1]) # Calculate from top left of center
-                            range_y = [center_y + k * dilation[1] for k in range(0, h_kernel_max_offset + 1)]
+                    # Sum each channel with current kernel
+                    channel_sum = 0
+                    for (channel_idx, channel_data) in enumerate(padded_input):
 
-                        # Sum each channel with current kernel
-                        channel_sum = 0
-                        for (channel_idx, channel_data) in enumerate(padded_input):
+                        # Constuct a sub matrix
+                        # NOTE: Do not use zeroes here, for some reason IronPython can't correctly index nested lists produced by a recursive function. (20240527 vaino-waltteri.granat@tuni.fi)
+                        mat_sub = [[0 for _ in range_y ] for _ in range_x ] # np.zeros(w_out, h_out)
 
+                        for mat_x in range(len(range_x)):
+                            for mat_y in range(len(range_y)):
+                                mat_sub[mat_x][mat_y] = channel_data[range_x[mat_x]][range_y[mat_y]]
 
-                            # Constuct a sub matrix
-                            # NOTE: Do not use zeroes here, for some reason IronPython can't correctly index nested lists produced by a recursive function. (20240527 vaino-waltteri.granat@tuni.fi)
-                            mat_sub = [[0 for _ in range_y ] for _ in range_x ] # np.zeros(w_out, h_out)
-
-                            for mat_x in range(len(range_x)):
-                                for mat_y in range(len(range_y)):
-                                    mat_sub[mat_x][mat_y] = channel_data[range_x[mat_x]][range_y[mat_y]]
-
-                            # print("w:", w, "h:", h, "mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
-                            # print_matrix(mat_sub, "sub_matrix", "hexadecimal")
-                            # if (kernel_idx < 2 and first_pass):
-                            #     print_matrix(kernel[channel_idx], "kernel CH:{}, kernel_idx:{}".format(channel_idx, kernel_idx), "decimal")
-                            channel_res = self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
-                            channel_sum += channel_res
+                        # print("w:", w, "h:", h, "mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
+                        # print_matrix(mat_sub, "sub_matrix", "hexadecimal")
+                        channel_res = self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
+                        channel_sum += channel_res
 
 
-                        output_filters[kernel_idx][w][h] = channel_sum
-                        # print("Output:", output_filters[kernel_idx][w][h])
-                    first_pass = False
+                    output_filters[kernel_idx][w][h] = channel_sum
+                    # print("Output:", output_filters[kernel_idx][w][h])
 
 
         return output_filters

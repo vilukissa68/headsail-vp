@@ -15,8 +15,6 @@ import numpy as np
 from pathlib import Path
 from tiny_perf_benchmark import get_ic_stimulus, get_kws_stimulus, get_vww_stimulus
 
-tvm._ffi._init_api("relay.ext.cmsisnn.transform", __name__)
-
 SHAPES = {
     "mobilenet": {"input" :(1, 3, 224, 224)},
     "conv2dbasic": {"input" :(1, 3, 32, 32)},
@@ -98,8 +96,6 @@ def headsail_annotate(mod):
     print("Annotating graph for Headsail DLA")
     headsail_patterns = get_pattern_table("headsail")
 
-    #from tvm.relay.quantize.quantize import _bind_params
-    #mod["main"] = _bind_params(mod["main"], params)
     # Pre process
     desired_layouts = {'qnn.conv2d': ['NCHW', 'OIHW']}
     preprocessor_pass = tvm.transform.Sequential([relay.transform.InferType(),
@@ -110,25 +106,11 @@ def headsail_annotate(mod):
     mod = legalize_qnn_for_headsail(mod)
     annotation_pass = tvm.transform.Sequential(
         [
-            #relay.transform.InferType(),
-            #relay.transform.SimplifyInference(),
-            #relay.transform.FoldConstant(),
-            #relay.transform.FoldScaleAxis(),
-            # relay.transform.Legalize('FTVMQnnLegalize'),
-            # relay.transform.Legalize('FTVMQnnCanonicalize'),
-            # relay.transform.ConvertLayout({'nn.conv2d': ['NCHW', 'OIHW']}),
-            # relay.transform.Legalize(),
-            # relay.transform.AlterOpLayout(),
-            #relay.qnn.transform.CanonicalizeOps(),
             relay.transform.MergeComposite(headsail_patterns),
-            relay.transform.AnnotateTarget(["headsail"]), # Output: Figure 2
-            relay.transform.MergeCompilerRegions(), # Output: Figure 3
-            relay.transform.PartitionGraph(), # Output: Figure 4
-            # GenerateCMSISNNConstants(),
-            # CMSISNNFusePads(),
-            # ScalarToTensorConstants(),
-            # ExtractConstantsFromPartitionedFunction(),
-            # relay.transform.InferType(),
+            relay.transform.AnnotateTarget(["headsail"]),
+            relay.transform.MergeCompilerRegions(),
+            relay.transform.PartitionGraph(),
+            relay.transform.FoldConstant(),
         ])
     mod = annotation_pass(mod)
 
@@ -138,21 +120,12 @@ def export_annotated_library(mod, params, build_dir):
     print(tvm.target.Target.list_kinds())
     file_format_str = "{name}_c.{ext}"
     RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : False})
-    #RUNTIME = tvm.relay.backend.Runtime("crt")
-    #TARGET = tvm.target.Target("llvm -mtriple=riscv64-unknown-elf -mcpu=generic-rv64 -mabi=lp64 -mattr=+64bit")
     TARGET = tvm.target.Target("c")
-    #TARGET = tvm.target.target.micro("host")
     EXECUTOR = tvm.relay.backend.Executor("aot", {"unpacked-api": True, "interface-api": "c", "link-params": True})
-    #EXECUTOR = tvm.relay.backend.Executor("graph", {"link-params": True})
     with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
         lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params, executor=EXECUTOR)
 
-    # headsail_contrib = "/Users/vainogranat/work/tvm/src/runtime/contrib/headsail/codegen.cc"
-    # kwargs = {}
-    # kwargs["options"] = ["-O2", "-std=c++14", "-I" + headsail_contrib]
-
     lib_file_name = os.path.join(build_dir, file_format_str.format(name="model", ext="tar"))
-    #lib.export_library(lib_file_name)
     export_model_library_format(lib, lib_file_name)
     return lib, lib_file_name
 
@@ -176,11 +149,6 @@ def export_stimulus(stimulus, input_type):
 
 def build_model(opts, shape_dict):
 
-    # Make sure that TVM can find headsail codegen if annotation is used
-    # if opts.annotate_graph and not tvm.get_global_func("relay.ext.headsail", True):
-    #     print("skip because headsail codegen is not available")
-    #     return
-
     # Create build dir for model files
     build_dir = os.path.abspath(opts.out_dir)
     if not os.path.isdir(build_dir):
@@ -199,38 +167,19 @@ def build_model(opts, shape_dict):
         print("Error! Unsupported model", opts.model_path)
         return
 
-    #TVM quantization (only for tflite?)
-    # if opts.annotate_graph:
-    #     mod = quantize(mod, params)
-
     # Annotate model with headsail tags
     if opts.annotate_graph:
         mod = headsail_annotate(mod)
     print(mod)
 
     # Write mod log to output
-    with open(
-            os.path.join(build_dir, "mod_output.txt"), "w"
-        ) as mod_log:
-            mod_log.write(str(mod))
+    with open(os.path.join(build_dir, "mod_output.txt"), "w") as mod_log:
+        mod_log.write(str(mod))
 
 
     # Export library
     lib, lib_file_name = export_annotated_library(mod, params, build_dir)
     file_format_str = "{name}_c.{ext}"
-
-    # Export graph
-    # with open(
-    #     os.path.join(build_dir, file_format_str.format(name="graph", ext="json")), "w"
-    # ) as f_graph_json:
-    #     f_graph_json.write(lib.get_graph_json())
-
-    # print("Params", params)
-    # # Export weights
-    # with open(
-    #     os.path.join(build_dir, file_format_str.format(name="params", ext="bin")), "wb"
-    # ) as f_params:
-    #     f_params.write(runtime.save_param_dict(lib.get_params()))
 
     # Generate stimulus
     if opts.stimulus != None:

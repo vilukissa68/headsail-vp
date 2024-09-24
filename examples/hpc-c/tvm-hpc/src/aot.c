@@ -55,13 +55,6 @@ void write_prediction(int8_t* prediction, size_t len) {
 
 void init_tvm() {
     dla_init();
-    //TVMPlatformInitialize();
-    /* char *json_data = (char *)(graph_c_json); */
-    /* char *params_data = (char *)(params_c_bin); */
-    /* uint64_t params_size = params_c_bin_len; */
-    // create tvm_runtime
-    //void *handle = tvm_runtime_create(json_data, params_data, params_size, NULL);
-    //return handle;
 }
 
 void run_inference() {
