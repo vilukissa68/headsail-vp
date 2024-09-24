@@ -16,9 +16,6 @@ from pathlib import Path
 from tiny_perf_benchmark import get_ic_stimulus, get_kws_stimulus, get_vww_stimulus
 
 SHAPES = {
-    "mobilenet": {"input" :(1, 3, 224, 224)},
-    "conv2dbasic": {"input" :(1, 3, 32, 32)},
-    "add": {"Input1": (1), "Input2": (1)},
     "perf_ic": {"input_1_int8": (1, 32, 32, 3)},
     "perf_vww": {"data": (1, 96, 96, 3)},
     "perf_kws": {"data": (1, 49, 10, 1)},
@@ -29,25 +26,6 @@ def normalize(v):
     if norm == 0:
        return v
     return v / norm
-
-def write_c_stimulus(data, len_symbol="stimulus_c_len", payload_symbol="stimulus_c", payload_type="unsigned char"):
-    c_file = open("model_c/stimulus" + ".c", "w")
-    len_line = "unsigned int {len_symbol} = {data_len};\n".format(len_symbol=len_symbol, data_len=len(data))
-
-    print(data)
-    data_str = ""
-    for x in data:
-        data_str += str(x) + ", "
-    data_str = data_str[:-2]
-
-    payload = textwrap.fill(data_str, 80, initial_indent="  ", subsequent_indent="  ")
-    payload_line = "{payload_type} {payload_symbol}[] = {{\n{payload}}};\n".format(payload_type=payload_type,
-                                                                                   payload_symbol=payload_symbol,
-                                                                                   payload=payload)
-    c_file.write(len_line + payload_line)
-    c_file.close()
-    print("Stimulus written!")
-
 
 def import_onnx_model(path_to_model, shape_dict):
     onnx_model = onnx.load(path_to_model)
@@ -158,11 +136,9 @@ def build_model(opts, shape_dict):
     with open(os.path.join(build_dir, "mod_output.txt"), "w") as mod_log:
         mod_log.write(str(mod))
 
-
     # Export library
     lib, lib_file_name = export_annotated_library(mod, params, build_dir)
     file_format_str = "{name}_c.{ext}"
-
 
     # Convert graph and weights to hexdumps
     os.chdir(build_dir)
