@@ -66,6 +66,13 @@ pip install -r requirements.txt
 
 # Building project
 
+## Fetching the datasets 
+To run Tinyperf benchmark we need to obtain the needed datasets. Easiest way to do this is by runnning the `get_testing_data` script.
+```sh
+./get_testing_data.sh
+```
+
+## Build binary
 In project folder (tvm-hpc)
 ```sh
 mkdir build
@@ -76,10 +83,14 @@ make
 This creates a binary called headsail-tvm
 
 # Running in renode
-After succesful build, the resulting binary can be run with headsail's virtual prototype in Renode
+After succesful build, the resulting binary can be run with Headsail's virtual prototype in Renode
 ```sh
 cd /headsail-vp/scripts
 ./run_on_hpc.sh ../examples/hpc-c/tvm-hpc/build/headsail-tvm
 ```
 
-
+## Running the benchmark 
+To run the TinyPerf benchmark run the tiny_perf_benchmark.py script with the `-b` options with the wanted benchmark `[ic, kws, vww]`. 
+```sh
+python tiny_perf_benchmark.py -b ic
+```
