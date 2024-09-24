@@ -10,9 +10,6 @@ find_package(DlaDriver REQUIRED)
 find_package(Newlib REQUIRED)
 
 # Choose target model
-option(USE_MOBILENET "Use mobilenet" OFF)
-option(USE_CONV2DBASIC "Use conv2dbasic" OFF)
-option(USE_ADDER "Use adder" OFF)
 option(USE_PERF_IMAGE_CLASSIFICATION "Perform image classification benchmark" OFF)
 option(USE_PERF_KEYWORDS_SPOTTING "Perform keyword spotting benchmark" OFF)
 option(USE_PERF_VISUAL_WAKE_WORDS "Perform visual wake word benchmark" OFF)
@@ -22,25 +19,7 @@ if(USE_ACCELERATOR)
     set(PYTHON_ACCELERATOR_PARAM "--annotate-graph")
 endif()
 
-if (USE_MOBILENET)
-    set(MODEL_INFERENCE_SRC src/mobile_net.c)
-    set(MODEL_NAME mobilenet)
-    set(STIMULUS "-s stimulus/mobile_net_input.npy")
-    set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/models/mobilenet.onnx)
-    set(INPUT_TYPE "float")
-elseif (USE_CONV2DBASIC)
-    set(MODEL_INFERENCE_SRC src/conv2dbasic.c)
-    set(MODEL_NAME conv2dbasic)
-    set(STIMULUS "-s stimulus/stimulus.npy")
-    set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/models/model.onnx)
-    set(INPUT_TYPE "float")
-elseif (USE_ADDER)
-    set(MODEL_INFERENCE_SRC src/adder.c)
-    set(MODEL_NAME add)
-    set(STIMULUS "-s stimulus/mobile_net_input.npy")
-    set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/models/add.onnx)
-    set(INPUT_TYPE "float")
-elseif (USE_PERF_IMAGE_CLASSIFICATION)
+if (USE_PERF_IMAGE_CLASSIFICATION)
     set(MODEL_NAME perf_image_classification)
     set(ONNX_MODEL ${CMAKE_CURRENT_SOURCE_DIR}/models/pretrainedResnet_quant.tflite)
     set(INPUT_TYPE "int8")
@@ -80,7 +59,6 @@ message(GLOB="${LIB_SOURCES}")
 # Add the source files
 set(SOURCE_FILES
     src/aot.c
-    ${MODEL_INFERENCE_SRC}
     ${LIB_SOURCES}
 )
 
