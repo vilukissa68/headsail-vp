@@ -21,3 +21,7 @@ logs/
 snapshots/
 
 **/build/
+
+**/dev_data/
+**/models/
+**/stimulus/
