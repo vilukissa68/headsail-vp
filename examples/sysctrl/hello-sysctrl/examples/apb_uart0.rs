@@ -3,6 +3,7 @@
 //! | Date              | Status     | Changes   |
 //! | :-                | :-:        | :-        |
 //! | 2024-09-04        | *Untested* |           |
+//! | 2024-10-24        | *Works*    |           |
 #![no_std]
 #![no_main]
 
@@ -23,11 +24,11 @@ fn main() -> ! {
 
     // Configure ICN clocks
     let conf_val = 0b1001 << 8;
-    soc_ctrl::clk2_set(conf_val);
+    soc_ctrl::clk2_mask(conf_val);
 
     // Configure TLP clocks
     let conf_val = 0b1001;
-    soc_ctrl::clk3_set(conf_val);
+    soc_ctrl::clk3_mask(conf_val);
 
     // Disable GPIO behavior for UART pins
     const PAD_CONF_UART0_TX: usize = 0xfff0_7064;

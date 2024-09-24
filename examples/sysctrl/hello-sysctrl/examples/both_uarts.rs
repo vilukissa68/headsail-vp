@@ -8,6 +8,7 @@ use headsail_bsp::{
     pac,
     sysctrl::{soc_ctrl, udma::Udma},
 };
+use hello_sysctrl::NOPS_PER_SEC;
 
 const PAD_CONF_UART0_TX: usize = 0xfff0_7064;
 
@@ -74,7 +75,7 @@ fn main() -> ! {
         uart.write(b"SysCtrl uDMA UART\r\n");
         tlp_uart_write(b"TLP\r\n");
 
-        for _ in 0..40_000 {
+        for _ in 0..NOPS_PER_SEC {
             unsafe { asm!("nop") };
         }
     }
@@ -131,11 +132,6 @@ fn is_transmit_empty() -> bool {
 
 fn putc(c: u8) {
     while !is_transmit_empty() {}
-
-    // Wait some extra for extra traceability in this test case
-    for _ in 0..1_000 {
-        unsafe { asm!("nop") };
-    }
 
     // Safety: UART_RBR_THR_DLL is 4-byte aligned
     unsafe { write_u8(mmap::UART0_ADDR + mmap::UART_RBR_THR_DLL_OFS, c) };

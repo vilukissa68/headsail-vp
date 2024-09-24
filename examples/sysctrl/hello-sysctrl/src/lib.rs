@@ -12,18 +12,19 @@ macro_rules! print_example_name {
         use $crate::sysctrl_print;
         sysctrl_print(b"[");
         sysctrl_print(core::file!().as_bytes());
-        sysctrl_print(b"]");
+        sysctrl_print(b"]\r\n");
     };
 }
 
 // Number of nops SysCtrl is capable of executing at 30 MHz reference clocks
 pub const NOPS_PER_SEC: usize = match () {
+    // These are experimentally found values
     #[cfg(debug_assertions)]
     // This is an experimentally found value
     () => 2_000_000 / 9,
     #[cfg(not(debug_assertions))]
     // This is just a guess for now (10x debug)
-    () => 20_000_000 / 9,
+    () => 40_000_000 / 9,
 };
 
 /// Make sure to enable uDMA UART prior to using this function

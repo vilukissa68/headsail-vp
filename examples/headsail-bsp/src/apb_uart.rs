@@ -1,5 +1,3 @@
-use core::arch::asm;
-
 use crate::{
     mmap::{UART0_ADDR, UART1_ADDR, UART_LSR_RX_FIFO_VALID, UART_RBR_THR_DLL_OFS},
     read_u8, write_u8,
@@ -127,10 +125,6 @@ impl<const BASE_ADDR: usize> ApbUart<BASE_ADDR> {
         // Wait for hardware to report completion
         #[cfg(feature = "asic")]
         while !self.is_transmit_empty() {}
-
-        for _ in 0..20_000 {
-            unsafe { asm!("nop") };
-        }
 
         // Safety: UART_THR is 4-byte aligned
         unsafe { write_u8(BASE_ADDR + UART_RBR_THR_DLL_OFS, c) };

@@ -25,3 +25,12 @@ pub fn dla_read(buf: &mut [u8], len: usize, offset: usize) {
             *byte = ptr::read_volatile((DLA0_ADDR + offset + i) as *const u8);
         });
 }
+
+// Number of nops HPC is capable of executing at 30 MHz reference clocks
+pub const NOPS_PER_SEC: usize = match () {
+    // These are experimentally found values
+    #[cfg(debug_assertions)]
+    () => 6_000,
+    #[cfg(not(debug_assertions))]
+    () => 120_000,
+};

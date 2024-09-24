@@ -53,11 +53,11 @@ fn main() -> ! {
 
     // Configure ICN clocks
     let conf_val = 0b1001 << 8;
-    soc_ctrl::clk2_set(conf_val);
+    soc_ctrl::clk2_mask(conf_val);
 
     // Configure TLP clocks
     let conf_val = 0b1001;
-    soc_ctrl::clk3_set(conf_val);
+    soc_ctrl::clk3_mask(conf_val);
 
     let (soc_freq, baud) = (30_000_000, 9600_u32);
 
