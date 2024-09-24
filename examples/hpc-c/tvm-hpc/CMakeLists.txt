@@ -39,7 +39,7 @@ else()
 endif()
 
 # Build codegen library
-execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/build_module.py -m ${MODEL_NAME} -p ${ONNX_MODEL} -o ./model_c ${STIMULUS} -t ${INPUT_TYPE} ${PYTHON_ACCELERATOR_PARAM})
+execute_process(COMMAND python ${CMAKE_CURRENT_SOURCE_DIR}/build_module.py -m ${MODEL_NAME} -p ${ONNX_MODEL} -o ./model_c -t ${INPUT_TYPE} ${PYTHON_ACCELERATOR_PARAM})
 
 # Add C-runtime 0
 set(CRT0 ${CMAKE_CURRENT_SOURCE_DIR}/../crt0)

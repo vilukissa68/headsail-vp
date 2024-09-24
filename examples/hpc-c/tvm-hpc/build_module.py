@@ -30,12 +30,6 @@ def normalize(v):
        return v
     return v / norm
 
-def quantize(mod, params, quantize_arg="int8"):
-    print("Quantizing model")
-    with relay.quantize.qconfig(calibrate_mode='global_scale', dtype_input=quantize_arg, dtype_weight=quantize_arg, dtype_activation=quantize_arg, global_scale=8.0):
-        modd = relay.quantize.quantize(mod, params)
-        return modd
-
 def write_c_stimulus(data, len_symbol="stimulus_c_len", payload_symbol="stimulus_c", payload_type="unsigned char"):
     c_file = open("model_c/stimulus" + ".c", "w")
     len_line = "unsigned int {len_symbol} = {data_len};\n".format(len_symbol=len_symbol, data_len=len(data))
@@ -133,19 +127,7 @@ def generate_hex_dumps(lib_file_name, build_dir):
     owd = os.getcwd()
     os.chdir(build_dir)
     os.system("tar -xvf {lib}".format(lib=lib_file_name))
-    # graph_path_rel = os.path.relpath("{name}_c.{ext}".format(name="graph", ext="json"))
-    # params_path_rel = os.path.relpath("{name}_c.{ext}".format(name="params", ext="bin"))
-    # os.system("xxd -i {graph} > {graphc} ".format(graph=graph_path_rel, graphc=(graph_path_rel + ".c")))
-    # os.system("xxd -i {params} > {paramsc} ".format(params=params_path_rel, paramsc=(params_path_rel + ".c")))
     os.chdir(owd)
-
-def export_stimulus(stimulus, input_type):
-    _, stim_ext = os.path.splitext(stimulus)
-    if stim_ext == ".npy":
-        stimulus_path = Path(__file__).parents[0] / stimulus
-        data = np.load(stimulus_path).flatten()
-        data = normalize(data)
-        write_c_stimulus(data, payload_type=input_type)
 
 def build_model(opts, shape_dict):
 
@@ -181,13 +163,9 @@ def build_model(opts, shape_dict):
     lib, lib_file_name = export_annotated_library(mod, params, build_dir)
     file_format_str = "{name}_c.{ext}"
 
-    # Generate stimulus
-    if opts.stimulus != None:
-        opts.stimulus = opts.stimulus.strip()
-        export_stimulus(opts.stimulus, opts.input_type)
-    os.chdir(build_dir)
 
     # Convert graph and weights to hexdumps
+    os.chdir(build_dir)
     generate_hex_dumps(lib_file_name, build_dir)
 
 if __name__ == "__main__":
@@ -197,29 +175,19 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--out-dir", default="./build")
     parser.add_argument("-m", "--model", required=True)
     parser.add_argument("-p", "--model_path", required=True)
-    parser.add_argument("-s", "--stimulus", default=None)
     parser.add_argument("-t", "--input_type", default="unsigned char")
     parser.add_argument("--annotate-graph", action="store_true")
 
     opts = parser.parse_args()
 
-    if opts.model == "add":
-        build_model(opts, shape_dict=SHAPES["add"])
-    elif opts.model == "mobilenet":
-        build_model(opts, shape_dict=SHAPES["mobilenet"])
-    elif opts.model == "conv2dbasic":
-        build_model(opts, shape_dict=SHAPES["conv2dbasic"])
-    elif opts.model == "perf_image_classification":
+    if opts.model == "perf_image_classification":
         build_model(opts, shape_dict=SHAPES["perf_ic"])
         os.chdir(os.path.abspath("../"))
-        write_c_stimulus(get_ic_stimulus(), "int8_t")
     elif opts.model == "perf_visual_wakeup_word":
         build_model(opts, shape_dict=SHAPES["perf_vww"])
         os.chdir(os.path.abspath("../"))
-        write_c_stimulus(get_vww_stimulus(), "int8_t")
     elif opts.model == "perf_keyword_spotting":
         build_model(opts, shape_dict=SHAPES["perf_kws"])
         os.chdir(os.path.abspath("../"))
-        write_c_stimulus(get_kws_stimulus(), "int8_t")
     else:
-        print("No such model", opts.model, "Availeable models: add, mobilenet")
+        print("No such model", opts.model, "Availeable models: perf_image_classification, perf_visual_wakeup_word, perf_keyword_spotting")
