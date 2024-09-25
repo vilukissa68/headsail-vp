@@ -321,6 +321,12 @@ impl<T: Clone> Tensor4<T> {
         if order == self.order {
             return self.to_buffer();
         }
+
+        // NOTE:(20240925 vaino-waltteri.granat@tuni.fi) TVM order fix
+        if self.order == Order4::HWCK && order == Order4::HWKC {
+            return self.tvm_layout_to_headsail();
+        }
+
         let mut data = self.clone();
         data.permute(order);
         data.to_buffer()
