@@ -12,7 +12,6 @@ use dla_driver::layers::{conv2d, conv2d_bias, conv2d_bias_relu, conv2d_relu};
 use dla_driver::tensor3::{rescale, Order3, Tensor3};
 use dla_driver::tensor4::{Order4, Tensor4};
 use dla_driver::{Padding, Stride};
-use headsail_bsp::{sprint, sprintln};
 
 /// Converts C-types to DLA Tensors for use with the highlevel layer
 unsafe fn ffi_data_import(
