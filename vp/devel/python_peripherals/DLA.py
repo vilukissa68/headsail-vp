@@ -154,6 +154,7 @@ HANDSHAKE_POOL_ENABLE_OFFSET = 7
 HANDSHAKE_BIAS_ENABLE_OFFSET = 8
 HANDSHAKE_BYPASS_ENABLE_OFFSET = 9
 
+
 # Utilities
 def reshape_to_cwh(data):
     """Takes tensor in [height, width, channel] format and reshapes it to [channel, width, height]"""
@@ -279,35 +280,11 @@ def reshape(tensor, shape):
         return [construct(flat[i * sub_size: (i + 1) * sub_size], shape[1:]) for i in range(shape[0])]
 
     output = zeroes(shape)
-    assert get_size(output) == get_size(tensor)
+    assert get_size(output) == get_size(tensor), "Assert failed! Reshape incompatible dimensions"
     flat = flatten(tensor)
 
     return construct(flat, shape)
 
-
-def flatten_tensor(data):
-    """Expect tensor in data CWH format and return 1d array"""
-    in_height = len(data[0][0])
-    in_width = len(data[0])
-    in_channels = len(data)
-    output = []
-    for ch in range(in_channels):
-        for w in range(in_width):
-            for h in range(in_height):
-                output.append(data[ch][w][h])
-    return output
-
-def flat_to_CWH(data, channels, width, height):
-    """Takes in 1d array of length C*W*H and reshapes it to tensor of format CWH"""
-    assert channels * width * height == len(data)
-    output = [[[0 for _ in range(height)] for _ in range(width)] for _ in range(channels)]
-    i = 0
-    for ch in range(channels):
-        for w in range(width):
-            for h in range(height):
-                output[ch][w][h] = data[i]
-                i = i + 1
-    return output
 
 def cast_long_to_signed_byte(value):
     """Bitwise cast of unsigned char to signed char.
@@ -318,7 +295,7 @@ def cast_long_to_signed_byte(value):
     Returns:
     byte -- Int Signed value in range -128..127
     """
-    assert(0 <= value <= 255)
+    assert(0 <= value <= 0xFF), "Assert failed! Value doesn't fit byte"
     value = value & 0xFF
     if value <= 127:
         return value
@@ -333,7 +310,7 @@ def cast_long_to_signed_16(value):
     Returns:
     byte -- Int Signed value in range -128..127
     """
-    assert(0 <= value <= 65535)
+    assert(0 <= value <= 0xFFFF), "Assert failed! Value doesn't fit 2 bytes"
     value = value & 0xFFFF
     if value <= 32767:
         return value
@@ -452,7 +429,12 @@ def rounding(value):
     Return:
     rounded -- Int Rounded value
     """
-    return round(value)
+    if value > 127:
+        return 127
+    elif value < -128:
+        return -128
+    else:
+        return value
 
 class Padding:
     def __init__(self, left, right, top, bottom):
@@ -494,7 +476,7 @@ class MemoryBank:
         Params:
         data -- [Int] data to write to bank
         """
-        assert(offset < self.size)
+        assert(offset < self.size), "Assert failed! Offset overflow on bank write"
         self.mem[offset] = data
 
 
@@ -679,7 +661,7 @@ class Dla:
         while bytes_written < len(data):
             if offset > bank.size:
                 bank_idx = bank_idx + 1
-                assert(bank_idx < len(self.banks))
+                assert(bank_idx < len(self.banks)), "Assert failed! Bank indexing overflow"
                 bank = self.banks[bank_idx]
                 offset = 0
             bank.write(offset, data[bytes_written])
@@ -724,7 +706,7 @@ class Dla:
         data = column_wise
 
         addr = self.get_output_addr()
-        print("Writing output to:{:x}".format(addr))
+        print("Writing output to:{:x} with bit width{}".format(addr, bit_width))
 
         # Allow writing to memory space of data banks
         if MEMORY_BANK_ADDR <= addr and addr < (MEMORY_BANK_ADDR + (NO_MEMORY_BANKS * MEMORY_BANK_SIZE)):
@@ -738,7 +720,7 @@ class Dla:
                 # Bank switching when current bank is filled
                 if offset > bank.size:
                     bank_idx = bank_idx + 1
-                    assert(bank_idx < len(self.banks))
+                    assert(bank_idx < len(self.banks)), "Assert failed!, Bank indexing overflow"
                     bank = self.banks[bank_idx]
                     offset = 0
 
@@ -799,7 +781,7 @@ class Dla:
         while bytes_written < len(data):
             if offset > bank.size:
                 bank_idx = bank_idx + 1
-                assert(bank_idx < len(self.banks))
+                assert(bank_idx < len(self.banks)), "Assert failed!, Bank indexing overflow"
                 bank = self.banks[bank_idx]
                 offset = 0
             bank.write(offset, data[bytes_written])
@@ -828,7 +810,7 @@ class Dla:
         chunk = []
         while len(data) + len(chunk) < (filter_amount * input_channels * width * height):
             # Move to next bank
-            if offset > bank.size:
+            if offset >= bank.size:
                 bank_idx = bank_idx + 1
                 bank = self.banks[bank_idx]
                 offset = 0
@@ -855,11 +837,13 @@ class Dla:
                     for w in range(width):
                         idx = c + (f * input_channels) + (input_channels*filter_amount) * w + (input_channels * filter_amount * width) * h
                         column_wise.append(data[idx])
-        print('[{}]'.format(', '.join("{:2}".format(hex(x & 0xff)[2:-1]) for x in column_wise)))
 
         column_wise = reshape(column_wise, (filter_amount, input_channels, height, width))
 
-        print_matrix(column_wise[0][0], "flat kernel:", pformat="hexadecimal")
+        print_matrix(column_wise[0][0], "flat kernel K0 C0:", pformat="decimal")
+        print_matrix(column_wise[0][1], "flat kernel K0 C1:", pformat="decimal")
+        print_matrix(column_wise[0][2], "flat kernel K0 C2:", pformat="decimal")
+
         return filter_amount, s_channels, width, height, column_wise
 
     def get_input_data(self):
@@ -885,7 +869,7 @@ class Dla:
         chunk = []
         while len(data) + len(chunk) < (channels * width * height):
             # Move to next bank
-            if offset > bank.size:
+            if offset >= bank.size:
                 bank_idx = bank_idx + 1
                 bank = self.banks[bank_idx]
                 offset = 0
@@ -911,7 +895,7 @@ class Dla:
                     column_wise.append(data[idx])
 
         column_wise = reshape(column_wise, (channels, height, width))
-        print_matrix(column_wise[0], "flat input:", pformat="hexadecimal")
+        print_matrix(column_wise[0], "flat input:", pformat="decimal")
         return channels, width, height, column_wise
 
     def get_bias(self, values_to_read):
@@ -935,7 +919,7 @@ class Dla:
                 # Bank switching when current bank is filled
                 if offset > bank.size:
                     bank_idx = bank_idx + 1
-                    assert(bank_idx < len(self.banks))
+                    assert(bank_idx < len(self.banks)), "Assert failed! Bank indexing overflow"
                     bank = self.banks[bank_idx]
                     offset = 0
                 low_byte = bank.read(offset) & 0xFF
@@ -943,7 +927,6 @@ class Dla:
                 value = (high_byte << 8) + low_byte
                 bias.append(cast_long_to_signed_16(value))
                 offset += 2 # 16 bit width
-            print(bias)
             return bias
         else:
             print("WARNING: trying to read bias outside of VP memory region as address: {:x}".format(bias_addr))
@@ -980,7 +963,7 @@ class Dla:
         """Clip pp values if register is set"""
         clip_amount = self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5)
         if clip_amount > 0:
-            return execute_for_all_elements(clip, values, clip_amount, 8)
+            return execute_for_all_elements(clip, values, clip_amount, 16)
         return values
 
     def mac_clip(self, values):
@@ -1042,6 +1025,7 @@ class Dla:
         print("padding:", padding)
         print("dilation:", dilation)
         print("stride:", stride)
+        print("CONV2D")
 
 
         # Pack output according to clipping
@@ -1053,10 +1037,11 @@ class Dla:
             padding_value = self.get_register(BUF_PAD, BUF_PAD_VALUE_OFFSET, 8)
             res = self.mac.conv2d(input_data, kernel_data, padding, dilation, stride, padding_value=padding_value)
 
+            i = 0
             # Clip results
             res = dla.mac_clip(res)
             for i, r in enumerate(res):
-                print_matrix(r, "{} MAC:".format(i))
+                print_matrix(res[0], "{} MAC:".format(i))
 
         if self.get_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1):
             if self.get_register(HANDSHAKE, HANDSHAKE_BIAS_ENABLE_OFFSET, 1):
@@ -1075,19 +1060,20 @@ class Dla:
 
                 res = tmp
                 for (i, r) in enumerate(res):
-                    print_matrix(r, "{} BIAS:".format(i))
+                    print_matrix(res[0], "{} BIAS:".format(i))
 
             # ReLU (active low)
             if self.get_register(HANDSHAKE, HANDSHAKE_ACTIVE_ENABLE_OFFSET, 1):
+                print("RELU")
                 res = execute_for_all_elements(self.mac.relu_native, res)
                 for (i, r) in enumerate(res):
-                    print_matrix(r, "{} ReLU:".format(i))
+                    print_matrix(res[0], "{} ReLU:".format(i))
 
             # Clipping and rounding
             res = dla.pp_clip(res)
-            #res = dla.round(res)
+            res = execute_for_all_elements(rounding, res)
             for (i, r) in enumerate(res):
-                print_matrix(r, "{} PP:".format(i))
+                print_matrix(res[0], "{} PP:".format(i))
 
             output_bit_width = 32 - self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5) # Pack output according to clipping
 
@@ -1181,54 +1167,48 @@ class DlaMac:
 
         # Apply each kernel to input_img
         for (kernel_idx, kernel) in enumerate(kernels):
+            if w_middle_zero:
+                center_x_0 = h_kernel_max_offset * dilation[0]
+            else:
+                center_x_0 = h_kernel_max_offset * dilation[0] -1
+
+            if h_middle_zero:
+                center_y_0 = w_kernel_max_offset * dilation[1]
+            else:
+                center_y_0 = w_kernel_max_offset * dilation[1] - 1
+
+            for w in range(w_out):
                 if w_middle_zero:
-                    center_x_0 = h_kernel_max_offset * dilation[0]
+                    center_x = center_x_0 + (w * stride[0])
+                    range_x = [center_x + k * dilation[0] for k in range(-w_kernel_max_offset, w_kernel_max_offset + 1)]
                 else:
-                    center_x_0 = h_kernel_max_offset * dilation[0] -1
+                    center_x = center_x_0 + (w * stride[0])
+                    range_x = [center_x + k * dilation[0] for k in range(0, w_kernel_max_offset + 1)]
 
-                if h_middle_zero:
-                    center_y_0 = w_kernel_max_offset * dilation[1]
-                else:
-                    center_y_0 = w_kernel_max_offset * dilation[1] - 1
-
-                for w in range(w_out):
-                    if w_middle_zero:
-                        center_x = center_x_0 + (w * stride[0])
-                        range_x = [center_x + k * dilation[0] for k in range(-w_kernel_max_offset, w_kernel_max_offset + 1)]
+                for h in range(h_out):
+                    if h_middle_zero:
+                        center_y = center_y_0 + (h * stride[1])
+                        range_y = [center_y + k * dilation[1] for k in range(-h_kernel_max_offset, h_kernel_max_offset + 1)]
                     else:
-                        center_x = center_x_0 + (w * stride[0])
-                        range_x = [center_x + k * dilation[0] for k in range(0, w_kernel_max_offset + 1)]
+                        center_y = center_y_0 + (h * stride[1]) # Calculate from top left of center
+                        range_y = [center_y + k * dilation[1] for k in range(0, h_kernel_max_offset + 1)]
 
-                    for h in range(h_out):
-                        if h_middle_zero:
-                            center_y = center_y_0 + (h * stride[1])
-                            range_y = [center_y + k * dilation[1] for k in range(-h_kernel_max_offset, h_kernel_max_offset + 1)]
-                        else:
-                            center_y = center_y_0 + (h * stride[1]) # Calculate from top left of center
-                            range_y = [center_y + k * dilation[1] for k in range(0, h_kernel_max_offset + 1)]
+                    # Sum each channel with current kernel
+                    channel_sum = 0
+                    for (channel_idx, channel_data) in enumerate(padded_input):
 
-                        # Sum each channel with current kernel
-                        channel_sum = 0
-                        for (channel_idx, channel_data) in enumerate(padded_input):
+                        # Constuct a sub matrix
+                        # NOTE: Do not use zeroes here, for some reason IronPython can't correctly index nested lists produced by a recursive function. (20240527 vaino-waltteri.granat@tuni.fi)
+                        mat_sub = [[0 for _ in range_y ] for _ in range_x ] # np.zeros(w_out, h_out)
 
+                        for mat_x in range(len(range_x)):
+                            for mat_y in range(len(range_y)):
+                                mat_sub[mat_x][mat_y] = channel_data[range_x[mat_x]][range_y[mat_y]]
 
-                            # Constuct a sub matrix
-                            # NOTE: Do not use zeroes here, for some reason IronPython can't correctly index nested lists produced by a recursive function. (20240527 vaino-waltteri.granat@tuni.fi)
-                            mat_sub = [[0 for _ in range_y ] for _ in range_x ] # np.zeros(w_out, h_out)
+                        channel_res = self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
+                        channel_sum += channel_res
 
-                            for mat_x in range(len(range_x)):
-                                for mat_y in range(len(range_y)):
-                                    mat_sub[mat_x][mat_y] = channel_data[range_x[mat_x]][range_y[mat_y]]
-
-                            # print("w:", w, "h:", h, "mat_y:", mat_y, "mat_x:", mat_x, "kernel_idx:", kernel_idx, "channel_idx:", channel_idx)
-                            # print_matrix(mat_sub, "sub_matrix", "hexadecimal")
-                            # print_matrix(kernel[channel_idx], "kernel", "hexadecimal")
-                            channel_res = self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
-                            channel_sum += channel_res
-
-
-                        output_filters[kernel_idx][w][h] = channel_sum
-                        # print("Output:", output_filters[kernel_idx][w][h])
+                    output_filters[kernel_idx][w][h] = channel_sum
 
         return output_filters
 
@@ -1274,7 +1254,7 @@ class DlaMac:
         if not isinstance(A, list) and not isinstance(B, list):
             return A + B
 
-        assert len(A) == len(B)
+        assert(len(A) == len(B)), "Assert failed! Different sized operands in matsum"
         C = []
         for a, b in zip(A, B):
             C.append(self.matsum_element_wise(a, b))
@@ -1296,7 +1276,7 @@ class DlaMac:
         if not isinstance(A, list) and not isinstance(B, list):
             return A * B
 
-        assert len(A) == len(B)
+        assert len(A) == len(B), "Assert failed! Different sized operands in matmul"
         C = []
         for a, b in zip(A, B):
             C.append(self.matmul_element_wise(a, b))
@@ -1345,7 +1325,6 @@ class DlaMac:
 #     API     #
 
 def write(request, dla):
-    self.NoisyLog("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
     print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
     request.absolute = request.absolute & 0xFFFFFFFF # Normalize address to global address space by removing possible HPC external bit
     if int(request.absolute) >= DLA_ADDR:
@@ -1364,7 +1343,6 @@ def read(request, dla):
         request.value = tmp
 
     request.absolute = original_absolute # Answer to original address
-    self.NoisyLog("Reading request: %s at 0x%x, value 0x%x" % (str(request.type), request.absolute, request.value))
     print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
 
 if __name__ == "__main__":
