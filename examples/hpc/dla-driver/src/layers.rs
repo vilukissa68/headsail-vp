@@ -234,6 +234,7 @@ fn run_layers<T: DlaOutput + Clone>(
     };
 
     dla.init_layer(config);
+
     dla.write_input(&mut input.to_buffer_with_order(Order3::HWC));
     dla.write_kernel(&mut kernels.to_buffer_with_order(Order4::HWKC));
 
