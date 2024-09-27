@@ -14,6 +14,21 @@ use dla_driver::tensor4::{Order4, Tensor4};
 use dla_driver::{Padding, Stride};
 
 /// Converts C-types to DLA Tensors for use with the highlevel layer
+///
+/// # Arguments
+///
+/// * `input_data` - Input data  
+/// * `input_channels` - Number of channels in the input
+/// * `input_height` - Height of the input
+/// * `input_width` - Width of the input
+/// * `input_order` - Layout of the input data
+/// * `input_zero` - Possible zero point correction value
+/// * `kernel_data` - Kernel/weight data
+/// * `kernel_amount` - Number of output channels
+/// * `kernel_channels` - Number of input channels
+/// * `kernel_height` - Kernel height
+/// * `kernel_width` - Kernel width
+/// * `kernel_order` - Kernel data layout
 unsafe fn ffi_data_import(
     input_data: *const i8,
     input_channels: usize,
@@ -33,10 +48,9 @@ unsafe fn ffi_data_import(
     };
 
     // Input zero point shift
-    input_data = input_data
-        .into_iter()
-        .map(|x| scale_as_i16(x, input_zero))
-        .collect();
+    for x in input_data.iter_mut() {
+        *x = i16::clamp((*x) as i16 + input_zero, i8::MIN as i16, i8::MAX as i16) as i8
+    }
 
     let input_order_string = unsafe { CStr::from_ptr(input_order).to_str().unwrap_unchecked() };
     let input_tensor = unsafe {
@@ -81,6 +95,31 @@ pub unsafe extern "C" fn dla_init() {
 }
 
 /// Executes Conv2D on DLA with given parameters and writes result to output buffer.
+///
+/// # Arguments
+///
+/// * `input_data` - Input data  
+/// * `kernel_data` - Kernel/weight data
+/// * `output` - Buffer for operation output
+/// * `input_channels` - Number of channels in the input
+/// * `input_height` - Height of the input
+/// * `input_width` - Width of the input
+/// * `input_order` - Layout of the input data
+/// * `input_zero` - Possible zero point correction value
+/// * `kernel_amount` - Number of output channels
+/// * `kernel_channels` - Number of input channels
+/// * `kernel_height` - Kernel height
+/// * `kernel_width` - Kernel width
+/// * `kernel_order` - Kernel data layout
+/// * `pad_top` - Amount of padding on top of the data
+/// * `pad_right` - Amount of padding on right side of the data
+/// * `pad_left` - Amount of padding on left side of the data
+/// * `pad_bottom` - Amount of padding on bottom of the data
+/// * `pad_value` - Integer value used for padding the data
+/// * `stride_x` - Horizontal stride
+/// * `stride_y` - Vertical stride
+/// * `mac_clip` - Amount of bits clipped at the end of the convolution
+/// * `pp_clip` - Amount of bits clipped at the end of the post processing
 #[no_mangle]
 pub unsafe extern "C" fn dla_conv2d(
     input_data: *const i8,
@@ -146,6 +185,31 @@ pub unsafe extern "C" fn dla_conv2d(
 }
 
 /// Executes Conv2D + ReLU on DLA with given parameters and writes result to output buffer.
+///
+/// # Arguments
+///
+/// * `input_data` - Input data  
+/// * `kernel_data` - Kernel/weight data
+/// * `output` - Buffer for operation output
+/// * `input_channels` - Number of channels in the input
+/// * `input_height` - Height of the input
+/// * `input_width` - Width of the input
+/// * `input_order` - Layout of the input data
+/// * `input_zero` - Possible zero point correction value
+/// * `kernel_amount` - Number of output channels
+/// * `kernel_channels` - Number of input channels
+/// * `kernel_height` - Kernel height
+/// * `kernel_width` - Kernel width
+/// * `kernel_order` - Kernel data layout
+/// * `pad_top` - Amount of padding on top of the data
+/// * `pad_right` - Amount of padding on right side of the data
+/// * `pad_left` - Amount of padding on left side of the data
+/// * `pad_bottom` - Amount of padding on bottom of the data
+/// * `pad_value` - Integer value used for padding the data
+/// * `stride_x` - Horizontal stride
+/// * `stride_y` - Vertical stride
+/// * `mac_clip` - Amount of bits clipped at the end of the convolution
+/// * `pp_clip` - Amount of bits clipped at the end of the post processing
 #[no_mangle]
 pub unsafe extern "C" fn dla_conv2d_relu(
     input_data: *const i8,
@@ -215,7 +279,8 @@ pub unsafe extern "C" fn dla_conv2d_relu(
 pub unsafe extern "C" fn dla_conv2d_bias(
     input_data: *const i8,
     kernel_data: *const i8,
-    bias: *const i32, // NOTE: bias is actually i16 in hardware, here we use 32 for TVM compatability
+    // NOTE: bias is actually i16 in hardware, here we use 32 for TVM compatibility
+    bias: *const i32,
     output: *mut i8,
     input_channels: usize,
     input_height: usize,
@@ -281,6 +346,33 @@ pub unsafe extern "C" fn dla_conv2d_bias(
 }
 
 /// Executes Conv2D + Bias + ReLU on DLA with given parameters and writes result to output buffer.
+///
+/// # Arguments
+///
+/// * `input_data` - Input data  
+/// * `kernel_data` - Kernel/weight data
+/// * `bias` - Buffer containing bias data
+/// * `output` - Buffer for operation output
+/// * `input_channels` - Number of channels in the input
+/// * `input_height` - Height of the input
+/// * `input_width` - Width of the input
+/// * `input_order` - Layout of the input data
+/// * `input_zero` - Possible zero point correction value
+/// * `kernel_amount` - Number of output channels
+/// * `kernel_channels` - Number of input channels
+/// * `kernel_height` - Kernel height
+/// * `kernel_width` - Kernel width
+/// * `kernel_order` - Kernel data layout
+/// * `bias_length` - Size of the bias fifo
+/// * `pad_top` - Amount of padding on top of the data
+/// * `pad_right` - Amount of padding on right side of the data
+/// * `pad_left` - Amount of padding on left side of the data
+/// * `pad_bottom` - Amount of padding on bottom of the data
+/// * `pad_value` - Integer value used for padding the data
+/// * `stride_x` - Horizontal stride
+/// * `stride_y` - Vertical stride
+/// * `mac_clip` - Amount of bits clipped at the end of the convolution
+/// * `pp_clip` - Amount of bits clipped at the end of the post processing
 #[no_mangle]
 pub unsafe extern "C" fn dla_conv2d_bias_relu(
     input_data: *const i8,
@@ -324,13 +416,17 @@ pub unsafe extern "C" fn dla_conv2d_bias_relu(
         )
     };
 
-    let bias: Vec<i32> = unsafe { slice::from_raw_parts(bias as *const i32, bias_length).to_vec() };
-    let bias_i16: Vec<i16> = bias.into_iter().map(|x| clip_i32_to_i16(x)).collect();
+    let bias: Vec<i16> = unsafe {
+        slice::from_raw_parts(bias as *const i32, bias_length)
+            .into_iter()
+            .map(|x| (*x).clamp(i16::MIN as i32, i16::MAX as i32) as i16)
+            .collect()
+    };
 
     let result = conv2d_bias_relu(
         input_tensor,
         kernels_tensor,
-        bias_i16,
+        bias,
         Some(Padding {
             top: pad_top,
             right: pad_right,
@@ -359,6 +455,36 @@ pub unsafe extern "C" fn dla_conv2d_bias_relu(
     };
 }
 
+/// # Arguments
+///
+/// * `input_data` - Input data  
+/// * `kernel_data` - Kernel/weight data
+/// * `bias` - Buffer containing bias data
+/// * `output` - Buffer for operation output
+/// * `output_scale` - Multiplier to scale output of requantization
+/// * `output_zero` - Zero point of the requantization output
+/// * `input_scale` - Multiplier to scale input of requantization
+/// * `input_zero` - Zero point of the requantization input
+/// * `input_channels` - Number of channels in the input
+/// * `input_height` - Height of the input
+/// * `input_width` - Width of the input
+/// * `input_order` - Layout of the input data
+/// * `input_zero` - Possible zero point correction value
+/// * `kernel_amount` - Number of output channels
+/// * `kernel_channels` - Number of input channels
+/// * `kernel_height` - Kernel height
+/// * `kernel_width` - Kernel width
+/// * `kernel_order` - Kernel data layout
+/// * `bias_length` - Size of the bias fifo
+/// * `pad_top` - Amount of padding on top of the data
+/// * `pad_right` - Amount of padding on right side of the data
+/// * `pad_left` - Amount of padding on left side of the data
+/// * `pad_bottom` - Amount of padding on bottom of the data
+/// * `pad_value` - Integer value used for padding the data
+/// * `stride_x` - Horizontal stride
+/// * `stride_y` - Vertical stride
+/// * `mac_clip` - Amount of bits clipped at the end of the convolution
+/// * `pp_clip` - Amount of bits clipped at the end of the post processing
 #[no_mangle]
 pub unsafe extern "C" fn dla_tvm_qnn_conv2d(
     input_data: *const i8,
@@ -418,13 +544,17 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d(
         )
     };
 
-    let bias: Vec<i32> = unsafe { slice::from_raw_parts(bias as *const i32, bias_length).to_vec() };
-    let bias_i16: Vec<i16> = bias.into_iter().map(|x| clip_i32_to_i16(x)).collect();
+    let bias: Vec<i16> = unsafe {
+        slice::from_raw_parts(bias as *const i32, bias_length)
+            .into_iter()
+            .map(|x| (*x).clamp(i16::MIN as i32, i16::MAX as i32) as i16)
+            .collect()
+    };
 
     let mut result = conv2d_bias_relu(
         input_tensor,
         kernels_tensor,
-        bias_i16,
+        bias,
         Some(Padding {
             top: pad_top,
             right: pad_right,
@@ -442,9 +572,14 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d(
     );
 
     // TVM requantization and clip
+    // NOTE:(20240927 vaino-waltteri.granat@tuni.fi) on DLA clipping behaviour with TVM.
+    // DLA's conv2d arithmetic is done at 16 bit width, but the output of the DLA is limited to 8 bits.
+    // To comply with TVM's expected value range our solution is to bit shift/clip the 16-bit result of
+    // conv2d by 8 bits and shift if back in the driver. This causes some amount of data loss due to
+    // the lost granularity of the values. The clipping amount is set by the pp_clip argument.
     rescale(
         &mut result,
-        u32::pow(2, pp_clip) as f32, //NOTE:(20240924 vaino-waltteri.granat@tuni.fi) Mitigate pp downscale
+        u32::pow(2, pp_clip) as f32,
         input_zero[0],
         output_zero[0],
         input_scale[0],
@@ -462,23 +597,4 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d(
             result.get_size(),
         )
     };
-}
-fn clip_i32_to_i16(value: i32) -> i16 {
-    if value > i16::MAX as i32 {
-        return i16::MAX;
-    } else if value < i16::MIN as i32 {
-        return i16::MIN;
-    } else {
-        return value as i16;
-    }
-}
-
-fn scale_as_i16(input: i8, factor: i16) -> i8 {
-    let new_value = input as i16 + factor;
-    if new_value > 127 {
-        return 127;
-    } else if new_value < -128 {
-        return -128;
-    }
-    return new_value as i8;
 }
