@@ -56,10 +56,11 @@ fn main() -> ! {
     let hpc_bit = 1 << 2;
     let icn_bit = 1 << 5;
     let tlp_bit = 1 << 8;
-    soc_ctrl::ss_enable(hpc_bit | icn_bit | tlp_bit);
+    let sdram_bit   = 1 << 3;
+    soc_ctrl::ss_enable(hpc_bit | icn_bit | tlp_bit | sdram_bit);
 
-    // Configure HPC clocks
-    soc_ctrl::clk1_mask(0b1001 << 16);
+    // Configure HPC and SDRAM clocks
+    soc_ctrl::clk1_mask(0b1001 << 16 | 0b1001 << 24);
 
     // Configure ICN clocks
     let conf_val = 0b1001 << 8;
@@ -70,6 +71,10 @@ fn main() -> ! {
     soc_ctrl::clk3_mask(conf_val);
 
     soc_ctrl::periph_clk_div_set(0);
+
+    // Enable SDRAM
+    soc_ctrl::sdram_cfg_axi_ddr_mode_mask(0x1);
+    soc_ctrl::sdram_cfg_axi_enable_mask(0x2);
 
     let sysctrl = unsafe { pac::Sysctrl::steal() };
     let udma = Udma(sysctrl.udma());
