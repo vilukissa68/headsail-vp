@@ -1,6 +1,7 @@
 use alloc::vec::*;
 use core::ffi::c_char;
-use ndarray::{Array, Array3};
+#[macro_use]
+use ndarray::{Array, Array3, s};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Order3 {
@@ -232,5 +233,36 @@ impl<T: Clone> Tensor3<T> {
         let mut data = self.clone();
         data.permute(order);
         data.to_buffer()
+    }
+}
+
+pub fn rescale(
+    tensor: &mut Tensor3<i8>,
+    pre_scale: f32,
+    input_zero: i32,
+    output_zero: i32,
+    input_scale: f32,
+    output_scale: Vec<f32>,
+) {
+    // Ensure that the number of scaling factors matches the number of channels.
+    assert_eq!(
+        tensor.channels(),
+        output_scale.len(),
+        "Mismatch in number of channels"
+    );
+
+    // Iterate over each channel and apply the scaling factor.
+    for (channel, scale) in output_scale.iter().enumerate() {
+        let mut channel_slice = match tensor.order() {
+            Order3::CHW | Order3::CWH => tensor.data.slice_mut(s![channel, .., ..]),
+            Order3::HWC | Order3::WHC => tensor.data.slice_mut(s![.., .., channel]),
+            Order3::HCW | Order3::WCH => tensor.data.slice_mut(s![.., channel, ..]),
+        };
+
+        channel_slice.map_inplace(|x| {
+            let value = (((*x as f32 * pre_scale) - output_zero as f32) / input_scale) * scale
+                + input_zero as f32;
+            *x = value.clamp(i8::MIN as f32, i8::MAX as f32) as i8
+        });
     }
 }
