@@ -185,7 +185,7 @@ def main():
     elif opts.benchmark == "ic":
         run_ic()
     else:
-        print("Bad benchmark! Availeable benchmarks are: kws, vww, ic")
+        print("Bad benchmark! Available benchmarks are: kws, vww, ic")
 
 if __name__ == "__main__":
     main()

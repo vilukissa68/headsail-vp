@@ -71,8 +71,6 @@ target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${LIB_PATH}/libm.a)
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE ${LIB_PATH}/libgloss.a)
 target_link_libraries(${CMAKE_PROJECT_NAME} PRIVATE -lc -lm -lgloss -lgcc)
 
-target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE /Users/vainogranat/work/headsail-newlib/libgloss/riscv)
-
 # Include TVM headers
 target_include_directories(${CMAKE_PROJECT_NAME} PUBLIC src)
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE $ENV{TVM_HOME}/build/standalone_crt/include)

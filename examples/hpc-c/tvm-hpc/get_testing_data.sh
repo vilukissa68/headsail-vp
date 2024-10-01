@@ -3,6 +3,16 @@
 TARGET_DIR="dev_data"
 mkdir -p $TARGET_DIR
 
+MODEL_DIR="models"
+mkdir -p $MODEL_DIR
+IC_MODEL_URL="https://github.com/mlcommons/tiny/raw/refs/tags/v1.1/benchmark/training/image_classification/trained_models/pretrainedResnet_quant.tflite"
+KWS_MODEL_URL="https://github.com/mlcommons/tiny/raw/refs/tags/v1.1/benchmark/training/keyword_spotting/trained_models/kws_ref_model.tflite"
+VWW_MODEL_URL="https://github.com/mlcommons/tiny/raw/refs/tags/v1.1/benchmark/training/visual_wake_words/trained_models/vww_96_int8.tflite"
+
+wget -P $MODEL_DIR/ $IC_MODEL_URL
+wget -P $MODEL_DIR/ $KWS_MODEL_URL
+wget -P $MODEL_DIR/ $VWW_MODEL_URL
+
 # Keyword spotting
 echo "Fetching keyword spotting data"
 KEYWORD_SPOTTING_URL="https://codeload.github.com/eembc/energyrunner/tar.gz/main"
