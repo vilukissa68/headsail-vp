@@ -113,7 +113,7 @@ fn main() -> ! {
     );
 
     // Turn on all HPC cores
-    soc_ctrl::clk1_mask(0x1111 << 20);
+    soc_ctrl::clk1_mask(0b1111 << 20);
 
     sprintln!(" done");
 
