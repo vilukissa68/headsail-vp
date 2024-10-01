@@ -14,21 +14,6 @@ use dla_driver::tensor4::{Order4, Tensor4};
 use dla_driver::{Padding, Stride};
 
 /// Converts C-types to DLA Tensors for use with the highlevel layer
-///
-/// # Arguments
-///
-/// * `input_data` - Input data  
-/// * `input_channels` - Number of channels in the input
-/// * `input_height` - Height of the input
-/// * `input_width` - Width of the input
-/// * `input_order` - Layout of the input data
-/// * `input_zero` - Possible zero point correction value
-/// * `kernel_data` - Kernel/weight data
-/// * `kernel_amount` - Number of output channels
-/// * `kernel_channels` - Number of input channels
-/// * `kernel_height` - Kernel height
-/// * `kernel_width` - Kernel width
-/// * `kernel_order` - Kernel data layout
 unsafe fn ffi_data_import(
     input_data: *const i8,
     input_channels: usize,
@@ -95,31 +80,6 @@ pub unsafe extern "C" fn dla_init() {
 }
 
 /// Executes Conv2D on DLA with given parameters and writes result to output buffer.
-///
-/// # Arguments
-///
-/// * `input_data` - Input data  
-/// * `kernel_data` - Kernel/weight data
-/// * `output` - Buffer for operation output
-/// * `input_channels` - Number of channels in the input
-/// * `input_height` - Height of the input
-/// * `input_width` - Width of the input
-/// * `input_order` - Layout of the input data
-/// * `input_zero` - Possible zero point correction value
-/// * `kernel_amount` - Number of output channels
-/// * `kernel_channels` - Number of input channels
-/// * `kernel_height` - Kernel height
-/// * `kernel_width` - Kernel width
-/// * `kernel_order` - Kernel data layout
-/// * `pad_top` - Amount of padding on top of the data
-/// * `pad_right` - Amount of padding on right side of the data
-/// * `pad_left` - Amount of padding on left side of the data
-/// * `pad_bottom` - Amount of padding on bottom of the data
-/// * `pad_value` - Integer value used for padding the data
-/// * `stride_x` - Horizontal stride
-/// * `stride_y` - Vertical stride
-/// * `mac_clip` - Amount of bits clipped at the end of the convolution
-/// * `pp_clip` - Amount of bits clipped at the end of the post processing
 #[no_mangle]
 pub unsafe extern "C" fn dla_conv2d(
     input_data: *const i8,
@@ -185,31 +145,6 @@ pub unsafe extern "C" fn dla_conv2d(
 }
 
 /// Executes Conv2D + ReLU on DLA with given parameters and writes result to output buffer.
-///
-/// # Arguments
-///
-/// * `input_data` - Input data  
-/// * `kernel_data` - Kernel/weight data
-/// * `output` - Buffer for operation output
-/// * `input_channels` - Number of channels in the input
-/// * `input_height` - Height of the input
-/// * `input_width` - Width of the input
-/// * `input_order` - Layout of the input data
-/// * `input_zero` - Possible zero point correction value
-/// * `kernel_amount` - Number of output channels
-/// * `kernel_channels` - Number of input channels
-/// * `kernel_height` - Kernel height
-/// * `kernel_width` - Kernel width
-/// * `kernel_order` - Kernel data layout
-/// * `pad_top` - Amount of padding on top of the data
-/// * `pad_right` - Amount of padding on right side of the data
-/// * `pad_left` - Amount of padding on left side of the data
-/// * `pad_bottom` - Amount of padding on bottom of the data
-/// * `pad_value` - Integer value used for padding the data
-/// * `stride_x` - Horizontal stride
-/// * `stride_y` - Vertical stride
-/// * `mac_clip` - Amount of bits clipped at the end of the convolution
-/// * `pp_clip` - Amount of bits clipped at the end of the post processing
 #[no_mangle]
 pub unsafe extern "C" fn dla_conv2d_relu(
     input_data: *const i8,
@@ -277,31 +212,7 @@ pub unsafe extern "C" fn dla_conv2d_relu(
 /// Executes Conv2D + Bias on DLA with given parameters and writes result to output buffer.
 /// # Arguments
 ///
-/// * `input_data` - Input data  
-/// * `kernel_data` - Kernel/weight data
-/// * `bias` - Buffer containing bias data. NOTE: Bias is actually i16 in hardware, here we use 32 for TVM compatibility
-/// * `output` - Buffer for operation output
-/// * `input_channels` - Number of channels in the input
-/// * `input_height` - Height of the input
-/// * `input_width` - Width of the input
-/// * `input_order` - Layout of the input data
-/// * `input_zero` - Possible zero point correction value
-/// * `kernel_amount` - Number of output channels
-/// * `kernel_channels` - Number of input channels
-/// * `kernel_height` - Kernel height
-/// * `kernel_width` - Kernel width
-/// * `kernel_order` - Kernel data layout
-/// * `bias_length` - Size of the bias fifo
-/// * `pad_top` - Amount of padding on top of the data
-/// * `pad_right` - Amount of padding on right side of the data
-/// * `pad_left` - Amount of padding on left side of the data
-/// * `pad_bottom` - Amount of padding on bottom of the data
-/// * `pad_value` - Integer value used for padding the data
-/// * `stride_x` - Horizontal stride
-/// * `stride_y` - Vertical stride
-/// * `mac_clip` - Amount of bits clipped at the end of the convolution
-/// * `pp_clip` - Amount of bits clipped at the end of the post processing
-
+/// * `bias` - Bias is actually i16 in hardware, here we use 32 for TVM compatibility
 #[no_mangle]
 pub unsafe extern "C" fn dla_conv2d_bias(
     input_data: *const i8,
@@ -376,30 +287,7 @@ pub unsafe extern "C" fn dla_conv2d_bias(
 ///
 /// # Arguments
 ///
-/// * `input_data` - Input data  
-/// * `kernel_data` - Kernel/weight data
 /// * `bias` - Buffer containing bias data. NOTE: Bias is actually i16 in hardware, here we use 32 for TVM compatibility
-/// * `output` - Buffer for operation output
-/// * `input_channels` - Number of channels in the input
-/// * `input_height` - Height of the input
-/// * `input_width` - Width of the input
-/// * `input_order` - Layout of the input data
-/// * `input_zero` - Possible zero point correction value
-/// * `kernel_amount` - Number of output channels
-/// * `kernel_channels` - Number of input channels
-/// * `kernel_height` - Kernel height
-/// * `kernel_width` - Kernel width
-/// * `kernel_order` - Kernel data layout
-/// * `bias_length` - Size of the bias fifo
-/// * `pad_top` - Amount of padding on top of the data
-/// * `pad_right` - Amount of padding on right side of the data
-/// * `pad_left` - Amount of padding on left side of the data
-/// * `pad_bottom` - Amount of padding on bottom of the data
-/// * `pad_value` - Integer value used for padding the data
-/// * `stride_x` - Horizontal stride
-/// * `stride_y` - Vertical stride
-/// * `mac_clip` - Amount of bits clipped at the end of the convolution
-/// * `pp_clip` - Amount of bits clipped at the end of the post processing
 #[no_mangle]
 pub unsafe extern "C" fn dla_conv2d_bias_relu(
     input_data: *const i8,
@@ -484,34 +372,7 @@ pub unsafe extern "C" fn dla_conv2d_bias_relu(
 
 /// # Arguments
 ///
-/// * `input_data` - Input data  
-/// * `kernel_data` - Kernel/weight data
 /// * `bias` - Buffer containing bias data. NOTE: Bias is actually i16 in hardware, here we use 32 for TVM compatibility
-/// * `output` - Buffer for operation output
-/// * `output_scale` - Multiplier to scale output of requantization
-/// * `output_zero` - Zero point of the requantization output
-/// * `input_scale` - Multiplier to scale input of requantization
-/// * `input_zero` - Zero point of the requantization input
-/// * `input_channels` - Number of channels in the input
-/// * `input_height` - Height of the input
-/// * `input_width` - Width of the input
-/// * `input_order` - Layout of the input data
-/// * `input_zero` - Possible zero point correction value
-/// * `kernel_amount` - Number of output channels
-/// * `kernel_channels` - Number of input channels
-/// * `kernel_height` - Kernel height
-/// * `kernel_width` - Kernel width
-/// * `kernel_order` - Kernel data layout
-/// * `bias_length` - Size of the bias fifo
-/// * `pad_top` - Amount of padding on top of the data
-/// * `pad_right` - Amount of padding on right side of the data
-/// * `pad_left` - Amount of padding on left side of the data
-/// * `pad_bottom` - Amount of padding on bottom of the data
-/// * `pad_value` - Integer value used for padding the data
-/// * `stride_x` - Horizontal stride
-/// * `stride_y` - Vertical stride
-/// * `mac_clip` - Amount of bits clipped at the end of the convolution
-/// * `pp_clip` - Amount of bits clipped at the end of the post processing
 #[no_mangle]
 pub unsafe extern "C" fn dla_tvm_qnn_conv2d(
     input_data: *const i8,
