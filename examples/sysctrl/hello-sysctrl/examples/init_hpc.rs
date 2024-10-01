@@ -56,7 +56,7 @@ fn main() -> ! {
     let hpc_bit = 1 << 2;
     let icn_bit = 1 << 5;
     let tlp_bit = 1 << 8;
-    let sdram_bit   = 1 << 3;
+    let sdram_bit = 1 << 3;
     soc_ctrl::ss_enable(hpc_bit | icn_bit | tlp_bit | sdram_bit);
 
     // Configure HPC and SDRAM clocks
@@ -118,7 +118,7 @@ fn main() -> ! {
     );
 
     // Turn on all HPC cores
-    soc_ctrl::clk1_mask(0x1111 << 20);
+    soc_ctrl::clk1_mask(0b1 << 20);
 
     sprintln!(" done");
 

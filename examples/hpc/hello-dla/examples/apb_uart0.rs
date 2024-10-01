@@ -14,6 +14,10 @@ use panic_halt as _;
 
 #[entry]
 fn main() -> ! {
+    for _ in 0..NOPS_PER_SEC {
+        unsafe { asm!("nop") };
+    }
+
     // Disable GPIO behavior for UART pins
     const PAD_CONF_UART0_TX: usize = 0x1_fff0_7064;
     unmask_u32(PAD_CONF_UART0_TX, (0b1 << 5) | (0b1 << 10));
