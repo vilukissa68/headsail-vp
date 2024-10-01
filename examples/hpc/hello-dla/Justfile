@@ -3,12 +3,7 @@ build-asic example *args:
 
 run-asic example *args:
     cargo \
-        --config "target.riscv64imac-unknown-none-elf.runner = 'riscv32-uknown-elf-gdb -x connect-and-load.gdb'" \
-        run -Fasic --example {{example}} {{args}}
-
-run-asic-64 example *args:
-    cargo \
-        --config "target.riscv64imac-unknown-none-elf.runner = 'riscv64-elf-gdb -x connect-and-load.gdb'" \
+        --config "target.riscv64imac-unknown-none-elf.runner = 'riscv32-unknown-elf-gdb -x connect-and-load.gdb'" \
         run -Fasic --example {{example}} {{args}}
 
 clippy-asic *args:

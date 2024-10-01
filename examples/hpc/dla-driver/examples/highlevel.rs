@@ -50,7 +50,7 @@ fn conv_test() {
     let wgt_tensor: Tensor4<i8> = Tensor4::from_data_buffer(2, 3, 3, 3, wgt, Order4::KCHW).unwrap();
     let _dout_tensor: Tensor3<i32> = Tensor3::from_data_buffer(2, 3, 3, dout, Order3::CHW).unwrap();
 
-    let mut output: Tensor3<i8> =
+    let mut output =
         dla_driver::layers::conv2d(din_tensor, wgt_tensor, None, None, None, None, None);
     output.permute(Order3::CWH);
     sprintln!("conv_test: leave");
