@@ -1,7 +1,9 @@
 [target.riscv64imac-unknown-none-elf]
 runner = "../../../scripts/run_on_hpc.sh"
-linker = "riscv64-unknown-elf-ld"
-rustflags = ["-C", "link-arg=-Tsdram_hpc.x", "-C", "link-arg=-Tlink.x"]
+rustflags = ["-C", "link-arg=-Tmem_hpc.x", "-C", "link-arg=-Tlink.x"]
+# Uncomment to run on SDRAM
+#linker = "riscv64-unknown-elf-ld"
+#rustflags = ["-C", "link-arg=-Tsdram_hpc.x", "-C", "link-arg=-Tlink.x"]
 
 [build]
 target = "riscv64imac-unknown-none-elf"
