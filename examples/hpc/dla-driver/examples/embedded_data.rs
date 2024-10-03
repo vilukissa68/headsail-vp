@@ -3,12 +3,14 @@
 
 extern crate alloc;
 
+use core::arch::asm;
+
 use alloc::vec::Vec;
 use dla_driver::tensor3::{Order3, Tensor3};
 use dla_driver::tensor4::{Order4, Tensor4};
 use dla_driver::*;
 use headsail_bsp::apb_uart::ApbUart0;
-use headsail_bsp::{init_alloc, rt::entry, sprint, sprintln};
+use headsail_bsp::{init_alloc, rt::entry, sprint, sprintln, unmask_u32};
 use panic_halt as _;
 
 const DATA: &[i8] = &[
@@ -333,6 +335,15 @@ const WGT: &[i8] = &[
     -99, 12, -111, -82, 28, -52, -83, -21, -13, -7, -66, 100, 47, 86, 72, 34, 49, -86, 111, -117,
     -99, -126, 56, -68, 36, 38, 0, 27, -10, -26, -105, 44, 115, -41, 3,
 ];
+
+pub const NOPS_PER_SEC: usize = match () {
+    // These are experimentally found values
+    #[cfg(debug_assertions)]
+    () => 6_000,
+    #[cfg(not(debug_assertions))]
+    () => 120_000,
+};
+
 fn run_embedded_data() {
     let din_tensor: Tensor3<i8> =
         Tensor3::from_data_buffer(16, 16, 16, DATA.to_vec(), Order3::HWC).unwrap();
@@ -348,10 +359,18 @@ fn run_embedded_data() {
 
 #[entry]
 fn main() -> ! {
+    for _ in 0..NOPS_PER_SEC {
+        unsafe { asm!("nop") };
+    }
+
+    // Disable GPIO behavior for UART pins
+    const PAD_CONF_UART0_TX: usize = 0x1_fff0_7064;
+    unmask_u32(PAD_CONF_UART0_TX, (0b1 << 5) | (0b1 << 10));
+
+    let mut _uart = ApbUart0::init(30_000_000, 9600);
     sprintln!("Start!");
     init_alloc();
     sprintln!("Allocator initialized!");
-    let mut _uart = ApbUart0::init(30_000_000, 115_200);
 
     run_embedded_data();
     sprintln!("Done!");
