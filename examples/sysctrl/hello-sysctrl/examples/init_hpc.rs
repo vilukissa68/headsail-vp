@@ -72,10 +72,6 @@ fn main() -> ! {
 
     soc_ctrl::periph_clk_div_set(0);
 
-    // Enable SDRAM
-    soc_ctrl::sdram_cfg_axi_ddr_mode_mask(0x1);
-    soc_ctrl::sdram_cfg_axi_enable_mask(0x2);
-
     let sysctrl = unsafe { pac::Sysctrl::steal() };
     let udma = Udma(sysctrl.udma());
 
@@ -104,6 +100,17 @@ fn main() -> ! {
 
     print_example_name!();
 
+    // Enable SDRAM
+    let ddr_mode = 0x1;
+    let axi_enable = 0x2;
+    sprint!("Enabling SDRAM ddr_mode={:#x}, axi_enable={:#x}...",
+            ddr_mode,
+            axi_enable,
+    );
+    soc_ctrl::sdram_cfg_axi_ddr_mode_mask(ddr_mode);
+    soc_ctrl::sdram_cfg_axi_enable_mask(axi_enable);
+    sprintln!(" done");
+
     for i in 0..5 {
         let addr = HPC_BOOTRAM_ADDR + i * 4;
         sprint!("Writing 0x6f into {:#x}...", addr);
@@ -112,20 +119,24 @@ fn main() -> ! {
     }
 
     // Configure execute regions for SDRAM
+    let execute_region_pattern = 0x6fff_ffff;
+    sprint!("Configuring execute regions for SDRAM using pattern: {:#x}...",
+            execute_region_pattern,
+    );
+
     let hpc = unsafe { pac::Hpc::steal()};
     hpc.cluster_config()
         .execute_region_length2()
-        .write(|w| unsafe {w.bits(0x6fff_ffff)});
+        .write(|w| unsafe {w.bits(execute_region_pattern)});
+    sprintln!(" done");
 
-    let hpc_core_en = 0xf;
+    // Turn on all HPC cores
+    let hpc_core_en = 0x1;
     sprint!(
         "Enabling core clock(s) for HPC using pattern: {:#x}...",
         hpc_core_en,
     );
-
-    // Turn on all HPC cores
     soc_ctrl::clk1_mask(0b1 << 20);
-
     sprintln!(" done");
 
     loop {
