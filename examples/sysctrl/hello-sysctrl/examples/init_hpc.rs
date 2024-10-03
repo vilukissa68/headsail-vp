@@ -111,6 +111,12 @@ fn main() -> ! {
         sprintln!(" done");
     }
 
+    // Configure execute regions for SDRAM
+    let hpc = unsafe { pac::Hpc::steal()};
+    hpc.cluster_config()
+        .execute_region_length2()
+        .write(|w| unsafe {w.bits(0x6fff_ffff)});
+
     let hpc_core_en = 0xf;
     sprint!(
         "Enabling core clock(s) for HPC using pattern: {:#x}...",
