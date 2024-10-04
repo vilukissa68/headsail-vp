@@ -102,8 +102,8 @@ fn main() -> ! {
     print_example_name!();
 
     // Enable SDRAM
-    let ddr_mode = 0b1 << 1;
-    let axi_enable = 0b1 << 2;
+    let ddr_mode = 0b1;
+    let axi_enable = 0b1 << 1;
     sprint!("Enabling SDRAM ddr_mode={:#x}, axi_enable={:#x}...",
             ddr_mode,
             axi_enable,
@@ -119,7 +119,7 @@ fn main() -> ! {
         sprintln!(" done");
     }
 
-        // Configure execute regions for SDRAM
+    // Configure execute regions for SDRAM
     let execute_region_pattern_2 = 0x7000_0000;
     sprint!("Configuring execute regions for SDRAM using pattern: {:#x}...",
             execute_region_pattern_2,
@@ -156,7 +156,7 @@ fn main() -> ! {
     sprintln!(" done");
 
 
-        // Turn on HPC core #0
+    // Turn on HPC core #0
     let hpc_core_en = 0x1;
     sprint!(
         "Enabling core clock(s) for HPC using pattern: {:#x}...",

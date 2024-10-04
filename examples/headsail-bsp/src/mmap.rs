@@ -145,4 +145,4 @@ pub const TIMER2_ADDR: usize = 0x5_0020;
 pub const TIMER3_ADDR: usize = 0x5_0030;
 
 // Base addres for SDRAM configuration registers
-pub const SDRAM_CONFIG_ADDR: usize = 0xFFD00000;
+pub const SDRAM_CONFIG_ADDR: usize = 0xFFD0_0000;
