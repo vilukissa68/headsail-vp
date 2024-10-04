@@ -121,6 +121,7 @@ hpc_bootram: Memory.MappedMemory @ {
     }
     size: 0x8000
 
+/* Shared SRAM 0 */
 ram_0: Memory.MappedMemory @ {
     sysbus new Bus.BusPointRegistration {address: 0x90080000; cpu: cpu_sysctrl};
     sysbus new Bus.BusPointRegistration {address: 0x190080000; cpu: cpu_hpc0};
@@ -130,6 +131,7 @@ ram_0: Memory.MappedMemory @ {
     }
     size: 0x8000
 
+/* Shared SRAM 1 */
 ram_1: Memory.MappedMemory @ {
     sysbus new Bus.BusPointRegistration {address: 0x900C0000; cpu: cpu_sysctrl};
     sysbus new Bus.BusPointRegistration {address: 0x1900C0000; cpu: cpu_hpc0};
@@ -139,6 +141,7 @@ ram_1: Memory.MappedMemory @ {
     }
     size: 0x8000
 
+/* Shared SRAM 2 */
 ram_2: Memory.MappedMemory @ {
     sysbus new Bus.BusPointRegistration {address: 0x90100000; cpu: cpu_sysctrl};
     sysbus new Bus.BusPointRegistration {address: 0x190100000; cpu: cpu_hpc0};
@@ -148,6 +151,7 @@ ram_2: Memory.MappedMemory @ {
     }
     size: 0x8000
 
+/* Shared SRAM 3 */
 ram_3: Memory.MappedMemory @ {
     sysbus new Bus.BusPointRegistration {address: 0x90140000; cpu: cpu_sysctrl};
     sysbus new Bus.BusPointRegistration {address: 0x190140000; cpu: cpu_hpc0};
