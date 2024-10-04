@@ -131,29 +131,29 @@ ram_0: Memory.MappedMemory @ {
     size: 0x8000
 
 ram_1: Memory.MappedMemory @ {
-    sysbus new Bus.BusPointRegistration {address: 0x90280000; cpu: cpu_sysctrl};
-    sysbus new Bus.BusPointRegistration {address: 0x190280000; cpu: cpu_hpc0};
-    sysbus new Bus.BusPointRegistration {address: 0x190280000; cpu: cpu_hpc1};
-    sysbus new Bus.BusPointRegistration {address: 0x190280000; cpu: cpu_hpc2};
-    sysbus new Bus.BusPointRegistration {address: 0x190280000; cpu: cpu_hpc3}
+    sysbus new Bus.BusPointRegistration {address: 0x900C0000; cpu: cpu_sysctrl};
+    sysbus new Bus.BusPointRegistration {address: 0x1900C0000; cpu: cpu_hpc0};
+    sysbus new Bus.BusPointRegistration {address: 0x1900C0000; cpu: cpu_hpc1};
+    sysbus new Bus.BusPointRegistration {address: 0x1900C0000; cpu: cpu_hpc2};
+    sysbus new Bus.BusPointRegistration {address: 0x1900C0000; cpu: cpu_hpc3}
     }
     size: 0x8000
 
 ram_2: Memory.MappedMemory @ {
-    sysbus new Bus.BusPointRegistration {address: 0x90480000; cpu: cpu_sysctrl};
-    sysbus new Bus.BusPointRegistration {address: 0x190480000; cpu: cpu_hpc0};
-    sysbus new Bus.BusPointRegistration {address: 0x190480000; cpu: cpu_hpc1};
-    sysbus new Bus.BusPointRegistration {address: 0x190480000; cpu: cpu_hpc2};
-    sysbus new Bus.BusPointRegistration {address: 0x190480000; cpu: cpu_hpc3}
+    sysbus new Bus.BusPointRegistration {address: 0x90100000; cpu: cpu_sysctrl};
+    sysbus new Bus.BusPointRegistration {address: 0x190100000; cpu: cpu_hpc0};
+    sysbus new Bus.BusPointRegistration {address: 0x190100000; cpu: cpu_hpc1};
+    sysbus new Bus.BusPointRegistration {address: 0x190100000; cpu: cpu_hpc2};
+    sysbus new Bus.BusPointRegistration {address: 0x190100000; cpu: cpu_hpc3}
     }
     size: 0x8000
 
 ram_3: Memory.MappedMemory @ {
-    sysbus new Bus.BusPointRegistration {address: 0x90680000; cpu: cpu_sysctrl};
-    sysbus new Bus.BusPointRegistration {address: 0x190680000; cpu: cpu_hpc0};
-    sysbus new Bus.BusPointRegistration {address: 0x190680000; cpu: cpu_hpc1};
-    sysbus new Bus.BusPointRegistration {address: 0x190680000; cpu: cpu_hpc2};
-    sysbus new Bus.BusPointRegistration {address: 0x190680000; cpu: cpu_hpc3}
+    sysbus new Bus.BusPointRegistration {address: 0x90140000; cpu: cpu_sysctrl};
+    sysbus new Bus.BusPointRegistration {address: 0x190140000; cpu: cpu_hpc0};
+    sysbus new Bus.BusPointRegistration {address: 0x190140000; cpu: cpu_hpc1};
+    sysbus new Bus.BusPointRegistration {address: 0x190140000; cpu: cpu_hpc2};
+    sysbus new Bus.BusPointRegistration {address: 0x190140000; cpu: cpu_hpc3}
     }
     size: 0x8000
 
