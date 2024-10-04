@@ -1,7 +1,7 @@
 use riscv::interrupt;
 
 use super::{gpio::Gpio, mmap};
-use crate::{mask_u32, unmask_u32, write_u32};
+use crate::{mask_u32, read_u32, unmask_u32, write_u32};
 
 #[repr(u32)]
 pub(crate) enum PadFn {
@@ -95,24 +95,39 @@ impl<const IDX: u32> Pad<IDX> {
     }
 }
 
-pub fn ss_enable(ss_bits: u32) {
+/// Enables subsystems based on the mask. Returns the previous value in register.
+pub fn ss_enable(ss_bits: u32) -> u32 {
+    let pvalue = read_u32(mmap::SS_RESET_EN);
     mask_u32(mmap::SS_RESET_EN, ss_bits);
+    pvalue
 }
 
-pub fn clk1_mask(conf_val: u32) {
+/// Masks the specified bits in clk1 register. Returns the previous value in register.
+pub fn clk1_mask(conf_val: u32) -> u32 {
+    let pvalue = read_u32(mmap::SS_CLK_CTRL1);
     mask_u32(mmap::SS_CLK_CTRL1, conf_val);
+    pvalue
 }
 
-pub fn clk1_unmask(unmask: u32) {
+/// Unmasks the specified bits in clk1 register. Returns the previous value in register.
+pub fn clk1_unmask(unmask: u32) -> u32 {
+    let pvalue = read_u32(mmap::SS_CLK_CTRL1);
     unmask_u32(mmap::SS_CLK_CTRL1, unmask);
+    pvalue
 }
 
-pub fn clk2_mask(conf_val: u32) {
+/// Masks the specified bits in clk2 register. Returns the previous value in register.
+pub fn clk2_mask(conf_val: u32) -> u32 {
+    let pvalue = read_u32(mmap::SS_CLK_CTRL2);
     mask_u32(mmap::SS_CLK_CTRL2, conf_val);
+    pvalue
 }
 
-pub fn clk3_mask(conf_val: u32) {
+/// Masks the specified bits in clk3 register. Returns the previous value in register.
+pub fn clk3_mask(conf_val: u32) -> u32 {
+    let pvalue = read_u32(mmap::SS_CLK_CTRL3);
     mask_u32(mmap::SS_CLK_CTRL3, conf_val);
+    pvalue
 }
 
 /// # Parameters

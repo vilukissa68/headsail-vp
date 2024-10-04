@@ -3,54 +3,12 @@
 
 use core::ptr;
 
-use headsail_bsp::{
-    pac,
-    rt::entry,
-    sdram,
-    sysctrl::{soc_ctrl, udma::Udma},
-    ufmt,
-};
-use hello_sysctrl::{print_example_name, sysctrl_print};
+use headsail_bsp::{pac, rt::entry, sdram, sysctrl::soc_ctrl, ufmt};
+use hello_sysctrl::{print_example_name, sprint, sprintln};
 
 const HPC_BASE_ADDR: usize = 0xFFE00000;
 const BOOTRAM_OFFSET: usize = 0x10000;
 const HPC_BOOTRAM_ADDR: usize = HPC_BASE_ADDR + BOOTRAM_OFFSET;
-
-struct UdmaUart;
-
-impl ufmt::uWrite for UdmaUart {
-    type Error = core::convert::Infallible;
-
-    fn write_str(&mut self, s: &str) -> Result<(), Self::Error> {
-        sysctrl_print(s.as_bytes());
-        Ok(())
-    }
-}
-
-#[macro_export]
-macro_rules! sprint {
-    ($s:expr) => {{
-        ufmt::uwrite!(UdmaUart, $s).unwrap()
-    }};
-    ($($tt:tt)*) => {{
-        ufmt::uwrite!(UdmaUart, $($tt)*).unwrap()
-    }};
-}
-
-#[macro_export]
-macro_rules! sprintln {
-    () => {{
-        use $crate::sprint;
-        sprint!("\r\n");
-    }};
-    // IMPORTANT use `tt` fragments instead of `expr` fragments (i.e. `$($exprs:expr),*`)
-    ($($tt:tt)*) => {{
-        use $crate::sprint;
-        sprint!($($tt)*);
-        sprint!("\r\n");
-    }};
-}
-
 #[entry]
 fn main() -> ! {
     // Enable interconnect, TLP and HPC
@@ -73,40 +31,18 @@ fn main() -> ! {
 
     soc_ctrl::periph_clk_div_set(0);
 
-    let sysctrl = unsafe { pac::Sysctrl::steal() };
-    let udma = Udma(sysctrl.udma());
-
-    // Set the bit length, enable TX, set clk_div
-    let (soc_freq, baud) = (30_000_000, 9600_u32);
-    let clk_div: u16 = (soc_freq / baud) as u16;
-    let _uart = udma.split().uart.enable(|w| {
-        unsafe {
-            w
-                // Use this if using parity bit
-                .parity_ena()
-                .bit(false)
-                .bit_length()
-                .bits(0b11)
-                // Stop bit?
-                .stop_bits()
-                .bit(false)
-                .tx_ena()
-                .bit(true)
-                .rx_ena()
-                .bit(true)
-                .clkdiv()
-                .bits(clk_div)
-        }
-    });
+    // This line is necessary to initialize uDMA UART prints for sprint-macro
+    hello_sysctrl::UdmaUart::init();
 
     print_example_name!();
 
     // Enable SDRAM
     let ddr_mode = 0b1;
     let axi_enable = 0b1 << 1;
-    sprint!("Enabling SDRAM ddr_mode={:#x}, axi_enable={:#x}...",
-            ddr_mode,
-            axi_enable,
+    sprint!(
+        "Enabling SDRAM ddr_mode={:#x}, axi_enable={:#x}...",
+        ddr_mode,
+        axi_enable,
     );
     sdram::sdram_cfg_axi_ddr_mode_mask(ddr_mode);
     sdram::sdram_cfg_axi_enable_mask(axi_enable);
@@ -121,40 +57,42 @@ fn main() -> ! {
 
     // Configure execute regions for SDRAM
     let execute_region_pattern_2 = 0x7000_0000;
-    sprint!("Configuring execute regions for SDRAM using pattern: {:#x}...",
-            execute_region_pattern_2,
+    sprint!(
+        "Configuring execute regions for SDRAM using pattern: {:#x}...",
+        execute_region_pattern_2,
     );
 
-    let hpc = unsafe { pac::Hpc::steal()};
+    let hpc = unsafe { pac::Hpc::steal() };
     hpc.cluster_config()
         .execute_region_length2()
-        .write(|w| unsafe {w.bits(execute_region_pattern_2)});
+        .write(|w| unsafe { w.bits(execute_region_pattern_2) });
     sprintln!(" done");
 
     // Configure execute regions for C2C
     let execute_region_pattern_3 = 0x2000_0000;
-    sprint!("Configuring execute regions for C2C using pattern: {:#x}...",
-            execute_region_pattern_3,
+    sprint!(
+        "Configuring execute regions for C2C using pattern: {:#x}...",
+        execute_region_pattern_3,
     );
 
-    let hpc = unsafe { pac::Hpc::steal()};
+    let hpc = unsafe { pac::Hpc::steal() };
     hpc.cluster_config()
         .execute_region_length3()
-        .write(|w| unsafe {w.bits(execute_region_pattern_3)});
+        .write(|w| unsafe { w.bits(execute_region_pattern_3) });
     sprintln!(" done");
 
     // Configure execute regions for SRAM
     let execute_region_pattern_4 = 0x10_0000;
-    sprint!("Configuring execute regions for SRAM using pattern: {:#x}...",
-            execute_region_pattern_4,
+    sprint!(
+        "Configuring execute regions for SRAM using pattern: {:#x}...",
+        execute_region_pattern_4,
     );
 
-    let hpc = unsafe { pac::Hpc::steal()};
+    let hpc = unsafe { pac::Hpc::steal() };
     hpc.cluster_config()
         .execute_region_length4()
-        .write(|w| unsafe {w.bits(execute_region_pattern_4)});
+        .write(|w| unsafe { w.bits(execute_region_pattern_4) });
     sprintln!(" done");
-
 
     // Turn on HPC core #0
     let hpc_core_en = 0x1;
