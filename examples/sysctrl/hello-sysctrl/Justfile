@@ -6,7 +6,13 @@ run-asic example *args:
         --config "target.riscv32im-unknown-none-elf.runner = 'riscv32-unknown-elf-gdb -x connect-and-load.gdb'" \
         run -Fasic --example {{example}} {{args}}
 
+run-asic-macos example *args:
+    cargo \
+        --config "target.riscv32im-unknown-none-elf.runner = 'riscv64-elf-gdb -x connect-and-load.gdb'" \
+        run -Fasic --example {{example}} {{args}}
+
 clippy-asic *args:
     cargo clippy -Fasic --examples -- -Dclippy::style
 
 alias asic := run-asic
+alias asic-macos := run-asic-macos
