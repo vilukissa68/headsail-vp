@@ -197,6 +197,7 @@ fn main() -> ! {
         "SOC_CTRL_CLK_CTRL1",
     );
 
+    sprintln!("Bootloader (init_hpc) done. Looping in place.");
     loop {
         continue;
     }
