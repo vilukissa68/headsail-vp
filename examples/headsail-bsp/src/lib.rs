@@ -6,6 +6,7 @@ pub mod apb_uart;
 pub mod sprintln;
 #[cfg(feature = "sysctrl")]
 pub mod sysctrl;
+pub mod sdram;
 pub mod timer {
     /*!
      * Timer module for Headsail. When running on the Renode

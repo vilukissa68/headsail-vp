@@ -115,14 +115,6 @@ pub fn clk3_mask(conf_val: u32) {
     mask_u32(mmap::SS_CLK_CTRL3, conf_val);
 }
 
-pub fn sdram_cfg_axi_ddr_mode_mask(conf_val: u32) {
-    mask_u32(mmap::SDRAM_CFG_AXI_DDR_MODE_ADDR, conf_val);
-}
-
-pub fn sdram_cfg_axi_enable_mask(conf_val: u32) {
-    mask_u32(mmap::SDRAM_CFG_AXI_ENABLE_ADDR, conf_val);
-}
-
 /// # Parameters
 ///
 /// * `div` - value to set the `div` register to. Divider will be 1 << `div`
