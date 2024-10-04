@@ -5,7 +5,7 @@ This build is only tested on python3.11.
 ## Installing TVM
 Get sources
 ``` sh
-git clone --recursive --depth=1 https://github.com/vilukissa68/tvm-headsail/ tvm
+git clone --recursive --depth=1 https://github.com/soc-hub-fi/headsail-tvm tvm
 cd tvm
 mkdir build
 ```
