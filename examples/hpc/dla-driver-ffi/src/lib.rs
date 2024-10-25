@@ -4,6 +4,7 @@
 #![no_std]
 #![no_main]
 
+#[macro_use]
 extern crate alloc;
 use alloc::vec::Vec;
 use core::ffi::{c_char, CStr};
@@ -20,7 +21,6 @@ unsafe fn ffi_data_import(
     input_height: usize,
     input_width: usize,
     input_order: *const c_char,
-    input_zero: i16,
     kernel_data: *const i8,
     kernel_amount: usize,
     kernel_channels: usize,
@@ -31,11 +31,6 @@ unsafe fn ffi_data_import(
     let mut input_data: Vec<i8> = unsafe {
         slice::from_raw_parts(input_data, input_channels * input_height * input_width).to_vec()
     };
-
-    // Input zero point shift
-    for x in input_data.iter_mut() {
-        *x = i16::clamp((*x) as i16 + input_zero, i8::MIN as i16, i8::MAX as i16) as i8
-    }
 
     let input_order_string = unsafe { CStr::from_ptr(input_order).to_str().unwrap_unchecked() };
     let input_tensor = unsafe {
@@ -111,7 +106,6 @@ pub unsafe extern "C" fn dla_conv2d(
             input_height,
             input_width,
             input_order,
-            0,
             kernel_data,
             kernel_amount,
             kernel_channels,
@@ -176,7 +170,6 @@ pub unsafe extern "C" fn dla_conv2d_relu(
             input_height,
             input_width,
             input_order,
-            0,
             kernel_data,
             kernel_amount,
             kernel_channels,
@@ -247,7 +240,6 @@ pub unsafe extern "C" fn dla_conv2d_bias(
             input_height,
             input_width,
             input_order,
-            0,
             kernel_data,
             kernel_amount,
             kernel_channels,
@@ -321,7 +313,6 @@ pub unsafe extern "C" fn dla_conv2d_bias_relu(
             input_height,
             input_width,
             input_order,
-            0,
             kernel_data,
             kernel_amount,
             kernel_channels,
@@ -379,10 +370,10 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d(
     kernel_data: *const i8,
     bias: *const i32,
     output: *mut i8,
-    output_scale: *const f32,
-    output_zero: *const i32,
     input_scale: *const f32,
     input_zero: *const i32,
+    output_scale: *const f32,
+    output_zero: *const i32,
     input_channels: usize,
     input_height: usize,
     input_width: usize,
@@ -422,7 +413,6 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d(
             input_height,
             input_width,
             input_order,
-            (-1 * input_zero[0]) as i16,
             kernel_data,
             kernel_amount,
             kernel_channels,
@@ -448,7 +438,7 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d(
             right: pad_right,
             left: pad_left,
             bottom: pad_bottom,
-            padding_value: pad_value,
+            padding_value:0, // conv_zero[0],
         }),
         Some(Stride {
             x: stride_x,
@@ -468,11 +458,12 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d(
     rescale(
         &mut result,
         u32::pow(2, pp_clip) as f32,
-        input_zero[0],
-        output_zero[0],
+        0, //input_zero[0],
+        0, //output_zero[0],
         input_scale[0],
         output_scale,
     );
+
 
     let input_order_string = unsafe { CStr::from_ptr(input_order).to_str().unwrap_unchecked() };
 
@@ -481,6 +472,93 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d(
             result
                 .to_buffer_with_order(Order3::try_from(input_order_string).unwrap_unchecked())
                 .as_mut_ptr(),
+            output,
+            result.get_size(),
+        )
+    };
+}
+
+/// # Arguments
+///
+/// * `bias` - Buffer containing bias data. NOTE: Bias is actually i16 in hardware, here we use 32 for TVM compatibility
+#[no_mangle]
+pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
+    input_data: *const i8,
+    kernel_data: *const i8,
+    bias: *const i32,
+    output: *mut i32,
+    input_channels: usize,
+    input_height: usize,
+    input_width: usize,
+    input_order: *const c_char,
+    kernel_amount: usize,
+    kernel_channels: usize,
+    kernel_height: usize,
+    kernel_width: usize,
+    kernel_order: *const c_char,
+    bias_length: usize,
+    pad_top: u32,
+    pad_right: u32,
+    pad_left: u32,
+    pad_bottom: u32,
+    pad_value: i32,
+    stride_x: u32,
+    stride_y: u32,
+    mac_clip: u32,
+    pp_clip: u32,
+) {
+    let (input_tensor, kernels_tensor) = unsafe {
+        ffi_data_import(
+            input_data,
+            input_channels,
+            input_height,
+            input_width,
+            input_order,
+            kernel_data,
+            kernel_amount,
+            kernel_channels,
+            kernel_height,
+            kernel_width,
+            kernel_order,
+        )
+    };
+
+    let bias: Vec<i16> = unsafe {
+        slice::from_raw_parts(bias as *const i32, bias_length)
+            .into_iter()
+            .map(|x| (*x).clamp(i16::MIN as i32, i16::MAX as i32) as i16)
+            .collect()
+    };
+
+
+    let mut result: Tensor3<i8> = conv2d_bias(
+        input_tensor,
+        kernels_tensor,
+        bias,
+        Some(Padding {
+            top: pad_top,
+            right: pad_right,
+            left: pad_left,
+            bottom: pad_bottom,
+            padding_value: 0, //-1 * conv_zero[0],
+        }),
+        Some(Stride {
+            x: stride_x,
+            y: stride_y,
+        }),
+        Some(mac_clip),
+        Some(pp_clip),
+        None,
+    );
+
+    let input_order_string = unsafe { CStr::from_ptr(input_order).to_str().unwrap_unchecked() };
+
+    let mut res_i32: Vec<i32> = result.to_buffer_with_order(Order3::try_from(input_order_string).unwrap_unchecked())
+                                       .iter().map(|x: &i8| (*x as f32 * u32::pow(2, pp_clip) as f32) as i32).collect();
+
+    unsafe {
+        core::ptr::copy_nonoverlapping(
+            res_i32.as_mut_ptr(),
             output,
             result.get_size(),
         )

@@ -85,7 +85,7 @@ def run_kws():
     for (i, filename) in enumerate(df["filename"]):
         data = read_kws_file(KWS_DATA_DIR / filename)
         send_stimulus(data, df["class"][i])
-        predictions.append(wait_for_result())
+        predictions.append(np.argmax(wait_for_result()))
 
     accuracy_report(df["class"], predictions)
 
@@ -156,6 +156,7 @@ def run_ic():
         image = np.rollaxis(image, 0, 3)
         image = image - 128
         image = np.reshape(image, (3072))
+        print(image)
         label = data[b'labels'][i]
         send_stimulus(image.tobytes(), label)
 
