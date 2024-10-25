@@ -1339,7 +1339,7 @@ class DlaMac:
 #     API     #
 
 def write(request, dla):
-    #print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
+    print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
     request.absolute = request.absolute & 0xFFFFFFFF # Normalize address to global address space by removing possible HPC external bit
     if int(request.absolute) >= DLA_ADDR:
         dla.set_register(request.offset, 0, 32, request.value, preserve_register=False)
@@ -1357,7 +1357,7 @@ def read(request, dla):
         request.value = tmp
 
     request.absolute = original_absolute # Answer to original address
-    #print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
+    print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
 
 if __name__ == "__main__":
     print("Running as independent module")
