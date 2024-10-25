@@ -156,7 +156,6 @@ def run_ic():
         image = np.rollaxis(image, 0, 3)
         image = image - 128
         image = np.reshape(image, (3072))
-        print(image)
         label = data[b'labels'][i]
         send_stimulus(image.tobytes(), label)
 
