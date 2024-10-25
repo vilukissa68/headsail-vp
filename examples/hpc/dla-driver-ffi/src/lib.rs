@@ -502,6 +502,8 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
         )
     };
 
+    // NOTE:(20241025 vaino-waltteri.granat@tuni.fi) TVM expects 32-bit bias, but DLA only support 16-bit bias, so we clip the incoming bias
+    // to range suitable for DLA
     let bias: Vec<i16> = unsafe {
         slice::from_raw_parts(bias as *const i32, bias_length)
             .into_iter()
@@ -519,7 +521,7 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
             right: pad_right,
             left: pad_left,
             bottom: pad_bottom,
-            padding_value: 0, //-1 * conv_zero[0],
+            padding_value: 0,
         }),
         Some(Stride {
             x: stride_x,
@@ -532,6 +534,12 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
 
     let input_order_string = unsafe { CStr::from_ptr(input_order).to_str().unwrap_unchecked() };
 
+    // TVM requantization and clip
+    // NOTE:(20240927 vaino-waltteri.granat@tuni.fi) on DLA clipping behaviour with TVM.
+    // DLA's conv2d arithmetic is done at 16 bit width, but the output of the DLA is limited to 8 bits.
+    // To comply with TVM's expected value range our solution is to bit shift/clip the 16-bit result of
+    // conv2d by 8 bits and shift if back in the driver. This causes some amount of data loss due to
+    // the lost granularity of the values. The clipping amount is set by the pp_clip argument.
     let mut res_i32: Vec<i32> = result.to_buffer_with_order(Order3::try_from(input_order_string).unwrap_unchecked())
                                        .iter().map(|x: &i8| (*x as f32 * u32::pow(2, pp_clip) as f32) as i32).collect();
 
