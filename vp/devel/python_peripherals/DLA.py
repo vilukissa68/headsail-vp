@@ -17,14 +17,14 @@ MEM_SIZE = 0x68
 REG_WIDTH = 32
 
 # Status register
-STATUS_ADDR = 0x0 
+STATUS_ADDR = 0x0
 BUF_DONE_OFFSET = 0
 MAC_DONE_OFFSET = 1
 PP_DONE_OFFSET = 2
 DMA_IRQ_OFFSET = 3
 
 # Control register
-CTRL_ADDR = 0x4 
+CTRL_ADDR = 0x4
 CPU_FE_OFFSET = 0
 HP_RST_OFFSET = 4
 SW_IRQ_OFFSET = 8
@@ -77,7 +77,7 @@ BUF_PAD_LEFT_OFFSET = 12
 BUF_PAD_VALUE_OFFSET = 16
 
 # Buffer stride
-BUF_STRIDE = 0x24 
+BUF_STRIDE = 0x24
 BUF_STRIDE_X_OFFSET = 0
 BUF_STRIDE_Y_OFFSET = 16
 
@@ -907,7 +907,7 @@ class Dla:
                     column_wise.append(data[idx])
 
         column_wise = reshape(column_wise, (channels, height, width))
-        print_matrix(column_wise[0], "flat input:", pformat="decimal")
+        #print_matrix(column_wise[0], "flat input:", pformat="decimal")
         return channels, width, height, column_wise
 
     def get_bias(self, values_to_read):
@@ -1041,7 +1041,7 @@ class Dla:
 
 
         # Pack output according to clipping
-        output_bit_width = self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) if self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) > 0 else 32
+        #output_bit_width = self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) if self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) > 0 else 32
 
         if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1):
             for i, r in enumerate(input_data):
@@ -1207,7 +1207,7 @@ class DlaMac:
                         center_x = center_x_0 + (w * stride[0])
                         range_x = [center_x + k * dilation[0] for k in range(-w_kernel_max_offset, w_kernel_max_offset)]
 
-                    # Sum each channel with current kernel
+                        # Sum each channel with current kernel
                     channel_sum = 0
                     for (channel_idx, channel_data) in enumerate(padded_input):
 
@@ -1339,7 +1339,7 @@ class DlaMac:
 #     API     #
 
 def write(request, dla):
-    print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
+    #print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
     request.absolute = request.absolute & 0xFFFFFFFF # Normalize address to global address space by removing possible HPC external bit
     if int(request.absolute) >= DLA_ADDR:
         dla.set_register(request.offset, 0, 32, request.value, preserve_register=False)
@@ -1357,7 +1357,7 @@ def read(request, dla):
         request.value = tmp
 
     request.absolute = original_absolute # Answer to original address
-    print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
+    #print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
 
 if __name__ == "__main__":
     print("Running as independent module")
