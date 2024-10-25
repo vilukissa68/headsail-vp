@@ -37,7 +37,7 @@ fn validate_conv2d_tiny() -> bool {
     let wgt_tensor: Tensor4<i8> = Tensor4::from_data_buffer(2, 3, 3, 3, wgt, Order4::HWKC).unwrap();
     let dout_tensor =
         generate_output_tensor(&din_tensor, &wgt_tensor, dout_i32, Order3::HWC, None, None);
-    let mut output =
+    let mut output: Tensor3<i32> =
         dla_driver::layers::conv2d(din_tensor, wgt_tensor, None, None, None, None, None);
     output.permute(Order3::HWC);
 
