@@ -1041,19 +1041,17 @@ class Dla:
 
 
         # Pack output according to clipping
-        #output_bit_width = self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) if self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) > 0 else 32
+        output_bit_width = self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) if self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) > 0 else 32
 
         if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1):
             for i, r in enumerate(input_data):
                 print_matrix(input_data[i], "{} INPUT:".format(i))
-
 
             print("Mac not enabled")
             # TODO: This might be not correct, make sure S_CHANNELS work like this
             padding_value = cast_long_to_signed_byte(self.get_register(BUF_PAD, BUF_PAD_VALUE_OFFSET, 8))
             res = self.mac.conv2d(input_data, kernel_data, padding, dilation, stride, padding_value=padding_value)
 
-            i = 0
             # Clip results
             res = dla.mac_clip(res)
             for i, r in enumerate(res):
@@ -1084,20 +1082,18 @@ class Dla:
                 print("RELU")
                 res = execute_for_all_elements(self.mac.relu_native, res)
 
-            output_bit_width = 32 - self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5) # Pack output according to clipping
+        # Prevent overflowing i16 range
+        if output_bit_width == 32:
+            self.write_output(res, 32)
+        else:
+            res = execute_for_all_elements(clip_value_to_i16, res)
+            # Clipping and rounding
+            res = dla.pp_clip(res)
+            res = execute_for_all_elements(rounding, res)
+            for (i, r) in enumerate(res):
+                print_matrix(r, "{} PP:".format(i))
 
-            # Prevent overflowing i16 range
-            if output_bit_width == 32:
-                self.write_output(res, 32)
-            else:
-                res = execute_for_all_elements(clip_value_to_i16, res)
-                # Clipping and rounding
-                res = dla.pp_clip(res)
-                res = execute_for_all_elements(rounding, res)
-                for (i, r) in enumerate(res):
-                    print_matrix(r, "{} PP:".format(i))
-
-                self.write_output(res, 8)
+            self.write_output(res, 8)
 
 
 
