@@ -856,12 +856,6 @@ class Dla:
                         column_wise.append(data[idx])
 
         column_wise = reshape(column_wise, (filter_amount, input_channels, height, width))
-
-        # Print all kernels
-        # for k in range(0, filter_amount):
-        #     for c in range(0, input_channels):
-        #         print_matrix(column_wise[k][c], "flat kernel K{} C{}:".format(k, c), pformat="decimal")
-
         return filter_amount, s_channels, width, height, column_wise
 
     def get_input_data(self):
@@ -1089,8 +1083,6 @@ class Dla:
             if self.get_register(HANDSHAKE, HANDSHAKE_ACTIVE_ENABLE_OFFSET, 1):
                 print("RELU")
                 res = execute_for_all_elements(self.mac.relu_native, res)
-                # for (i, r) in enumerate(res):
-                #     print_matrix(r, "{} ReLU:".format(i))
 
             output_bit_width = 32 - self.get_register(PP_CTRL, PP_CLIP_OFFSET, 5) # Pack output according to clipping
 
@@ -1191,9 +1183,6 @@ class DlaMac:
         for channel in input_img:
             padded_input.append(self.pad_matrix(channel, padding, padding_value=padding_value))
 
-        # for (i, r) in enumerate(padded_input):
-        #     print_matrix(r, "{} Padded:".format(i))
-
         # Apply each kernel to input_img
         for (kernel_idx, kernel) in enumerate(kernels):
             if w_middle_zero:
@@ -1213,10 +1202,6 @@ class DlaMac:
                 else:
                     center_y = center_y_0 + (h * stride[1]) # Calculate from top left of center
                     range_y = [center_y + k * dilation[1] for k in range(-h_kernel_max_offset, h_kernel_max_offset)]
-                # print("Kernel_max_offset y:", h_kernel_max_offset)
-                # print("Center y_0:", center_y_0)
-                # print("Center y:", center_y)
-                # print("Range y:", range_y)
 
                 for w in range(w_out):
                     if w_middle_zero:
@@ -1225,10 +1210,6 @@ class DlaMac:
                     else:
                         center_x = center_x_0 + (w * stride[0])
                         range_x = [center_x + k * dilation[0] for k in range(-w_kernel_max_offset, w_kernel_max_offset)]
-                    # print("Kernel_max_offset x:", w_kernel_max_offset)
-                    # print("Center x_0:", center_x_0)
-                    # print("Center x:", center_x)
-                    # print("Range x:", range_x)
 
                         # Sum each channel with current kernel
                     channel_sum = 0
@@ -1241,9 +1222,6 @@ class DlaMac:
                         for mat_y in range(len(range_y)):
                             for mat_x in range(len(range_x)):
                                 mat_sub[mat_y][mat_x] = channel_data[range_y[mat_y]][range_x[mat_x]]
-
-                        # print_matrix(mat_sub, "Sub matrix")
-                        # print_matrix(kernel[channel_idx], "Sub kernel")
 
                         channel_res = self.mat_sum(self.matmul_element_wise(mat_sub, kernel[channel_idx]))
                         channel_sum += channel_res
@@ -1365,7 +1343,7 @@ class DlaMac:
 #     API     #
 
 def write(request, dla):
-    #print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
+    print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
     request.absolute = request.absolute & 0xFFFFFFFF # Normalize address to global address space by removing possible HPC external bit
     if int(request.absolute) >= DLA_ADDR:
         dla.set_register(request.offset, 0, 32, request.value, preserve_register=False)
@@ -1383,7 +1361,7 @@ def read(request, dla):
         request.value = tmp
 
     request.absolute = original_absolute # Answer to original address
-    #print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
+    print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
 
 if __name__ == "__main__":
     print("Running as independent module")
