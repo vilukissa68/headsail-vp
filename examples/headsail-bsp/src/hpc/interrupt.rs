@@ -1,9 +1,9 @@
 use crate::HartId;
-use riscv_pac::PriorityNumber;
+use riscv_pac::{result::Error, PriorityNumber};
 
 // HPC-SS specifies that priorities go up to 7
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-#[repr(u8)]
+#[repr(usize)]
 pub enum Priority {
     P0 = 0,
     P1 = 1,
@@ -16,20 +16,29 @@ pub enum Priority {
 }
 
 unsafe impl PriorityNumber for Priority {
-    const MAX_PRIORITY_NUMBER: u8 = 7;
+    const MAX_PRIORITY_NUMBER: usize = 7;
 
     #[inline]
-    fn number(self) -> u8 {
+    fn number(self) -> usize {
         self as _
     }
 
     #[inline]
-    fn from_number(number: u8) -> Result<Self, u8> {
-        if number > Self::MAX_PRIORITY_NUMBER {
-            Err(number)
-        } else {
-            // SAFETY: valid priority number
-            Ok(unsafe { core::mem::transmute::<u8, Priority>(number) })
+    fn from_number(number: usize) -> Result<Self, Error> {
+        match number {
+            0 => Ok(Priority::P0),
+            1 => Ok(Priority::P1),
+            2 => Ok(Priority::P2),
+            3 => Ok(Priority::P3),
+            4 => Ok(Priority::P4),
+            5 => Ok(Priority::P5),
+            6 => Ok(Priority::P6),
+            7 => Ok(Priority::P7),
+            _ => Err(Error::IndexOutOfBounds {
+                index: number,
+                min: 0,
+                max: Self::MAX_PRIORITY_NUMBER,
+            }),
         }
     }
 }

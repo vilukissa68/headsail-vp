@@ -78,6 +78,11 @@ impl<const BASE_ADDR: usize> ApbUart<BASE_ADDR> {
                 );
             }
         }
+
+        #[cfg(feature = "panic-apb-uart0")]
+        unsafe {
+            crate::ufmt_panic::PANIC_UART_IS_INIT = true
+        };
         Self {}
     }
 
