@@ -1,7 +1,6 @@
 use alloc::vec::*;
 use core::ffi::c_char;
-#[macro_use]
-use ndarray::{Array, Array3, s};
+use ndarray::{s, Array, Array3};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Order3 {

@@ -76,7 +76,8 @@ unsafe fn ffi_data_import(
 /// Initializes DLA by setting up necessary heap allocator from headsail-bsp. This should be called only once in the program.
 #[no_mangle]
 pub unsafe extern "C" fn dla_init() {
-    headsail_bsp::init_alloc();
+    // SAFETY: `init_heap` must be called once only
+    unsafe { init_heap() };
 }
 
 /// Executes Conv2D on DLA with given parameters and writes result to output buffer.
