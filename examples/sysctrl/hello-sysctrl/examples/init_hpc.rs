@@ -185,6 +185,8 @@ fn main() -> ! {
         r3start,
         r3start + r3len
     );
+    // TODO: should also configure cached region length (cachedregionlength1) for C2C but it's not
+    // available on the auto-generated memory map as of now
 
     // Configure execute region for SRAM. Note that there are multiple SRAMs with some holes in
     // between.
@@ -210,6 +212,8 @@ fn main() -> ! {
         r4start,
         r4start + r4len
     );
+    // TODO: should also configure cached region length (cachedregionlength2) for SRAM but it's not
+    // available on the auto-generated memory map as of now
 
     // Turn on HPC core #0
     let hpc_core_en = 0b1 << 20;
