@@ -193,6 +193,7 @@ apb_uart_0: UART.NS16550 @ {
     sysbus new Bus.BusPointRegistration {address: 0x1FFF00000; cpu: cpu_hpc3}
     }
     wideRegisters: true
+    IRQ -> plic@11
 
 apb_uart_1: UART.NS16550 @ {
     sysbus new Bus.BusPointRegistration {address: 0xFFF01000; cpu: cpu_sysctrl};
@@ -202,6 +203,7 @@ apb_uart_1: UART.NS16550 @ {
     sysbus new Bus.BusPointRegistration {address: 0x1FFF01000; cpu: cpu_hpc3}
     }
     wideRegisters: true
+    IRQ -> plic@12
 
 /*
  * This area of memory if only accessible to HPC and not for Sysctrl
@@ -246,6 +248,8 @@ apb_spi_master_0: SPI.STM32SPI @ {
     sysbus new Bus.BusPointRegistration {address: 0x1FFF02000; cpu: cpu_hpc2};
     sysbus new Bus.BusPointRegistration {address: 0x1FFF02000; cpu: cpu_hpc3}
     }
+    // There is also another interrupt connected at plic@14
+    IRQ -> plic@13
 
 apb_spi_master_1: SPI.STM32SPI @ {
     sysbus new Bus.BusPointRegistration {address: 0xFFF03000; cpu: cpu_sysctrl};
@@ -254,6 +258,8 @@ apb_spi_master_1: SPI.STM32SPI @ {
     sysbus new Bus.BusPointRegistration {address: 0x1FFF03000; cpu: cpu_hpc2};
     sysbus new Bus.BusPointRegistration {address: 0x1FFF03000; cpu: cpu_hpc3}
     }
+    // There is also another interrupt connected at plic@16
+    IRQ -> plic@15
 
 apb_gpio: GPIOPort.CC2538_GPIO @ {
     sysbus new Bus.BusPointRegistration {address: 0xFFF04000; cpu: cpu_sysctrl};
