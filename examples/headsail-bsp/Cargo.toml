@@ -63,7 +63,12 @@ required-features = ["alloc", "rt", "sdram"]
 [[example]]
 name = "uart0_read_irq"
 path = "examples/uart0_read_irq.rs"
-required-features = ["hpc-rt", "sprint-apb-uart0"]
+required-features = [
+    "hpc-rt",
+    "sprint-apb-uart0",
+    # Restricted to VP currently, as the PLIC driver isn't available for ASIC yet
+    "vp",
+]
 
 [[example]]
 name = "sprintln"
