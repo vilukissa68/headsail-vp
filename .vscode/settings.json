@@ -11,4 +11,5 @@
     "rust-analyzer.cargo.extraArgs": [
         "--examples"
     ],
+    "rust-analyzer.check.command": "clippy",
 }

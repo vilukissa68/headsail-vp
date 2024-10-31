@@ -138,12 +138,12 @@ impl<const BASE_ADDR: usize> ApbUart<BASE_ADDR> {
     #[inline]
     pub fn getc(&mut self) -> u8 {
         // Wait for data to become ready
-        while unsafe { read_u8(UART0_ADDR + crate::mmap::UART_LSR_OFS) } & UART_LSR_RX_FIFO_VALID
+        while unsafe { read_u8(BASE_ADDR + crate::mmap::UART_LSR_OFS) } & UART_LSR_RX_FIFO_VALID
             == 0
         {}
 
         // SAFETY: UART0_ADDR is 4-byte aligned
-        unsafe { read_u8(UART0_ADDR) }
+        unsafe { read_u8(BASE_ADDR) }
     }
 
     #[cfg(feature = "alloc")]

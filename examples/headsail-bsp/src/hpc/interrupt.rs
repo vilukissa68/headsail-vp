@@ -60,11 +60,15 @@ riscv_peripheral::clint_codegen!(
     ],
 );
 
-// ???: ASIC developer beware
+// ???: ASIC developer beware, this PLIC implementation works for VP only
 //
 // Some addresses were tightened to save space for Headsail's PLIC. That means that the ASIC will be
 // different from the sim, and that this `riscv_peripheral` provided driver won't work as-is on
 // ASIC, while it works perfectly well with the sim.
+//
+// TODO: fork riscv_peripheral and space out the PLIC codegen to match with ASIC. Then pick the
+// right implementation conditionally.
+#[cfg(feature = "vp")]
 riscv_peripheral::plic_codegen!(
     base 0x80000,
     ctxs [
