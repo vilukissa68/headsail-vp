@@ -3,6 +3,8 @@ use crate::tensor4::{Order4, Tensor4};
 use crate::{Dla, InputSize, KernelSize, LayerConfig, Padding, SimdBitMode, Stride};
 use alloc::vec::Vec;
 
+use headsail_bsp::sprintln;
+
 use crate::utils::{calculate_conv2d_out_param_dim, get_banks_for_layer};
 
 // Define a trait for output handling
@@ -178,6 +180,73 @@ pub fn conv2d_bias_relu<T: DlaOutput + Clone>(
         simd_mode,
     )
 }
+
+pub fn grouped_conv2d<T: DlaOutput + Clone>(
+    input: Tensor3<i8>,
+    kernels: Tensor4<i8>,
+    bias: Vec<i16>,
+    padding: Option<Padding>,
+    stride: Option<Stride>,
+    mac_clip: Option<u32>,
+    pp_clip: Option<u32>,
+    simd_mode: Option<SimdBitMode>,
+    groups: usize
+) -> Tensor3<T> {
+    let total_in_channels = input.channels();
+    let total_out_channels = kernels.channels();
+    let group_in_channels = total_in_channels / groups;
+    let group_out_channels = kernels.kernels();
+
+    sprintln!("total_in_channels: {}", total_in_channels);
+    sprintln!("total_out_channels: {}", total_out_channels);
+    sprintln!("group_in_channels: {}", group_in_channels);
+    sprintln!("group_in_k_channels: {}", kernels.channels());
+    sprintln!("group_out_channels: {}", group_out_channels);
+
+    // Placeholder for the output tensor
+    let mut output_tensors = Vec::new();
+
+    for g in 0..groups {
+        sprintln!("G: {}", g);
+        let input_group = input.slice_channels(g * group_in_channels..(g + 1)*group_in_channels);
+        sprintln!("Input sliced");
+        sprintln!("{} {} {}", input_group.dimensions().0, input_group.dimensions().1, input_group.dimensions().2);
+
+        let kernels_group = kernels.slice_channels(g * group_in_channels..(g + 1)*group_in_channels);
+        sprintln!("Kernels sliced");
+        sprintln!("{} {} {} {}", kernels_group.dimensions().0, kernels_group.dimensions().1, kernels_group.dimensions().2, kernels_group.dimensions().3);
+
+        let bias_group = bias[g * group_out_channels..(g + 1) * group_out_channels].to_vec();
+        sprintln!("Bias sliced, len:{}", bias_group.len());
+
+        sprintln!("Running layer");
+        let output_group = run_layers(
+            input_group,
+            kernels_group,
+            Some(bias_group),
+            true,
+            false,
+            padding.clone(),
+            stride.clone(),
+            mac_clip,
+            pp_clip,
+            simd_mode,
+        );
+
+        output_tensors.push(output_group);
+    }
+
+    // Find channel axis
+    //let axis = output_tensors[0].
+
+    // Concatenate the output tensors along the channel dimension
+    let res = Tensor3::concat(output_tensors, 2);
+
+    sprintln!("Res shape: {} {} {}", res.dimensions().0, res.dimensions().1, res.dimensions().2);
+    res
+
+}
+
 
 fn run_layers<T: DlaOutput + Clone>(
     input: Tensor3<i8>,

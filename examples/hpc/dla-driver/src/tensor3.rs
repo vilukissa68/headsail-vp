@@ -183,6 +183,41 @@ impl<T: Clone> Tensor3<T> {
         self.order
     }
 
+    /// Concate vector of Tensor3 in order to single Tensor3
+    pub fn concat(tensors: Vec<Tensor3<T>>, axis: usize) -> Tensor3<T> {
+        let target_order = tensors[0].order();
+        let arrays: Vec<Array3<T>> = tensors.into_iter().map(|t| t.data).collect();
+        // Concatenate along the specified axis
+        let stacked = concatenate(Axis(axis), &arrays.iter().map(|a| a.view()).collect::<Vec<_>>())
+            .expect("Concatenation failed due to incompatible shapes");
+
+        Tensor3 {
+            data: stacked,
+            order: target_order,
+        }
+    }
+
+    pub fn slice_channels(&self, c_range: core::ops::Range<usize>) -> Tensor3<T> {
+        // Slice only along the channels axis, keeping height and width ranges as `..` (full range)
+        let channel_axis = match self.order {
+            Order3::CHW | Order3::CWH => 0,
+            Order3::HCW | Order3::WCH => 1,
+            Order3::HWC | Order3::WHC => 2,
+        };
+
+        let sliced_data = match channel_axis {
+            0 => self.data.slice(s![c_range, .., ..]).to_owned(),
+            1 => self.data.slice(s![.., c_range, ..]).to_owned(),
+            2 => self.data.slice(s![.., .., c_range]).to_owned(),
+            _ => unreachable!(),
+        };
+
+        // Return a new Tensor3 with the sliced data
+        Tensor3 {
+            data: sliced_data,
+            order: self.order.clone(),
+        }
+    }
     /// Sets a new order for the array
     pub fn permute(&mut self, order: Order3) {
         // Early return if already in order
