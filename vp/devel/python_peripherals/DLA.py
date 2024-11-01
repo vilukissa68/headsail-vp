@@ -907,7 +907,7 @@ class Dla:
                     column_wise.append(data[idx])
 
         column_wise = reshape(column_wise, (channels, height, width))
-        #print_matrix(column_wise[0], "flat input:", pformat="decimal")
+        print_matrix(column_wise[0], "flat input:", pformat="decimal")
         return channels, width, height, column_wise
 
     def get_bias(self, values_to_read):
@@ -1207,7 +1207,7 @@ class DlaMac:
                         center_x = center_x_0 + (w * stride[0])
                         range_x = [center_x + k * dilation[0] for k in range(-w_kernel_max_offset, w_kernel_max_offset)]
 
-                        # Sum each channel with current kernel
+                    # Sum each channel with current kernel
                     channel_sum = 0
                     for (channel_idx, channel_data) in enumerate(padded_input):
 

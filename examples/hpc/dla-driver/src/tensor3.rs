@@ -261,6 +261,7 @@ pub fn rescale(
         channel_slice.map_inplace(|x| {
              let value = (input_scale / scale) * (*x as f32 * pre_scale - input_zero as f32)
                  + output_zero as f32;
+            *x = value.clamp(i8::MIN as f32, i8::MAX as f32) as i8
         });
     }
 }
