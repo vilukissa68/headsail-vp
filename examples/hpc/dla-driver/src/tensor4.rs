@@ -279,20 +279,24 @@ impl<T: Clone> Tensor4<T> {
 
     pub fn slice_channels(&self, c_range: core::ops::Range<usize>) -> Tensor4<T> {
         // Determine the index of the channel dimension based on the tensor order
-        let channel_axis = match self.order {
-            Order4::CKHW | Order4::CHWK | Order4::CHKW |
-            Order4::CWHK | Order4::CWKH | Order4::CKWH => 0, // C is the first dimension
-            Order4::KCHW | Order4::KCWH | Order4::HCKW |
-            Order4::HCWK | Order4::WCKH | Order4::WCHK => 1, // C is the second dimension
-            Order4::HKCW | Order4::KHCW | Order4::HWCK |
-            Order4::WHCK | Order4::WKCH | Order4::KWCH => 2, // C is the third dimension
-            Order4::KHWC | Order4::KWHC | Order4::HKWC |
-            Order4::HWKC | Order4::WKHC | Order4::WHKC => 3, // C is the fourth dimension
+        let kernel_axis = match self.order {
+            Order4::KCHW | Order4::KCWH | Order4::KHWC |
+            Order4::KHCW | Order4::KWCH | Order4::KWHC => 0,
+
+            Order4::CKHW | Order4::CKWH | Order4::HKCW |
+            Order4::HKWC | Order4::WKCH | Order4::WKHC => 1,
+
+            Order4::CHKW | Order4::CWKH | Order4::HCKW |
+            Order4::HWKC | Order4::WCKH | Order4::WHKC => 2,
+
+            Order4::CHWK | Order4::CWHK | Order4::HWCK |
+            Order4::HCWK | Order4::WCHK | Order4::WHCK => 3,
+
         };
 
         // Create a slice pattern for `s![]` by slicing only on the channels axis
         // while keeping all other axes intact with `..`.
-        let sliced_data = match channel_axis {
+        let sliced_data = match kernel_axis {
             0 => self.data.slice(s![c_range, .., .., ..]).to_owned(),
             1 => self.data.slice(s![.., c_range, .., ..]).to_owned(),
             2 => self.data.slice(s![.., .., c_range, ..]).to_owned(),
