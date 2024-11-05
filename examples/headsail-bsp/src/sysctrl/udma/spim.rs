@@ -3,7 +3,6 @@ use core::marker::PhantomData;
 use super::{Disabled, Enabled};
 use crate::pac;
 
-pub const SPI_CMD_CFG: u32 = 0x00000000;
 pub const SPI_CMD_SOT: u32 = 0x10000000;
 pub const SPI_CMD_EOT: u32 = 0x90000000;
 pub const SPI_CMD_SEND_CMD_BASE: u32 = 0x20070000;
@@ -39,8 +38,16 @@ impl<'u> UdmaSpim<'u, Enabled> {
         UdmaSpim::<Disabled>(self.0, PhantomData)
     }
 
+    /// # Safety
+    ///
+    /// This will not configure the SPI-M in any way.
     #[inline]
-    pub fn enqueue_tx(&mut self, buf: &[u8]) {
+    pub unsafe fn steal(udma: &'static pac::sysctrl::Udma) -> Self {
+        Self(udma, PhantomData)
+    }
+
+    #[inline]
+    pub fn write_tx(&mut self, buf: &[u8]) {
         let spim = &self.0;
 
         // Write buffer location & len
@@ -58,7 +65,7 @@ impl<'u> UdmaSpim<'u, Enabled> {
         // Poll until finished (prevents `buf` leakage)
         while spim.spim_tx_saddr().read().bits() != 0 {}
     }
-    pub fn enqueue_rx(&mut self, buf: &[u8]) {
+    pub fn write_rx(&mut self, buf: &[u8]) {
         let spim = &self.0;
 
         // Write buffer location & len
@@ -77,7 +84,7 @@ impl<'u> UdmaSpim<'u, Enabled> {
         while spim.spim_rx_saddr().read().bits() != 0 {}
     }
 
-    pub fn enqueue_cmd(&mut self, buf: &[u8]) {
+    pub fn write_cmd(&mut self, buf: &[u8]) {
         let spim = &self.0;
 
         // Write buffer location & len
@@ -87,55 +94,52 @@ impl<'u> UdmaSpim<'u, Enabled> {
             .write(|w| unsafe { w.bits(buf.len() as u32) });
 
         // Dispatch transmission
-        spim.spim_cmd_cfg().write(
-            |w| w.en().set_bit(), // If we want "continuous mode". In continuous mode, uDMA reloads the address and transmits it again
-                                  //.continous().set_bit()
-        );
+        spim.spim_cmd_cfg().write(|w| w.en().set_bit());
 
         // Poll until finished (prevents `buf` leakage)
         while spim.spim_cmd_saddr().read().bits() != 0 {}
     }
 
-    /// This function sends SOT (Start Of Transmission) command.
-    pub fn sot(&mut self) {
+    /// Send 'Start Of Transmission' (SOT) command
+    pub fn write_sot(&mut self) {
         let sot_cmd: [u8; 4] = SPI_CMD_SOT.to_ne_bytes();
-        self.enqueue_cmd(&sot_cmd);
+        self.write_cmd(&sot_cmd);
     }
 
-    /// This function sends EOT (End Of Transmission) command .
-    pub fn eot(&mut self) {
+    /// Send 'End Of Transmission' (EOT) command
+    pub fn write_eot(&mut self) {
         let eot_cmd: [u8; 4] = (SPI_CMD_EOT).to_ne_bytes();
-        self.enqueue_cmd(&eot_cmd);
+        self.write_cmd(&eot_cmd);
     }
 
     /// This function sends EOT (End Of Transmission) command but keeps the cs asserted.
-    pub fn eot_keep_cs(&mut self) {
+    pub fn write_eot_keep_cs(&mut self) {
         let eot_cmd: [u8; 4] = (SPI_CMD_EOT | 0x03).to_ne_bytes();
-        self.enqueue_cmd(&eot_cmd);
+        self.write_cmd(&eot_cmd);
     }
 
-    /// This function sends one dummy byte (0xFF), it should be flixable so that the
-    /// user can easily choose the number of repetition without using a for loop.
-    /// the usage for now is:
+    /// This function sends one dummy byte (0xFF)
+    ///
+    /// TODO: this should be fixable so that the user can easily choose the
+    /// number of repetition without using a for loop.
     ///
     /// # Examples
     ///
     /// ```
-    ///   for _i in 0..10 {
-    ///    spim.sot();
-    ///   spim.send_dummy();
+    /// for _i in 0..10 {
+    ///     spim.sot();
+    ///     pim.send_dummy();
     /// }
     /// ```
-    pub fn send_dummy(&mut self) {
+    pub fn write_dummy(&mut self) {
         let mut buffer: [u8; 4] = [0; 4];
         let cmd_cmd: [u8; 4] = (SPI_CMD_SEND_CMD_BASE | 0xFF).to_ne_bytes();
 
         buffer[0..4].copy_from_slice(&cmd_cmd[0..4]);
-        self.enqueue_cmd(&buffer);
+        self.write_cmd(&buffer);
     }
 
-    /// This function send data out.
-    /// Use this funtion to transfere data via spi to for example SD card.
+    /// This function sends data out. Use this transfer data via SPI to for example SD card.
     ///
     /// # Examples
     ///
@@ -146,24 +150,24 @@ impl<'u> UdmaSpim<'u, Enabled> {
     ///   spim.eot();
     ///
     /// ```
-    pub fn send(&mut self, data: &[u8]) {
+    pub fn send_data(&mut self, data: &[u8]) {
         let mut cmd_data: [u8; 12] = [0; 12];
 
         cmd_data[0..4].copy_from_slice(
             &(SPI_CMD_SETUP_UCA | (data.as_ptr() as u32 & 0x0000FFFF)).to_ne_bytes(),
         );
         cmd_data[4..8]
-            .copy_from_slice(&(SPI_CMD_SETUP_UCS | (data.len() - 2) as u32).to_ne_bytes()); // 4 byte but change this to depend on data i.e:((data.len() - 2) as u32)
+            // 4 byte but change this to depend on data i.e: ((data.len() - 2) as u32)
+            .copy_from_slice(&(SPI_CMD_SETUP_UCS | (data.len() - 2) as u32).to_ne_bytes());
         cmd_data[8..12].copy_from_slice(
             &(SPI_CMD_TX_DATA | (data.len() - 1) as u32 | (7 << 16)).to_ne_bytes(),
         );
 
-        self.enqueue_cmd(&cmd_data);
-        self.enqueue_tx(data);
+        self.write_cmd(&cmd_data);
+        self.write_tx(data);
     }
 
-    /// This function receives data.
-    /// Use this funtion to recive data via spi from for example SD card.
+    /// This function receives data. Use this to receive data via SPI-M from for example SD card.
     ///
     /// # Examples
     ///
@@ -186,7 +190,7 @@ impl<'u> UdmaSpim<'u, Enabled> {
             &(SPI_CMD_RX_DATA | (data.len() - 1) as u32 | (7 << 16)).to_ne_bytes(),
         );
 
-        self.enqueue_cmd(&cmd_data);
-        self.enqueue_rx(data);
+        self.write_cmd(&cmd_data);
+        self.write_rx(data);
     }
 }

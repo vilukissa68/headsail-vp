@@ -61,10 +61,7 @@ impl<'u> UdmaUart<'u, Enabled> {
             .write(|w| unsafe { w.bits(buf.len() as u32) });
 
         // Dispatch transmission
-        udma.uart_tx_cfg().write(
-            |w| w.en().set_bit(), // If we want "continuous mode". In continuous mode, uDMA reloads the address and transmits it again
-                                  //.continous().set_bit()
-        );
+        udma.uart_tx_cfg().write(|w| w.en().set_bit());
 
         // Poll until finished (prevents `buf` leakage)
         while udma.uart_tx_saddr().read().bits() != 0 {}

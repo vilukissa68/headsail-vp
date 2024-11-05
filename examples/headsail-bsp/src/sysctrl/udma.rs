@@ -1,3 +1,4 @@
+pub mod spim;
 pub mod uart;
 
 use core::marker::PhantomData;
@@ -8,10 +9,11 @@ pub use uart::UdmaUart;
 /// Type-state trait for uDMA peripherals in different states
 pub trait UdmaPeriphState {}
 
+// Type-states for uDMA peripherals
 pub struct Enabled;
-impl UdmaPeriphState for Enabled {}
-
 pub struct Disabled;
+
+impl UdmaPeriphState for Enabled {}
 impl UdmaPeriphState for Disabled {}
 
 /// Relocatable driver for uDMA IP
@@ -30,5 +32,3 @@ impl<'u> Udma<'u> {
         }
     }
 }
-
-pub mod spim;
