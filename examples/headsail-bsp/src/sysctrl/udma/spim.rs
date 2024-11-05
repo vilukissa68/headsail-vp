@@ -48,50 +48,33 @@ impl<'u> UdmaSpim<'u, Enabled> {
 
     #[inline]
     pub fn write_tx(&mut self, buf: &[u8]) {
+        // SAFETY: we spin lock on spim_tx_saddr to make sure the transfer is complete before
+        // dropping the stack frame.
+        unsafe { self.enqueue_tx(buf) };
+
         let spim = &self.0;
-
-        // Write buffer location & len
-        spim.spim_tx_saddr()
-            .write(|w| unsafe { w.bits(buf.as_ptr() as u32) });
-        spim.spim_tx_size()
-            .write(|w| unsafe { w.bits(buf.len() as u32) });
-
-        // Dispatch transmission
-        spim.spim_tx_cfg().write(|w| w.en().set_bit());
 
         // Poll until finished (prevents `buf` leakage)
         while spim.spim_tx_saddr().read().bits() != 0 {}
     }
 
-    pub fn write_rx(&mut self, buf: &[u8]) {
-        let spim = &self.0;
-
-        // Write buffer location & len
-        spim.spim_rx_saddr()
-            .write(|w| unsafe { w.bits(buf.as_ptr() as u32) });
-        spim.spim_rx_size()
-            .write(|w| unsafe { w.bits(buf.len() as u32) });
-
-        // Dispatch transmission
-        spim.spim_rx_cfg().write(|w| w.en().set_bit());
+    pub fn read_rx(&mut self, buf: &mut [u8]) {
+        // SAFETY: we spin lock on spim_rx_saddr to make sure the transfer is complete before
+        // dropping the stack frame.
+        unsafe { self.enqueue_rx(buf) };
 
         // Poll until finished (prevents `buf` leakage)
+        let spim = &self.0;
         while spim.spim_rx_saddr().read().bits() != 0 {}
     }
 
     pub fn write_cmd(&mut self, buf: &[u8]) {
-        let spim = &self.0;
-
-        // Write buffer location & len
-        spim.spim_cmd_saddr()
-            .write(|w| unsafe { w.bits(buf.as_ptr() as u32) });
-        spim.spim_cmd_size()
-            .write(|w| unsafe { w.bits(buf.len() as u32) });
-
-        // Dispatch transmission
-        spim.spim_cmd_cfg().write(|w| w.en().set_bit());
+        // SAFETY: we spin lock on spim_cmd_saddr to make sure the transfer is complete before
+        // dropping the stack frame.
+        unsafe { self.enqueue_cmd(buf) };
 
         // Poll until finished (prevents `buf` leakage)
+        let spim = &self.0;
         while spim.spim_cmd_saddr().read().bits() != 0 {}
     }
 
@@ -173,7 +156,7 @@ impl<'u> UdmaSpim<'u, Enabled> {
     ///   spim.eot();
     ///
     /// ```
-    pub fn receive_data(&mut self, data: &[u8]) {
+    pub fn receive_data(&mut self, data: &mut [u8]) {
         let mut cmd_data: [u8; 12] = [0; 12];
 
         cmd_data[0..4].copy_from_slice(
@@ -186,6 +169,57 @@ impl<'u> UdmaSpim<'u, Enabled> {
         );
 
         self.write_cmd(&cmd_data);
-        self.write_rx(data);
+        self.read_rx(data);
+    }
+
+    /// # Safety
+    ///
+    /// `buf` must outlive the transfer. Call `while spim.spim_*_saddr().read().bits() != 0 {}` or
+    /// use an interrupt to determine when `buf` is safe to free.
+    unsafe fn enqueue_cmd(&mut self, buf: &[u8]) {
+        let spim = &self.0;
+
+        // Write buffer location & len
+        spim.spim_cmd_saddr()
+            .write(|w| unsafe { w.bits(buf.as_ptr() as u32) });
+        spim.spim_cmd_size()
+            .write(|w| unsafe { w.bits(buf.len() as u32) });
+
+        // Dispatch transmission
+        spim.spim_cmd_cfg().modify(|_, w| w.en().set_bit());
+    }
+
+    /// # Safety
+    ///
+    /// `buf` must outlive the transfer. Call `while spim.spim_*_saddr().read().bits() != 0 {}` or
+    /// use an interrupt to determine when `buf` is safe to free.
+    unsafe fn enqueue_tx(&mut self, buf: &[u8]) {
+        let spim = &self.0;
+
+        // Write buffer location & len
+        spim.spim_tx_saddr()
+            .write(|w| unsafe { w.bits(buf.as_ptr() as u32) });
+        spim.spim_tx_size()
+            .write(|w| unsafe { w.bits(buf.len() as u32) });
+
+        // Dispatch transmission
+        spim.spim_tx_cfg().modify(|_, w| w.en().set_bit());
+    }
+
+    /// # Safety
+    ///
+    /// `buf` must outlive the transfer. Call `while spim.spim_*_saddr().read().bits() != 0 {}` or
+    /// use an interrupt to determine when `buf` is safe to free.
+    unsafe fn enqueue_rx(&mut self, buf: &[u8]) {
+        let spim = &self.0;
+
+        // Write buffer location & len
+        spim.spim_rx_saddr()
+            .write(|w| unsafe { w.bits(buf.as_ptr() as u32) });
+        spim.spim_rx_size()
+            .write(|w| unsafe { w.bits(buf.len() as u32) });
+
+        // Dispatch transmission
+        spim.spim_rx_cfg().modify(|_, w| w.en().set_bit());
     }
 }

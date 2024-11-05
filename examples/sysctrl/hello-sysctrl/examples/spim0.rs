@@ -32,7 +32,7 @@ fn main() -> ! {
     sprintln!("SPI enabled!");
 
     let tx_data: [u8; 8] = [0x01, 0x42, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08];
-    let rx_data: [u8; 8] = [0; 8];
+    let mut rx_data: [u8; 8] = [0; 8];
 
     spim.write_sot();
 
@@ -46,7 +46,7 @@ fn main() -> ! {
     }
 
     // Receive 8 bytes
-    spim.receive_data(&rx_data);
+    spim.receive_data(&mut rx_data);
     spim.write_eot();
     sprintln!("Data received!\n\r");
 
