@@ -57,14 +57,12 @@ impl<'u> UdmaSpim<'u, Enabled> {
             .write(|w| unsafe { w.bits(buf.len() as u32) });
 
         // Dispatch transmission
-        spim.spim_tx_cfg().write(
-            |w| w.en().set_bit(), // If we want "continuous mode". In continuous mode, uDMA reloads the address and transmits it again
-                                  //.continous().set_bit()
-        );
+        spim.spim_tx_cfg().write(|w| w.en().set_bit());
 
         // Poll until finished (prevents `buf` leakage)
         while spim.spim_tx_saddr().read().bits() != 0 {}
     }
+
     pub fn write_rx(&mut self, buf: &[u8]) {
         let spim = &self.0;
 
@@ -75,10 +73,7 @@ impl<'u> UdmaSpim<'u, Enabled> {
             .write(|w| unsafe { w.bits(buf.len() as u32) });
 
         // Dispatch transmission
-        spim.spim_rx_cfg().write(
-            |w| w.en().set_bit(), // If we want "continuous mode". In continuous mode, uDMA reloads the address and transmits it again
-                                  //.continous().set_bit()
-        );
+        spim.spim_rx_cfg().write(|w| w.en().set_bit());
 
         // Poll until finished (prevents `buf` leakage)
         while spim.spim_rx_saddr().read().bits() != 0 {}
@@ -178,7 +173,7 @@ impl<'u> UdmaSpim<'u, Enabled> {
     ///   spim.eot();
     ///
     /// ```
-    pub fn receive(&mut self, data: &[u8]) {
+    pub fn receive_data(&mut self, data: &[u8]) {
         let mut cmd_data: [u8; 12] = [0; 12];
 
         cmd_data[0..4].copy_from_slice(
