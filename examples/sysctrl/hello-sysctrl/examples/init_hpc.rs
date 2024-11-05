@@ -10,7 +10,7 @@ const HPC_BASE_ADDR: usize = 0xFFE00000;
 const BOOTRAM_OFFSET: usize = 0x10000;
 const HPC_BOOTRAM_ADDR: usize = HPC_BASE_ADDR + BOOTRAM_OFFSET;
 
-/// Verbose, standard formatting for ever register access, for maximum visibility during the
+/// Verbose, standard formatting for every register access, for maximum visibility during the
 /// hardware debug process
 ///
 /// # Parameters
