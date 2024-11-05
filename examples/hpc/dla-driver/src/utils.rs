@@ -117,3 +117,15 @@ fn calculate_same_padding(input: (u32, u32), kernel: (u32, u32), stride: Stride)
         padding_value: 0,
     }
 }
+
+
+/// Calculate optimal amount of PP clip based on bias heuristic for minimal loss in granularity
+pub fn optimal_pp_bias_heuristic(bias: &Vec<i16>) -> u32 {
+    let abs_max = bias.iter().map(|&x| x.abs() as i32).max().unwrap_or(0) as u32;
+    let pp = (abs_max.max(127) / 127).ilog2() + 1;
+    if pp > 8 {
+        return 8
+    }
+    pp
+
+}

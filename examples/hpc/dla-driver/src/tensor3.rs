@@ -197,8 +197,27 @@ impl<T: Clone> Tensor3<T> {
         }
     }
 
+    /// Concatenates a Tensor along the least significant axis (axis=2) by interleaving the tensors
+    pub fn concat_interleaved(tensors: Vec<Tensor3<T>>) -> Tensor3<T> {
+        let target_order = tensors[0].order();
+
+        let (height, width, channels) = (tensors[0].height(), tensors[0].width(), tensors[0].channels());
+        let mut intermediary_buffer: Vec<T> = Vec::with_capacity(height * width * channels * tensors.len());
+
+        for h in 0..height {
+            for w in 0..width {
+                for c in 0..channels {
+                    for tensor in &tensors {
+                        intermediary_buffer.push(tensor.data[(h, w, c)].clone());
+                    }
+                }
+            }
+        }
+        Tensor3::from_data_buffer(channels * tensors.len(), height, width, intermediary_buffer, Order3::HWC).unwrap()
+    }
+
+    /// Slice tensors channel axis with the given range
     pub fn slice_channels(&self, c_range: core::ops::Range<usize>) -> Tensor3<T> {
-        // Slice only along the channels axis, keeping height and width ranges as `..` (full range)
         let channel_axis = match self.order {
             Order3::CHW | Order3::CWH => 0,
             Order3::HCW | Order3::WCH => 1,
@@ -212,12 +231,12 @@ impl<T: Clone> Tensor3<T> {
             _ => unreachable!(),
         };
 
-        // Return a new Tensor3 with the sliced data
         Tensor3 {
             data: sliced_data,
             order: self.order.clone(),
         }
     }
+
     /// Sets a new order for the array
     pub fn permute(&mut self, order: Order3) {
         // Early return if already in order

@@ -14,6 +14,7 @@
 #define CHANNELS 3
 #define OUTPUT_SIZE 10
 #define INPUT_NAME "input_1_int8"
+#define INPUT_SHIFT 0
 int64_t SHAPE[4] = {1, HEIGHT, WIDTH, CHANNELS};
 #elif VISUAL_WAKEUP_WORD
 #define HEIGHT 96
@@ -21,6 +22,7 @@ int64_t SHAPE[4] = {1, HEIGHT, WIDTH, CHANNELS};
 #define CHANNELS 3
 #define OUTPUT_SIZE 2
 #define INPUT_NAME "input_1_int8"
+#define INPUT_SHIFT 0
 int64_t SHAPE[4] = {1, HEIGHT, WIDTH, CHANNELS};
 #elif KEYWORD_SPOTTING
 #define HEIGHT 10
@@ -28,6 +30,7 @@ int64_t SHAPE[4] = {1, HEIGHT, WIDTH, CHANNELS};
 #define CHANNELS 1
 #define OUTPUT_SIZE 12
 #define INPUT_NAME "input_1"
+#define INPUT_SHIFT -83
 int64_t SHAPE[4] = {1, HEIGHT, WIDTH, CHANNELS};
 #endif
 
@@ -40,7 +43,7 @@ extern tvm_crt_error_t TVMPlatformInitialize();
 void read_stimulus(int8_t* buf, size_t len) {
     printf("Waiting for stimulus of length %d...\n", (int)len);
     for(size_t i = 0; i < len; i++) {
-        buf[i] = (int8_t)uart8250_getc();
+        buf[i] = (int8_t)uart8250_getc() + INPUT_SHIFT;
     }
     printf("Got stimulus...\n");
 }
@@ -64,12 +67,21 @@ void run_inference() {
 
     read_stimulus(stimulus, HEIGHT * WIDTH * CHANNELS);
 
+    #ifdef KEYWORD_SPOTTING
     struct tvmgen_default_inputs inputs = {
-    .input_1_int8 = (void*)&stimulus
-};
-    struct tvmgen_default_outputs outputs = {
-    .Identity_int8 = (void*)&output,
+        .input_1 = (void*)&stimulus
     };
+    struct tvmgen_default_outputs outputs = {
+        .Identity = (void*)&output,
+    };
+    #else
+    struct tvmgen_default_inputs inputs = {
+        .input_1_int8 = (void*)&stimulus
+    };
+    struct tvmgen_default_outputs outputs = {
+        .Identity_int8 = (void*)&output,
+    };
+    #endif
 
     printf("Inputs set\n");
 

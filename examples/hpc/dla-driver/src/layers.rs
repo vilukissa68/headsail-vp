@@ -193,33 +193,18 @@ pub fn grouped_conv2d<T: DlaOutput + Clone>(
     groups: usize
 ) -> Tensor3<T> {
     let total_in_channels = input.channels();
-    let total_out_channels = kernels.channels();
+    let total_out_channels = kernels.kernels();
     let group_in_channels = total_in_channels / groups;
-    let group_out_channels = kernels.kernels();
-
-    sprintln!("total_in_channels: {}", total_in_channels);
-    sprintln!("total_out_channels: {}", total_out_channels);
-    sprintln!("group_in_channels: {}", group_in_channels);
-    sprintln!("group_in_k_channels: {}", kernels.channels());
-    sprintln!("group_out_channels: {}", group_out_channels);
+    let group_out_channels = kernels.kernels() / groups;
 
     // Placeholder for the output tensor
     let mut output_tensors = Vec::new();
 
     for g in 0..groups {
-        sprintln!("G: {}", g);
         let input_group = input.slice_channels(g * group_in_channels..(g + 1)*group_in_channels);
-        sprintln!("Input sliced");
-        sprintln!("{} {} {}", input_group.dimensions().0, input_group.dimensions().1, input_group.dimensions().2);
-
         let kernels_group = kernels.slice_channels(g * group_in_channels..(g + 1)*group_in_channels);
-        sprintln!("Kernels sliced");
-        sprintln!("{} {} {} {}", kernels_group.dimensions().0, kernels_group.dimensions().1, kernels_group.dimensions().2, kernels_group.dimensions().3);
-
         let bias_group = bias[g * group_out_channels..(g + 1) * group_out_channels].to_vec();
-        sprintln!("Bias sliced, len:{}", bias_group.len());
 
-        sprintln!("Running layer");
         let output_group = run_layers(
             input_group,
             kernels_group,
@@ -240,7 +225,8 @@ pub fn grouped_conv2d<T: DlaOutput + Clone>(
     //let axis = output_tensors[0].
 
     // Concatenate the output tensors along the channel dimension
-    let res = Tensor3::concat(output_tensors, 2);
+    let res = Tensor3::concat_interleaved(output_tensors, 2);
+    //let res = Tensor3::concat(output_tensors, 0);
 
     sprintln!("Res shape: {} {} {}", res.dimensions().0, res.dimensions().1, res.dimensions().2);
     res
@@ -316,6 +302,7 @@ fn run_layers<T: DlaOutput + Clone>(
     dla.input_data_ready(true);
 
     while !dla.handle_handshake() {}
+
     let output_buffer = T::read_output(&dla, output_size.0 * output_size.1 * kernels.kernels());
 
     Tensor3::from_data_buffer(
