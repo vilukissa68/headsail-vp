@@ -13,6 +13,7 @@ from sklearn.metrics import accuracy_score, confusion_matrix, classification_rep
 from matplotlib import pyplot as plt
 import tensorflow as tf
 import time
+import numpy as np
 
 UART = '/tmp/uart0'
 ROOT_PATH = Path(__file__).parents[0]
@@ -24,8 +25,8 @@ VWW_PERSON_DATA_DIR = VWW_DATA_DIR / "person"
 IC_DATA_DIR = DATA_DIR / "cifar-10-batches-py"
 AD_DATA_DIR = DATA_DIR / "ToyCar" / "test"
 
-import numpy as np
 
+# UTILS
 def print_matrix(arr, format_type='signed'):
     for row in arr:
         for elem in row:
@@ -38,7 +39,6 @@ def print_matrix(arr, format_type='signed'):
             else:
                 raise ValueError("Invalid format_type. Use 'signed', 'unsigned', or 'hex'.")
         print()
-
 
 def accuracy_report(gt, prediction):
     print("Accuracy: {:.3f}".format(accuracy_score(gt, prediction)))
@@ -72,22 +72,12 @@ def wait_for_result():
     print("\n")
     return results
 
+
+# KWS
 def read_kws_file(path):
     with open(path, mode="rb") as file:
         content = file.read()
     return content
-
-def run_kws():
-    df = pd.read_csv(KWS_DATA_DIR / "y_labels.csv", names=["filename", "no_classes", "class"])
-    print("Input shape: ( ,{})".format(len(read_kws_file(KWS_DATA_DIR / df["filename"][0]))))
-
-    predictions = []
-    for (i, filename) in enumerate(df["filename"]):
-        data = read_kws_file(KWS_DATA_DIR / filename)
-        send_stimulus(data, df["class"][i])
-        predictions.append(np.argmax(wait_for_result()))
-
-    accuracy_report(df["class"], predictions)
 
 def get_kws_stimulus():
     df = pd.read_csv(KWS_DATA_DIR / "y_labels.csv", names=["filename", "no_classes", "class"])
@@ -95,6 +85,50 @@ def get_kws_stimulus():
     print("Expected label:", df["class"][0])
     return data
 
+def run_kws(total_samples=200):
+    df = pd.read_csv(KWS_DATA_DIR / "y_labels.csv", names=["filename", "no_classes", "class"])
+
+    class_counts = df["class"].value_counts()
+
+    print(f"Classes in dataset: {class_counts}")
+
+    num_classes = len(class_counts)
+
+    # Calculate the number of samples per class, and how many extra samples to distribute
+    base_samples_per_class = total_samples // num_classes
+    extra_samples = total_samples % num_classes
+
+    balanced_df = pd.DataFrame()
+    for class_id in class_counts.index:
+        class_samples = df[df["class"] == class_id].sample(base_samples_per_class)
+        balanced_df = pd.concat([balanced_df, class_samples])
+
+    remaining_samples_needed = extra_samples
+    for class_id in class_counts.index:
+        if remaining_samples_needed == 0:
+            break
+        # If there are more remaining samples, sample one more from this class
+        class_samples = df[df["class"] == class_id].sample(1)
+        balanced_df = pd.concat([balanced_df, class_samples])
+        remaining_samples_needed -= 1
+
+    # Shuffle the resulting balanced dataset
+    balanced_df = balanced_df.sample(frac=1, random_state=42)
+
+    predictions = []
+    for (i, filename) in enumerate(balanced_df["filename"]):
+        data = read_kws_file(KWS_DATA_DIR / filename)
+        send_stimulus(data, df["class"][i])
+        predictions.append(np.argmax(wait_for_result()))
+
+        # Mid run report
+        accuracy_report(balanced_df["class"][:len(predictions)+1], predictions)
+
+    print("Final accuracy report for Keyword Spotting:")
+    accuracy_report(balanced_df["class"], predictions)
+
+
+# VWW
 def read_vww_file(path):
     #Image loading and preprocessing
     image = tf.io.read_file(str(path))
@@ -104,7 +138,14 @@ def read_vww_file(path):
     byte_array = image.numpy()
     return byte_array
 
-def run_vww():
+def get_vww_stimulus():
+    items = os.listdir(VWW_NON_PERSON_DATA_DIR)
+    non_persons = [item for item in items if os.path.isfile(os.path.join(VWW_NON_PERSON_DATA_DIR, item)) and item.startswith("COCO_val")]
+    data = read_vww_file(VWW_NON_PERSON_DATA_DIR / non_persons[0])
+    print("Expected label: 1")
+    return data.tobytes()
+
+def run_vww(total_samples=100):
     items = os.listdir(VWW_NON_PERSON_DATA_DIR)
     non_persons = [item for item in items if os.path.isfile(os.path.join(VWW_NON_PERSON_DATA_DIR, item)) and item.startswith("COCO_val")]
 
@@ -115,57 +156,37 @@ def run_vww():
     print("Number of persons", len(persons))
     print("Input shape: ", np.shape(read_vww_file(VWW_NON_PERSON_DATA_DIR / non_persons[0])))
 
+    # Calculate balanced number of samples for each category
+    samples_per_class = min(len(non_persons), len(persons), total_samples // 2)
+
+    # Select samples for each category
+    selected_non_persons = non_persons[:samples_per_class]
+    selected_persons = persons[:samples_per_class]
+
     # Generate ground truth array
-    gt_non = [0 for _ in non_persons]
-    gt_yes = [1 for _ in persons]
-    gt = gt_non + gt_yes
+    gt = []
 
     predictions = []
-    for x in non_persons:
-        data = read_vww_file(VWW_NON_PERSON_DATA_DIR / x)
-
-        send_stimulus(data.tobytes())
+    for non_person, person in zip(selected_non_persons, selected_persons):
+        # Non person sample
+        data_non = read_vww_file(VWW_NON_PERSON_DATA_DIR / non_person)
+        send_stimulus(data_non.tobytes())
         predictions.append(wait_for_result())
+        gt.append(0)
 
-    for x in persons:
-        data = read_vww_file(VWW_PERSON_DATA_DIR / x)
-        send_stimulus(data.tobytes())
+        # Person sample
+        data_person = read_vww_file(VWW_PERSON_DATA_DIR / person)
+        send_stimulus(data_person.tobytes())
         predictions.append(wait_for_result())
+        gt.append(1)
 
+        # Mid-run report
+        accuracy_report(gt, predictions)
+
+    print("Final accuracy report for Visual Wakeup Word:")
     accuracy_report(gt, predictions)
 
-def get_vww_stimulus():
-    items = os.listdir(VWW_NON_PERSON_DATA_DIR)
-    non_persons = [item for item in items if os.path.isfile(os.path.join(VWW_NON_PERSON_DATA_DIR, item)) and item.startswith("COCO_val")]
-    data = read_vww_file(VWW_NON_PERSON_DATA_DIR / non_persons[0])
-    print("Expected label: 1")
-    return data.tobytes()
-
-
-def run_ic():
-    import pickle
-    with open(IC_DATA_DIR / "test_batch", "rb") as file:
-        data = pickle.load(file, encoding='bytes')
-    print("Input shape: {}".format(np.shape(data[b'data'][0])))
-
-    predictions = []
-    for (i, image) in enumerate(data[b'data']):
-        #FROM CHW to HWC
-        print("Running inference for image {}/{}".format(i, len(data[b'data'])))
-        image = np.reshape(image, (3, 32, 32))
-        image = np.rollaxis(image, 0, 3)
-        image = image - 128
-        image = np.reshape(image, (3072))
-        label = data[b'labels'][i]
-        send_stimulus(image.tobytes(), label)
-
-        # Wait for inference result
-        predictions.append(np.argmax(wait_for_result()))
-        pass
-
-    # Evaluate predictions
-    accuracy_report(data[b'labels'], predictions)
-
+# IC
 def get_ic_stimulus():
     import pickle
     with open(IC_DATA_DIR / "test_batch", "rb") as file:
@@ -173,17 +194,79 @@ def get_ic_stimulus():
     print("Expected label:", data[b'labels'][0])
     return data[b'data'][0].tobytes()
 
+def run_ic(total_samples=200):
+    import pickle
+    with open(IC_DATA_DIR / "test_batch", "rb") as file:
+        data = pickle.load(file, encoding='bytes')
+    print("Input shape: {}".format(np.shape(data[b'data'][0])))
+
+    images = data[b'data']
+    labels = data[b'labels']
+
+    class_samples = {i: [] for i in range(10)}
+    samples_per_class = total_samples // 10
+
+    # Find samples
+    for img, label in zip(images, labels):
+        if len(class_samples[label]) < samples_per_class:
+            class_samples[label].append(img)
+        if all(len(class_samples[c]) == samples_per_class for c in class_samples):
+            break
+
+    selected_images = []
+    selected_labels = []
+    for label, samples in class_samples.items():
+        selected_images.extend(samples)
+        selected_labels.extend([label] * len(samples))
+
+    # Convert to numpy
+    selected_images = np.array(selected_images)
+    selected_labels = np.array(selected_labels)
+
+    predictions = []
+
+    # Run inference on samples
+    for (i, image) in enumerate(selected_images):
+        #FROM CHW to HWC
+        print("Running inference for image {}/{}".format(i, len(data[b'data'])))
+        image = np.reshape(image, (3, 32, 32))
+        image = np.rollaxis(image, 0, 3)
+        image = image - 128
+        image = np.reshape(image, (3072))
+        label = selected_labels[i]
+        send_stimulus(image.tobytes(), label)
+
+        # Wait for inference result
+        prediction = (np.argmax(wait_for_result()))
+        predictions.append(prediction)
+
+        # Mid-run report
+        accuracy_report(selected_labels[:len(predictions)+1], predictions)
+
+    print("Final accuracy report for Image Classification:")
+    accuracy_report(selected_labels, predictions)
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-b", "--benchmark", required=True)
+    parser.add_argument("-s", "--samples", required=False, type=int)
     opts = parser.parse_args()
     if opts.benchmark == "kws":
-        run_kws()
+        if opts.samples:
+            run_kws(opts.samples)
+        else:
+            run_kws()
     elif opts.benchmark == "vww":
-        run_vww()
+        if opts.samples:
+            run_vww(opts.samples)
+        else:
+            run_vww()
     elif opts.benchmark == "ic":
-        run_ic()
+        if opts.samples:
+            run_ic(opts.samples)
+        else:
+            run_ic()
     else:
         print("Bad benchmark! Available benchmarks are: kws, vww, ic")
 
