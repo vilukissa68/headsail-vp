@@ -34,11 +34,11 @@ fn main() -> ! {
     let tx_data: [u8; 8] = [0x01, 0x42, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08];
     let mut rx_data: [u8; 8] = [0; 8];
 
-    spim.write_sot();
+    spim.send_sot();
 
     // Send 8 bytes
     spim.send_data(&tx_data);
-    spim.write_eot_keep_cs();
+    spim.send_eot_keep_cs();
     sprintln!("Data sent!\n\r");
 
     for _ in 0..10_000 {
@@ -47,7 +47,7 @@ fn main() -> ! {
 
     // Receive 8 bytes
     spim.receive_data(&mut rx_data);
-    spim.write_eot();
+    spim.send_eot();
     sprintln!("Data received!\n\r");
 
     loop {

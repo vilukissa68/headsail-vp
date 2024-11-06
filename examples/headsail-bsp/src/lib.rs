@@ -15,6 +15,11 @@ pub mod sysctrl;
 #[cfg(feature = "hpc")]
 pub use hpc::*;
 
+#[cfg(all(feature = "hpc", feature = "sysctrl"))]
+compile_error!(
+    "CPU-specific features \"hpc\" and feature \"sysctrl\" cannot be enabled at the same time. Select the one that matches the current target CPU."
+);
+
 #[cfg(feature = "alloc")]
 pub mod alloc;
 #[cfg(feature = "alloc")]
@@ -49,6 +54,11 @@ pub mod sprintln;
 #[cfg(any(feature = "panic-apb-uart0", feature = "panic-sysctrl-uart"))]
 mod ufmt_panic;
 pub use ufmt;
+
+#[cfg(all(feature = "panic-apb-uart0", feature = "panic-sysctrl-uart"))]
+compile_error!(
+    "Features \"panic-apb-uart0\" and feature \"panic-sysctrl-uart\" cannot be enabled at the same time. Only one panic implementation must exist at a time."
+);
 
 pub mod apb_uart;
 pub mod mmap;

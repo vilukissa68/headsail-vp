@@ -12,6 +12,8 @@ pub struct UdmaUart<'u, UdmaPeriphState>(
 type UartSetupW = pac::sysctrl::udma::uart_setup::W;
 
 impl<'u> UdmaUart<'u, Disabled> {
+    /// Enables the uDMA clock gate for UART and sets up the peripheral with the provided register
+    /// writer.
     #[inline]
     pub fn enable<F>(self, setup_spec: F) -> UdmaUart<'u, Enabled>
     where

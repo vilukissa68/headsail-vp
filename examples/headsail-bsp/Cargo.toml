@@ -44,6 +44,7 @@ good_memory_allocator = { version = "0.1.7", optional = true }
 bit_field = "0.10.2"
 headsail-sysctrl-pac = { git = "https://github.com/soc-hub-fi/headsail-pac", version = "0.1.1", optional = true }
 headsail-hpc-pac = { git = "https://github.com/soc-hub-fi/headsail-pac", version = "0.1.1", optional = true }
+embedded-io = "0.6.1"
 
 [[example]]
 name = "panic"
