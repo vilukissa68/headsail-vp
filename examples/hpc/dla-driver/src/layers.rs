@@ -221,15 +221,8 @@ pub fn grouped_conv2d<T: DlaOutput + Clone>(
         output_tensors.push(output_group);
     }
 
-    // Find channel axis
-    //let axis = output_tensors[0].
-
     // Concatenate the output tensors along the channel dimension
-    let res = Tensor3::concat_interleaved(output_tensors, 2);
-    //let res = Tensor3::concat(output_tensors, 0);
-
-    sprintln!("Res shape: {} {} {}", res.dimensions().0, res.dimensions().1, res.dimensions().2);
-    res
+    Tensor3::concat_interleaved(output_tensors)
 
 }
 
