@@ -122,7 +122,7 @@ def run_kws(total_samples=200):
         predictions.append(np.argmax(wait_for_result()))
 
         # Mid run report
-        accuracy_report(balanced_df["class"][:len(predictions)+1], predictions)
+        accuracy_report(balanced_df["class"][:len(predictions)], predictions)
 
     print("Final accuracy report for Keyword Spotting:")
     accuracy_report(balanced_df["class"], predictions)
@@ -171,13 +171,13 @@ def run_vww(total_samples=100):
         # Non person sample
         data_non = read_vww_file(VWW_NON_PERSON_DATA_DIR / non_person)
         send_stimulus(data_non.tobytes())
-        predictions.append(wait_for_result())
+        predictions.append(np.argmax(wait_for_result()))
         gt.append(0)
 
         # Person sample
         data_person = read_vww_file(VWW_PERSON_DATA_DIR / person)
         send_stimulus(data_person.tobytes())
-        predictions.append(wait_for_result())
+        predictions.append(np.argmax(wait_for_result()))
         gt.append(1)
 
         # Mid-run report
@@ -202,9 +202,10 @@ def run_ic(total_samples=200):
 
     images = data[b'data']
     labels = data[b'labels']
+    print(labels)
 
     class_samples = {i: [] for i in range(10)}
-    samples_per_class = total_samples // 10
+    samples_per_class = total_samples // len(class_samples)
 
     # Find samples
     for img, label in zip(images, labels):
@@ -213,9 +214,13 @@ def run_ic(total_samples=200):
         if all(len(class_samples[c]) == samples_per_class for c in class_samples):
             break
 
+    print(class_samples.items())
+
     selected_images = []
     selected_labels = []
     for label, samples in class_samples.items():
+        print(label)
+        print(samples)
         selected_images.extend(samples)
         selected_labels.extend([label] * len(samples))
 
@@ -224,11 +229,13 @@ def run_ic(total_samples=200):
     selected_labels = np.array(selected_labels)
 
     predictions = []
+    print("______________----")
+    print(selected_images)
+    print(selected_labels)
 
     # Run inference on samples
     for (i, image) in enumerate(selected_images):
         #FROM CHW to HWC
-        print("Running inference for image {}/{}".format(i, len(data[b'data'])))
         image = np.reshape(image, (3, 32, 32))
         image = np.rollaxis(image, 0, 3)
         image = image - 128
@@ -241,7 +248,7 @@ def run_ic(total_samples=200):
         predictions.append(prediction)
 
         # Mid-run report
-        accuracy_report(selected_labels[:len(predictions)+1], predictions)
+        accuracy_report(selected_labels[:len(predictions)], predictions)
 
     print("Final accuracy report for Image Classification:")
     accuracy_report(selected_labels, predictions)
