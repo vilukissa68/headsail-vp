@@ -735,7 +735,7 @@ class Dla:
             while values_written < len(data): # Data packing
 
                 # Bank switching when current bank is filled
-                if offset + (bit_width / 8) - 1 > bank.size:
+                if offset + (bit_width / 8) > bank.size:
                     bank_idx = bank_idx + 1
                     assert(bank_idx < len(self.banks)), "Assert failed!, Bank indexing overflow"
                     bank = self.banks[bank_idx]
@@ -1044,9 +1044,11 @@ class Dla:
         output_bit_width = self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) if self.get_register(MAC_CTRL, MAC_CLIP_OFFSET, 5) > 0 else 32
 
         if self.get_register(HANDSHAKE, HANDSHAKE_MAC_ENABLE_OFFSET, 1):
-            for i, r in enumerate(input_data):
-                print_matrix(input_data[i], "{} INPUT:".format(i))
+            # for i, r in enumerate(input_data):
+            #     print_matrix(input_data[i], "{} INPUT:".format(i))
 
+            print_matrix(input_data[0], "{} INPUT0:".format(0))
+            print_matrix(kernel_data[0][0], "{} KERNEL0:".format(0))
             print("Mac not enabled")
             # TODO: This might be not correct, make sure S_CHANNELS work like this
             padding_value = cast_long_to_signed_byte(self.get_register(BUF_PAD, BUF_PAD_VALUE_OFFSET, 8))
@@ -1054,8 +1056,8 @@ class Dla:
 
             # Clip results
             res = dla.mac_clip(res)
-            for i, r in enumerate(res):
-                print_matrix(res[i], "{} MAC:".format(i))
+            # for i, r in enumerate(res):
+            #     print_matrix(res[i], "{} MAC:".format(i))
 
 
         if self.get_register(HANDSHAKE, HANDSHAKE_BYPASS_ENABLE_OFFSET, 1):
@@ -1074,8 +1076,8 @@ class Dla:
                     tmp.append(a)
 
                 res = tmp
-                for (i, r) in enumerate(res):
-                    print_matrix(r, "{} BIAS:".format(i))
+                # for (i, r) in enumerate(res):
+                #     print_matrix(r, "{} BIAS:".format(i))
 
             # ReLU (active low)
             if self.get_register(HANDSHAKE, HANDSHAKE_ACTIVE_ENABLE_OFFSET, 1):
@@ -1083,7 +1085,7 @@ class Dla:
                 res = execute_for_all_elements(self.mac.relu_native, res)
 
         # Prevent overflowing i16 range
-        if output_bit_width == 32:
+        if output_bit_width == 33:
             self.write_output(res, 32)
         else:
             res = execute_for_all_elements(clip_value_to_i16, res)
@@ -1339,7 +1341,7 @@ class DlaMac:
 #     API     #
 
 def write(request, dla):
-    print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
+    #print("Absolute: 0x%x  Writing request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
     request.absolute = request.absolute & 0xFFFFFFFF # Normalize address to global address space by removing possible HPC external bit
     if int(request.absolute) >= DLA_ADDR:
         dla.set_register(request.offset, 0, 32, request.value, preserve_register=False)
@@ -1357,7 +1359,7 @@ def read(request, dla):
         request.value = tmp
 
     request.absolute = original_absolute # Answer to original address
-    print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
+    #print("Absolute: 0x%x  Reading request offset: %s at 0x%x, value 0x%x" % (request.absolute, str(request.type), request.offset, request.value))
 
 if __name__ == "__main__":
     print("Running as independent module")
