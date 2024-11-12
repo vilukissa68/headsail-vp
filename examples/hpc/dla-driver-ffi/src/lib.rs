@@ -447,8 +447,8 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
     // To comply with TVM's expected value range our solution is to bit shift/clip the 16-bit result of
     // conv2d by 8 bits and shift if back in the driver. This causes some amount of data loss due to
     // the lost granularity of the values. The clipping amount is set by the pp_clip argument.
-    let mut res_i32: Vec<i32> = result.to_buffer_with_order(Order3::try_from(input_order_string).unwrap_unchecked())
-                                       .iter().map(|x: &i8| (*x as f32 * u32::pow(2, optimized_pp) as f32) as i32).collect();
+    let mut res_i32: Vec<i32> = result.to_buffer()
+                                       .iter().map(|x: &i8| ((*x as i32) << optimized_pp)).collect();
 
     unsafe {
         core::ptr::copy_nonoverlapping(
@@ -543,7 +543,7 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
     // To comply with TVM's expected value range our solution is to bit shift/clip the 16-bit result of
     // conv2d by 8 bits and shift if back in the driver. This causes some amount of data loss due to
     // the lost granularity of the values. The clipping amount is set by the pp_clip argument.
-    let mut res_i32: Vec<i32> = result.to_buffer_with_order(Order3::try_from(input_order_string).unwrap_unchecked())
+    let mut res_i32: Vec<i32> = result.to_buffer()
                                        .iter().map(|x: &i8| (*x as f32 * u32::pow(2, optimized_pp) as f32) as i32).collect();
 
     unsafe {
