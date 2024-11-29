@@ -413,7 +413,7 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
     let bias: Vec<i16> = unsafe {
         slice::from_raw_parts(bias as *const i32, bias_length)
             .into_iter()
-            .map(|x| (*x).clamp(i16::MIN as i32, i16::MAX as i32) as i16)
+            .map(|x| (*x >> 8).clamp(i16::MIN as i32, i16::MAX as i32) as i16)
             .collect()
     };
 
@@ -448,7 +448,7 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
     // conv2d by 8 bits and shift if back in the driver. This causes some amount of data loss due to
     // the lost granularity of the values. The clipping amount is set by the pp_clip argument.
     let mut res_i32: Vec<i32> = result.to_buffer()
-                                       .iter().map(|x: &i8| ((*x as i32) << optimized_pp)).collect();
+                                        .iter().map(|x: &i8| ((*x as i32) << optimized_pp)).collect();
 
     unsafe {
         core::ptr::copy_nonoverlapping(
@@ -509,7 +509,7 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
     let bias: Vec<i16> = unsafe {
         slice::from_raw_parts(bias as *const i32, bias_length)
             .into_iter()
-            .map(|x| (*x).clamp(i16::MIN as i32, i16::MAX as i32) as i16)
+            .map(|x| (*x >> 8).clamp(i16::MIN as i32, i16::MAX as i32) as i16)
             .collect()
     };
 
