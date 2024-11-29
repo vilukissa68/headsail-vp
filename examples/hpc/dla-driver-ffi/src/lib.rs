@@ -9,7 +9,7 @@ extern crate alloc;
 use alloc::vec::Vec;
 use core::ffi::{c_char, CStr};
 use core::slice;
-use dla_driver::layers::{conv2d, conv2d_bias, conv2d_bias_relu, conv2d_relu};
+use dla_driver::layers::{conv2d, conv2d_bias, conv2d_bias_relu, conv2d_relu, grouped_conv2d};
 use dla_driver::tensor3::{rescale, Order3, Tensor3};
 use dla_driver::tensor4::{Order4, Tensor4};
 use dla_driver::{Padding, Stride};
