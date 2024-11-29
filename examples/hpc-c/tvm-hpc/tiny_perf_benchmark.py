@@ -134,9 +134,9 @@ def read_vww_file(path):
     image = tf.io.read_file(str(path))
     image = tf.image.decode_jpeg(image, channels=3)
     image = tf.image.resize(image, [96,96])
-    image = tf.cast(image, tf.uint8)
-    byte_array = image.numpy()
-    return byte_array
+    image = np.array(image, dtype=np.int8)
+    image = image - 128
+    return image.astype(np.int8)
 
 def get_vww_stimulus():
     items = os.listdir(VWW_NON_PERSON_DATA_DIR)
@@ -257,7 +257,7 @@ def run_ic(total_samples=200):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-b", "--benchmark", required=True)
-    parser.add_argument("-s", "--samples", required=False, type=int)
+    parser.add_argument("-s", "--samples", required=False, type=str)
     opts = parser.parse_args()
     if opts.benchmark == "kws":
         if opts.samples:
