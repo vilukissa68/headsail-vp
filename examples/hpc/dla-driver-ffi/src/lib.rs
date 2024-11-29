@@ -72,8 +72,7 @@ unsafe fn ffi_data_import(
 /// Initializes DLA by setting up necessary heap allocator from headsail-bsp. This should be called only once in the program.
 #[no_mangle]
 pub unsafe extern "C" fn dla_init() {
-    // SAFETY: `init_heap` must be called once only
-    unsafe { init_heap() };
+    headsail_bsp::init_alloc();
 }
 
 /// Executes Conv2D on DLA with given parameters and writes result to output buffer.
@@ -463,7 +462,7 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
 ///
 /// * `bias` - Buffer containing bias data. NOTE: Bias is actually i16 in hardware, here we use 32 for TVM compatibility
 #[no_mangle]
-pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
+pub unsafe extern "C" fn dla_tvm_qnn_conv2d_grouped_bias(
     input_data: *const i8,
     kernel_data: *const i8,
     bias: *const i32,
@@ -477,6 +476,7 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
     kernel_height: usize,
     kernel_width: usize,
     kernel_order: *const c_char,
+    groups: usize,
     bias_length: usize,
     pad_top: u32,
     pad_right: u32,
@@ -515,7 +515,7 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
 
     let optimized_pp = optimal_pp_bias_heuristic(&bias);
 
-    let mut result: Tensor3<i8> = conv2d_bias(
+    let mut result: Tensor3<i8> = grouped_conv2d(
         input_tensor,
         kernels_tensor,
         bias,
@@ -533,7 +533,9 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
         Some(mac_clip),
         Some(optimized_pp),
         None,
+        groups
     );
+
 
     let input_order_string = unsafe { CStr::from_ptr(input_order).to_str().unwrap_unchecked() };
 
