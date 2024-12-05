@@ -3,6 +3,9 @@
 //! Assumes test is run on hart 0 with no other cores interfering.
 #![no_std]
 #![no_main]
+// SAFETY: this example does not provide any safety regarding peripheral sharing, and the correct
+// implementation depends on the target platform.
+#![allow(static_mut_refs)]
 
 use headsail_bsp::{
     apb_uart::{ApbUart0, UartInterrupt},
