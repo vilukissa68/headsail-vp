@@ -127,5 +127,4 @@ pub fn optimal_pp_bias_heuristic(bias: &Vec<i16>) -> u32 {
         return 8
     }
     pp
-
 }

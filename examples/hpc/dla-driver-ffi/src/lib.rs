@@ -12,8 +12,8 @@ use core::slice;
 use dla_driver::layers::{conv2d, conv2d_bias, conv2d_bias_relu, conv2d_relu, grouped_conv2d};
 use dla_driver::tensor3::{rescale, Order3, Tensor3};
 use dla_driver::tensor4::{Order4, Tensor4};
-use dla_driver::{Padding, Stride};
 use dla_driver::utils::optimal_pp_bias_heuristic;
+use dla_driver::{Padding, Stride};
 
 /// Converts C-types to DLA Tensors for use with the highlevel layer
 unsafe fn ffi_data_import(
@@ -72,7 +72,7 @@ unsafe fn ffi_data_import(
 /// Initializes DLA by setting up necessary heap allocator from headsail-bsp. This should be called only once in the program.
 #[no_mangle]
 pub unsafe extern "C" fn dla_init() {
-    headsail_bsp::init_alloc();
+    headsail_bsp::init_heap();
 }
 
 /// Executes Conv2D on DLA with given parameters and writes result to output buffer.
@@ -412,11 +412,12 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
     let bias: Vec<i16> = unsafe {
         slice::from_raw_parts(bias as *const i32, bias_length)
             .into_iter()
-            .map(|x| (*x >> 8).clamp(i16::MIN as i32, i16::MAX as i32) as i16)
+            .map(|x| (*x).clamp(i16::MIN as i32, i16::MAX as i32) as i16)
             .collect()
     };
 
-    let optimized_pp = optimal_pp_bias_heuristic(&bias);
+    //let optimized_pp = optimal_pp_bias_heuristic(&bias);
+    let optimized_pp = 7;
 
     let mut result: Tensor3<i8> = conv2d_bias(
         input_tensor,
@@ -446,16 +447,13 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
     // To comply with TVM's expected value range our solution is to bit shift/clip the 16-bit result of
     // conv2d by 8 bits and shift if back in the driver. This causes some amount of data loss due to
     // the lost granularity of the values. The clipping amount is set by the pp_clip argument.
-    let mut res_i32: Vec<i32> = result.to_buffer()
-                                        .iter().map(|x: &i8| ((*x as i32) << optimized_pp)).collect();
+    let mut res_i32: Vec<i32> = result
+        .to_buffer()
+        .iter()
+        .map(|x: &i8| ((*x as i32) << optimized_pp))
+        .collect();
 
-    unsafe {
-        core::ptr::copy_nonoverlapping(
-            res_i32.as_mut_ptr(),
-            output,
-            result.get_size(),
-        )
-    };
+    unsafe { core::ptr::copy_nonoverlapping(res_i32.as_mut_ptr(), output, result.get_size()) };
 }
 
 /// # Arguments
@@ -509,7 +507,7 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_grouped_bias(
     let bias: Vec<i16> = unsafe {
         slice::from_raw_parts(bias as *const i32, bias_length)
             .into_iter()
-            .map(|x| (*x >> 8).clamp(i16::MIN as i32, i16::MAX as i32) as i16)
+            .map(|x| (*x).clamp(i16::MIN as i32, i16::MAX as i32) as i16)
             .collect()
     };
 
@@ -533,9 +531,8 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_grouped_bias(
         Some(mac_clip),
         Some(optimized_pp),
         None,
-        groups
+        groups,
     );
-
 
     let input_order_string = unsafe { CStr::from_ptr(input_order).to_str().unwrap_unchecked() };
 
@@ -545,14 +542,11 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_grouped_bias(
     // To comply with TVM's expected value range our solution is to bit shift/clip the 16-bit result of
     // conv2d by 8 bits and shift if back in the driver. This causes some amount of data loss due to
     // the lost granularity of the values. The clipping amount is set by the pp_clip argument.
-    let mut res_i32: Vec<i32> = result.to_buffer()
-                                       .iter().map(|x: &i8| (*x as f32 * u32::pow(2, optimized_pp) as f32) as i32).collect();
+    let mut res_i32: Vec<i32> = result
+        .to_buffer()
+        .iter()
+        .map(|x: &i8| ((*x as i32) << optimized_pp))
+        .collect();
 
-    unsafe {
-        core::ptr::copy_nonoverlapping(
-            res_i32.as_mut_ptr(),
-            output,
-            result.get_size(),
-        )
-    };
+    unsafe { core::ptr::copy_nonoverlapping(res_i32.as_mut_ptr(), output, result.get_size()) };
 }

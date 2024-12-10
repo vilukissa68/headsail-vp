@@ -1,6 +1,6 @@
 use alloc::vec::*;
 use core::ffi::c_char;
-use ndarray::{s, Array, Array3};
+use ndarray::{Array, Array3, ArrayView3 , Axis, s, stack, concatenate};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Order3 {
@@ -183,27 +183,11 @@ impl<T: Clone> Tensor3<T> {
         self.order
     }
 
-    /// Concate vector of Tensor3 in order to single Tensor3
-    pub fn concat(tensors: Vec<Tensor3<T>>, axis: usize) -> Tensor3<T> {
-        let target_order = tensors[0].order();
-        let arrays: Vec<Array3<T>> = tensors.into_iter().map(|t| t.data).collect();
-        // Concatenate along the specified axis
-        let stacked = concatenate(Axis(axis), &arrays.iter().map(|a| a.view()).collect::<Vec<_>>())
-            .expect("Concatenation failed due to incompatible shapes");
-
-        Tensor3 {
-            data: stacked,
-            order: target_order,
-        }
-    }
-
     /// Concatenates a Tensor along the least significant axis (axis=2) by interleaving the tensors
     pub fn concat_interleaved(tensors: Vec<Tensor3<T>>) -> Tensor3<T> {
         let target_order = tensors[0].order();
-
         let (height, width, channels) = (tensors[0].height(), tensors[0].width(), tensors[0].channels());
         let mut intermediary_buffer: Vec<T> = Vec::with_capacity(height * width * channels * tensors.len());
-
         for h in 0..height {
             for w in 0..width {
                 for c in 0..channels {
@@ -287,6 +271,7 @@ impl<T: Clone> Tensor3<T> {
         data.permute(order);
         data.to_buffer()
     }
+
 }
 
 pub fn rescale(
@@ -316,6 +301,7 @@ pub fn rescale(
              let value = (input_scale / scale) * (*x as f32 * pre_scale - input_zero as f32)
                  + output_zero as f32;
             *x = value.clamp(i8::MIN as f32, i8::MAX as f32) as i8
+
         });
     }
 }
