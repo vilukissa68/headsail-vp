@@ -3,8 +3,6 @@ use crate::tensor4::{Order4, Tensor4};
 use crate::{Dla, InputSize, KernelSize, LayerConfig, Padding, SimdBitMode, Stride};
 use alloc::vec::Vec;
 
-use headsail_bsp::sprintln;
-
 use crate::utils::{calculate_conv2d_out_param_dim, get_banks_for_layer};
 
 // Define a trait for output handling
@@ -190,10 +188,9 @@ pub fn grouped_conv2d<T: DlaOutput + Clone>(
     mac_clip: Option<u32>,
     pp_clip: Option<u32>,
     simd_mode: Option<SimdBitMode>,
-    groups: usize
+    groups: usize,
 ) -> Tensor3<T> {
     let total_in_channels = input.channels();
-    let total_out_channels = kernels.kernels();
     let group_in_channels = total_in_channels / groups;
     let group_out_channels = kernels.kernels() / groups;
 
@@ -201,8 +198,9 @@ pub fn grouped_conv2d<T: DlaOutput + Clone>(
     let mut output_tensors = Vec::new();
 
     for g in 0..groups {
-        let input_group = input.slice_channels(g * group_in_channels..(g + 1)*group_in_channels);
-        let kernels_group = kernels.slice_channels(g * group_in_channels..(g + 1)*group_in_channels);
+        let input_group = input.slice_channels(g * group_in_channels..(g + 1) * group_in_channels);
+        let kernels_group =
+            kernels.slice_channels(g * group_in_channels..(g + 1) * group_in_channels);
         let bias_group = bias[g * group_out_channels..(g + 1) * group_out_channels].to_vec();
 
         let output_group = run_layers(
@@ -223,9 +221,7 @@ pub fn grouped_conv2d<T: DlaOutput + Clone>(
 
     // Concatenate the output tensors along the channel dimension
     Tensor3::concat_interleaved(output_tensors)
-
 }
-
 
 fn run_layers<T: DlaOutput + Clone>(
     input: Tensor3<i8>,

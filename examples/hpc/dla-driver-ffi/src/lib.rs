@@ -4,18 +4,18 @@
 #![no_std]
 #![no_main]
 
-#[macro_use]
 extern crate alloc;
 use alloc::vec::Vec;
 use core::ffi::{c_char, CStr};
 use core::slice;
 use dla_driver::layers::{conv2d, conv2d_bias, conv2d_bias_relu, conv2d_relu, grouped_conv2d};
-use dla_driver::tensor3::{rescale, Order3, Tensor3};
+use dla_driver::tensor3::{Order3, Tensor3};
 use dla_driver::tensor4::{Order4, Tensor4};
 use dla_driver::utils::optimal_pp_bias_heuristic;
 use dla_driver::{Padding, Stride};
 
 /// Converts C-types to DLA Tensors for use with the highlevel layer
+#[allow(clippy::too_many_arguments)]
 unsafe fn ffi_data_import(
     input_data: *const i8,
     input_channels: usize,
@@ -29,7 +29,7 @@ unsafe fn ffi_data_import(
     kernel_width: usize,
     kernel_order: *const c_char,
 ) -> (Tensor3<i8>, Tensor4<i8>) {
-    let mut input_data: Vec<i8> = unsafe {
+    let input_data: Vec<i8> = unsafe {
         slice::from_raw_parts(input_data, input_channels * input_height * input_width).to_vec()
     };
 
@@ -77,6 +77,7 @@ pub unsafe extern "C" fn dla_init() {
 
 /// Executes Conv2D on DLA with given parameters and writes result to output buffer.
 #[no_mangle]
+#[allow(clippy::too_many_arguments)]
 pub unsafe extern "C" fn dla_conv2d(
     input_data: *const i8,
     kernel_data: *const i8,
@@ -141,6 +142,7 @@ pub unsafe extern "C" fn dla_conv2d(
 
 /// Executes Conv2D + ReLU on DLA with given parameters and writes result to output buffer.
 #[no_mangle]
+#[allow(clippy::too_many_arguments)]
 pub unsafe extern "C" fn dla_conv2d_relu(
     input_data: *const i8,
     kernel_data: *const i8,
@@ -208,6 +210,7 @@ pub unsafe extern "C" fn dla_conv2d_relu(
 ///
 /// * `bias` - Bias is actually i16 in hardware, here we use 32 for TVM compatibility
 #[no_mangle]
+#[allow(clippy::too_many_arguments)]
 pub unsafe extern "C" fn dla_conv2d_bias(
     input_data: *const i8,
     kernel_data: *const i8,
@@ -282,6 +285,7 @@ pub unsafe extern "C" fn dla_conv2d_bias(
 ///
 /// * `bias` - Buffer containing bias data. NOTE: Bias is actually i16 in hardware, here we use 32 for TVM compatibility
 #[no_mangle]
+#[allow(clippy::too_many_arguments)]
 pub unsafe extern "C" fn dla_conv2d_bias_relu(
     input_data: *const i8,
     kernel_data: *const i8,
@@ -366,6 +370,7 @@ pub unsafe extern "C" fn dla_conv2d_bias_relu(
 ///
 /// * `bias` - Buffer containing bias data. NOTE: Bias is actually i16 in hardware, here we use 32 for TVM compatibility
 #[no_mangle]
+#[allow(clippy::too_many_arguments)]
 pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
     input_data: *const i8,
     kernel_data: *const i8,
@@ -385,11 +390,11 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
     pad_right: u32,
     pad_left: u32,
     pad_bottom: u32,
-    pad_value: i32,
+    _pad_value: i32,
     stride_x: u32,
     stride_y: u32,
     mac_clip: u32,
-    pp_clip: u32,
+    _pp_clip: u32,
 ) {
     let (input_tensor, kernels_tensor) = unsafe {
         ffi_data_import(
@@ -419,7 +424,7 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
     //let optimized_pp = optimal_pp_bias_heuristic(&bias);
     let optimized_pp = 7;
 
-    let mut result: Tensor3<i8> = conv2d_bias(
+    let result: Tensor3<i8> = conv2d_bias(
         input_tensor,
         kernels_tensor,
         bias,
@@ -439,7 +444,7 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
         None,
     );
 
-    let input_order_string = unsafe { CStr::from_ptr(input_order).to_str().unwrap_unchecked() };
+    let _input_order_string = unsafe { CStr::from_ptr(input_order).to_str().unwrap_unchecked() };
 
     // TVM requantization and clip
     // NOTE:(20240927 vaino-waltteri.granat@tuni.fi) on DLA clipping behaviour with TVM.
@@ -460,6 +465,7 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
 ///
 /// * `bias` - Buffer containing bias data. NOTE: Bias is actually i16 in hardware, here we use 32 for TVM compatibility
 #[no_mangle]
+#[allow(clippy::too_many_arguments)]
 pub unsafe extern "C" fn dla_tvm_qnn_conv2d_grouped_bias(
     input_data: *const i8,
     kernel_data: *const i8,
@@ -480,11 +486,11 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_grouped_bias(
     pad_right: u32,
     pad_left: u32,
     pad_bottom: u32,
-    pad_value: i32,
+    _pad_value: i32,
     stride_x: u32,
     stride_y: u32,
     mac_clip: u32,
-    pp_clip: u32,
+    _pp_clip: u32,
 ) {
     let (input_tensor, kernels_tensor) = unsafe {
         ffi_data_import(
@@ -513,7 +519,7 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_grouped_bias(
 
     let optimized_pp = optimal_pp_bias_heuristic(&bias);
 
-    let mut result: Tensor3<i8> = grouped_conv2d(
+    let result: Tensor3<i8> = grouped_conv2d(
         input_tensor,
         kernels_tensor,
         bias,
@@ -534,7 +540,7 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_grouped_bias(
         groups,
     );
 
-    let input_order_string = unsafe { CStr::from_ptr(input_order).to_str().unwrap_unchecked() };
+    let _input_order_string = unsafe { CStr::from_ptr(input_order).to_str().unwrap_unchecked() };
 
     // TVM requantization and clip
     // NOTE:(20240927 vaino-waltteri.granat@tuni.fi) on DLA clipping behaviour with TVM.
