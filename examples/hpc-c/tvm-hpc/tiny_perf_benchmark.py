@@ -15,35 +15,39 @@ import tensorflow as tf
 import time
 import numpy as np
 
-UART = '/tmp/uart0'
+UART = "/tmp/uart0"
 ROOT_PATH = Path(__file__).parents[0]
 DATA_DIR = ROOT_PATH / "dev_data"
 KWS_DATA_DIR = DATA_DIR / "kws01"
 VWW_DATA_DIR = DATA_DIR / "vw_coco2014_96"
-VWW_NON_PERSON_DATA_DIR =  VWW_DATA_DIR / "non_person"
+VWW_NON_PERSON_DATA_DIR = VWW_DATA_DIR / "non_person"
 VWW_PERSON_DATA_DIR = VWW_DATA_DIR / "person"
 IC_DATA_DIR = DATA_DIR / "cifar-10-batches-py"
 AD_DATA_DIR = DATA_DIR / "ToyCar" / "test"
 
 
 # UTILS
-def print_matrix(arr, format_type='signed'):
+def print_matrix(arr, format_type="signed"):
     for row in arr:
         for elem in row:
-            if format_type == 'signed':
+            if format_type == "signed":
                 print(f"{int(elem):d}", end="\t")  # Signed decimal
-            elif format_type == 'unsigned':
+            elif format_type == "unsigned":
                 print(f"{int(elem) & 0xFFFFFFFF:d}", end="\t")  # Unsigned decimal
-            elif format_type == 'hex':
+            elif format_type == "hex":
                 print(f"{int(elem) & 0xFFFFFFFF:08x}", end="\t")  # Hexadecimal
             else:
-                raise ValueError("Invalid format_type. Use 'signed', 'unsigned', or 'hex'.")
+                raise ValueError(
+                    "Invalid format_type. Use 'signed', 'unsigned', or 'hex'."
+                )
         print()
+
 
 def accuracy_report(gt, prediction):
     print("Accuracy: {:.3f}".format(accuracy_score(gt, prediction)))
     print("Confusion matrix:\n{}".format(confusion_matrix(gt, prediction)))
     print(classification_report(gt, prediction))
+
 
 def send_stimulus(data, label=None):
     print("Writing {} bytes as stimulus...".format(len(data)))
@@ -54,19 +58,20 @@ def send_stimulus(data, label=None):
     ser.write(bytes(data))
     ser.close()
 
+
 def wait_for_result():
     print("Waiting for results...")
-    ser = serial.Serial(UART,  9600)
+    ser = serial.Serial(UART, 9600)
     output = ser.readline()
-    while output != b'Prediction:\n':
+    while output != b"Prediction:\n":
         output = ser.readline()
     output = ser.readline()
     ser.close()
     output = bytearray(output)
     results = []
     for x in output:
-        results.append(((x & 0xff) ^ 0x80) - 0x80) # Append signed
-    results = results[:-1] # Remove line break
+        results.append(((x & 0xFF) ^ 0x80) - 0x80)  # Append signed
+    results = results[:-1]  # Remove line break
     print(results)
     print("Predicted class: {}".format(np.argmax(results)))
     print("\n")
@@ -79,14 +84,20 @@ def read_kws_file(path):
         content = file.read()
     return content
 
+
 def get_kws_stimulus():
-    df = pd.read_csv(KWS_DATA_DIR / "y_labels.csv", names=["filename", "no_classes", "class"])
+    df = pd.read_csv(
+        KWS_DATA_DIR / "y_labels.csv", names=["filename", "no_classes", "class"]
+    )
     data = read_kws_file(KWS_DATA_DIR / df["filename"][0])
     print("Expected label:", df["class"][0])
     return data
 
+
 def run_kws(total_samples=200):
-    df = pd.read_csv(KWS_DATA_DIR / "y_labels.csv", names=["filename", "no_classes", "class"])
+    df = pd.read_csv(
+        KWS_DATA_DIR / "y_labels.csv", names=["filename", "no_classes", "class"]
+    )
 
     class_counts = df["class"].value_counts()
 
@@ -116,13 +127,13 @@ def run_kws(total_samples=200):
     balanced_df = balanced_df.sample(frac=1, random_state=42)
 
     predictions = []
-    for (i, filename) in enumerate(balanced_df["filename"]):
+    for i, filename in enumerate(balanced_df["filename"]):
         data = read_kws_file(KWS_DATA_DIR / filename)
         send_stimulus(data, df["class"][i])
         predictions.append(np.argmax(wait_for_result()))
 
         # Mid run report
-        accuracy_report(balanced_df["class"][:len(predictions)], predictions)
+        accuracy_report(balanced_df["class"][: len(predictions)], predictions)
 
     print("Final accuracy report for Keyword Spotting:")
     accuracy_report(balanced_df["class"], predictions)
@@ -130,31 +141,53 @@ def run_kws(total_samples=200):
 
 # VWW
 def read_vww_file(path):
-    #Image loading and preprocessing
+    # Image loading and preprocessing
     image = tf.io.read_file(str(path))
     image = tf.image.decode_jpeg(image, channels=3)
-    image = tf.image.resize(image, [96,96])
+    image = tf.image.resize(image, [96, 96])
     image = np.array(image, dtype=np.int8)
     image = image - 128
     return image.astype(np.int8)
 
+
 def get_vww_stimulus():
     items = os.listdir(VWW_NON_PERSON_DATA_DIR)
-    non_persons = [item for item in items if os.path.isfile(os.path.join(VWW_NON_PERSON_DATA_DIR, item)) and item.startswith("COCO_val")]
+    non_persons = [
+        item
+        for item in items
+        if os.path.isfile(os.path.join(VWW_NON_PERSON_DATA_DIR, item))
+        and item.startswith("COCO_val")
+    ]
     data = read_vww_file(VWW_NON_PERSON_DATA_DIR / non_persons[0])
     print("Expected label: 1")
     return data.tobytes()
 
+
 def run_vww(total_samples=100):
     items = os.listdir(VWW_NON_PERSON_DATA_DIR)
-    non_persons = [item for item in items if os.path.isfile(os.path.join(VWW_NON_PERSON_DATA_DIR, item)) and item.startswith("COCO_val")]
+    non_persons = [
+        item
+        for item in items
+        if os.path.isfile(os.path.join(VWW_NON_PERSON_DATA_DIR, item))
+        and item.startswith("COCO_val")
+    ]
+    non_persons.sort()
 
     items = os.listdir(VWW_PERSON_DATA_DIR)
-    persons = [item for item in items if os.path.isfile(os.path.join(VWW_PERSON_DATA_DIR, item)) and item.startswith("COCO_val")]
+    persons = [
+        item
+        for item in items
+        if os.path.isfile(os.path.join(VWW_PERSON_DATA_DIR, item))
+        and item.startswith("COCO_val")
+    ]
+    persons.sort()
 
     print("Number of non_persons", len(non_persons))
     print("Number of persons", len(persons))
-    print("Input shape: ", np.shape(read_vww_file(VWW_NON_PERSON_DATA_DIR / non_persons[0])))
+    print(
+        "Input shape: ",
+        np.shape(read_vww_file(VWW_NON_PERSON_DATA_DIR / non_persons[0])),
+    )
 
     # Calculate balanced number of samples for each category
     samples_per_class = min(len(non_persons), len(persons), total_samples // 2)
@@ -186,22 +219,26 @@ def run_vww(total_samples=100):
     print("Final accuracy report for Visual Wakeup Word:")
     accuracy_report(gt, predictions)
 
+
 # IC
 def get_ic_stimulus():
     import pickle
+
     with open(IC_DATA_DIR / "test_batch", "rb") as file:
-        data = pickle.load(file, encoding='bytes')
-    print("Expected label:", data[b'labels'][0])
-    return data[b'data'][0].tobytes()
+        data = pickle.load(file, encoding="bytes")
+    print("Expected label:", data[b"labels"][0])
+    return data[b"data"][0].tobytes()
+
 
 def run_ic(total_samples=200):
     import pickle
-    with open(IC_DATA_DIR / "test_batch", "rb") as file:
-        data = pickle.load(file, encoding='bytes')
-    print("Input shape: {}".format(np.shape(data[b'data'][0])))
 
-    images = data[b'data']
-    labels = data[b'labels']
+    with open(IC_DATA_DIR / "test_batch", "rb") as file:
+        data = pickle.load(file, encoding="bytes")
+    print("Input shape: {}".format(np.shape(data[b"data"][0])))
+
+    images = data[b"data"]
+    labels = data[b"labels"]
     print(labels)
 
     class_samples = {i: [] for i in range(10)}
@@ -234,8 +271,8 @@ def run_ic(total_samples=200):
     print(selected_labels)
 
     # Run inference on samples
-    for (i, image) in enumerate(selected_images):
-        #FROM CHW to HWC
+    for i, image in enumerate(selected_images):
+        # FROM CHW to HWC
         image = np.reshape(image, (3, 32, 32))
         image = np.rollaxis(image, 0, 3)
         image = image - 128
@@ -244,11 +281,11 @@ def run_ic(total_samples=200):
         send_stimulus(image.tobytes(), label)
 
         # Wait for inference result
-        prediction = (np.argmax(wait_for_result()))
+        prediction = np.argmax(wait_for_result())
         predictions.append(prediction)
 
         # Mid-run report
-        accuracy_report(selected_labels[:len(predictions)], predictions)
+        accuracy_report(selected_labels[: len(predictions)], predictions)
 
     print("Final accuracy report for Image Classification:")
     accuracy_report(selected_labels, predictions)
@@ -276,6 +313,7 @@ def main():
             run_ic()
     else:
         print("Bad benchmark! Available benchmarks are: kws, vww, ic")
+
 
 if __name__ == "__main__":
     main()

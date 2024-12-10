@@ -2,7 +2,7 @@
 This build is only tested on python3.11.
 
 # Installing dependencies
-## Installing TVM
+## Installing TVM with Headsail backend
 Get sources
 ``` sh
 git clone --recursive --depth=1 https://github.com/soc-hub-fi/headsail-tvm tvm
@@ -19,7 +19,6 @@ cp <config.cmake-in-tvm-hpc-directory> <path-to-tvm-repository>/build/config.cma
 For example
 ``` sh
 cp headsail-vp/examples/hpc-c/tvm-hpc/config.cmake tvm/build/config.cmake
-
 ```
 
 To enable codegen modify config.cmake file in the build directory by setting line 162 value to pointing at llvm-config.
@@ -31,7 +30,7 @@ set(USE_HEADSAIL ON)
 
 ### Building TVM
 
-Build in the previously greated build directory
+Build in the previously created build directory
 ``` sh
 cd build
 cmake ..
@@ -49,7 +48,7 @@ More information in https://tvm.apache.org/docs/install/from_source.html
 
 
 ## Python dependencies
-Python dependencies are needed for building TVM models from onnx graphs and must be available during tvm-hpc compilation. 
+Python dependencies are needed for building TVM models from TFLite graphs and must be available during tvm-hpc compilation. 
 
 Install python dependencies for TVM
 ``` sh
@@ -67,7 +66,7 @@ pip install -r requirements.txt
 # Building project
 
 ## Fetching the datasets 
-To run Tinyperf benchmark we need to obtain the needed datasets. Easiest way to do this is by runnning the `get_testing_data` script.
+To run Tinyperf benchmark we need to obtain the needed datasets. Easiest way to do this is by running the `get_testing_data` script.
 ```sh
 ./get_testing_data.sh
 ```
@@ -77,13 +76,14 @@ In project folder (tvm-hpc)
 ```sh
 mkdir build
 cd build
-cmake ..
+cmake .. -DUSE_PERF_KEYWORD_SPOTTING=ON -DUSE_ACCELERATOR=ON
 make
 ```
-This creates a binary called headsail-tvm
+This creates a binary called headsail-tvm with model for MLPerf Tiny Keyword Spotting task embedded, with convolutions assigned for the DLA.
+Other options for models are: `[-DUSE_PERF_IMAGE_CLASSIFICATION=ON,-DUSE_PERF_VISUAL_WAKE_WORDS=ON]`. The use of accelerator is controlled with the `-DUSE_ACCELERATOR=[ON/OFF]` flag.
 
-# Running in renode
-After succesful build, the resulting binary can be run with Headsail's virtual prototype in Renode
+# Running in Renode
+After successful build, the resulting binary can be run with Headsail's virtual prototype in Renode
 ```sh
 cd /headsail-vp/scripts
 ./run_on_hpc.sh ../examples/hpc-c/tvm-hpc/build/headsail-tvm
@@ -92,5 +92,5 @@ cd /headsail-vp/scripts
 ## Running the benchmark 
 To run the TinyPerf benchmark run the tiny_perf_benchmark.py script with the `-b` options with the wanted benchmark `[ic, kws, vww]`. 
 ```sh
-python tiny_perf_benchmark.py -b ic
+python tiny_perf_benchmark.py -b kws
 ```
