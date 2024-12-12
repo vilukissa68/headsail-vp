@@ -2,5 +2,14 @@
     "rust-analyzer.check.allTargets": false,
     "rust-analyzer.cargo.features": [
         "hpc-rt"
-    ]
+    ],
+    "files.exclude": {
+        "**/.git": true,
+        "**/.svn": true,
+        "**/.hg": true,
+        "**/CVS": true,
+        "**/.DS_Store": true,
+        "**/Thumbs.db": true,
+        "**/target": true,
+    }
 }
