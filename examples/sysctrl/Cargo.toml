@@ -2,5 +2,9 @@
 members = ["hello-sysctrl"]
 resolver = "2"
 
+[profile.dev]
+opt-level = "s"
+
 [profile.release]
 debug = true
+opt-level = "s"
