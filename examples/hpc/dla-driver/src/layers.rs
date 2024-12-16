@@ -51,6 +51,20 @@ pub fn dense(outputs: usize, input: Tensor3<i8>, weights: Vec<i8>) -> Vec<i32> {
     output.to_buffer()
 }
 
+/// Performs a 2D convolution operation with DLA.
+///
+/// # Arguments
+/// - `input`: A 3-dimensional tensor of 8-bit signed integers (`Tensor3<i8>`) representing the input feature map.
+/// - `kernels`: A 4-dimensional tensor of 8-bit signed integers (`Tensor4<i8>`) representing the convolution kernels.
+/// - `padding`: An optional `Padding` parameter defining the padding strategy applied to the input.
+/// - `stride`: An optional `Stride` parameter defining the stride of the convolution in X and Y directions.
+/// - `mac_clip`: An optional 32-bit unsigned integer (`u32`) specifying the amount of clipping after Conv2D operations.
+/// - `pp_clip`: An optional 32-bit unsigned integer (`u32`) specifying the amount of clipping after post-processign pipeline.
+/// - `simd_mode`: An optional `SimdBitMode` to control which SIMD instruction is used.
+///
+/// # Returns
+/// - A 3-dimensional tensor of type `T` representing the output of the convolution operation.
+/// ```
 pub fn conv2d<T: DlaOutput + Clone>(
     input: Tensor3<i8>,
     kernels: Tensor4<i8>,
@@ -116,7 +130,20 @@ pub fn bias(input: Tensor3<i8>, bias: Vec<i16>, pp_clip: Option<u32>) -> Tensor3
         Some(SimdBitMode::EightBits),
     )
 }
-
+/// Performs a 2D convolution + ReLU operation with DLA.
+///
+/// # Arguments
+/// - `input`: A 3-dimensional tensor of 8-bit signed integers (`Tensor3<i8>`) representing the input feature map.
+/// - `kernels`: A 4-dimensional tensor of 8-bit signed integers (`Tensor4<i8>`) representing the convolution kernels.
+/// - `padding`: An optional `Padding` parameter defining the padding strategy applied to the input.
+/// - `stride`: An optional `Stride` parameter defining the stride of the convolution in X and Y directions.
+/// - `mac_clip`: An optional 32-bit unsigned integer (`u32`) specifying the amount of clipping after Conv2D operations.
+/// - `pp_clip`: An optional 32-bit unsigned integer (`u32`) specifying the amount of clipping after post-processign pipeline.
+/// - `simd_mode`: An optional `SimdBitMode` to control which SIMD instruction is used.
+///
+/// # Returns
+/// - A 3-dimensional tensor of type `T` representing the output of the convolution operation.
+/// ```
 pub fn conv2d_relu<T: DlaOutput + Clone>(
     input: Tensor3<i8>,
     kernels: Tensor4<i8>,
@@ -131,6 +158,21 @@ pub fn conv2d_relu<T: DlaOutput + Clone>(
     )
 }
 
+/// Performs a 2D convolution + Bias operation with DLA.
+///
+/// # Arguments
+/// - `input`: A 3-dimensional tensor of 8-bit signed integers (`Tensor3<i8>`) representing the input feature map.
+/// - `kernels`: A 4-dimensional tensor of 8-bit signed integers (`Tensor4<i8>`) representing the convolution kernels.
+/// - `bias`: A vector of 16-bit signed integers containing biases for each channel.
+/// - `padding`: An optional `Padding` parameter defining the padding strategy applied to the input.
+/// - `stride`: An optional `Stride` parameter defining the stride of the convolution in X and Y directions.
+/// - `mac_clip`: An optional 32-bit unsigned integer (`u32`) specifying the amount of clipping after Conv2D operations.
+/// - `pp_clip`: An optional 32-bit unsigned integer (`u32`) specifying the amount of clipping after post-processign pipeline.
+/// - `simd_mode`: An optional `SimdBitMode` to control which SIMD instruction is used.
+///
+/// # Returns
+/// - A 3-dimensional tensor of type `T` representing the output of the convolution operation.
+/// ```
 pub fn conv2d_bias<T: DlaOutput + Clone>(
     input: Tensor3<i8>,
     kernels: Tensor4<i8>,
@@ -154,7 +196,21 @@ pub fn conv2d_bias<T: DlaOutput + Clone>(
         simd_mode,
     )
 }
-
+/// Performs a 2D convolution + Bias + ReLU operation with DLA.
+///
+/// # Arguments
+/// - `input`: A 3-dimensional tensor of 8-bit signed integers (`Tensor3<i8>`) representing the input feature map.
+/// - `kernels`: A 4-dimensional tensor of 8-bit signed integers (`Tensor4<i8>`) representing the convolution kernels.
+/// - `bias`: A vector of 16-bit signed integers containing biases for each channel.
+/// - `padding`: An optional `Padding` parameter defining the padding strategy applied to the input.
+/// - `stride`: An optional `Stride` parameter defining the stride of the convolution in X and Y directions.
+/// - `mac_clip`: An optional 32-bit unsigned integer (`u32`) specifying the amount of clipping after Conv2D operations.
+/// - `pp_clip`: An optional 32-bit unsigned integer (`u32`) specifying the amount of clipping after post-processign pipeline.
+/// - `simd_mode`: An optional `SimdBitMode` to control which SIMD instruction is used.
+///
+/// # Returns
+/// - A 3-dimensional tensor of type `T` representing the output of the convolution operation.
+/// ```
 pub fn conv2d_bias_relu<T: DlaOutput + Clone>(
     input: Tensor3<i8>,
     kernels: Tensor4<i8>,
@@ -179,6 +235,33 @@ pub fn conv2d_bias_relu<T: DlaOutput + Clone>(
     )
 }
 
+/// Performs a 2D grouped convolution + Bias operation with DLA.
+///
+/// # Arguments
+/// - `input`: A 3-dimensional tensor of 8-bit signed integers (`Tensor3<i8>`) representing the input feature map.
+/// - `kernels`: A 4-dimensional tensor of 8-bit signed integers (`Tensor4<i8>`) representing the convolution kernels.
+/// - `bias`: A vector of 16-bit signed integers containing biases for each channel.
+/// - `padding`: An optional `Padding` parameter defining the padding strategy applied to the input.
+/// - `stride`: An optional `Stride` parameter defining the stride of the convolution in X and Y directions.
+/// - `mac_clip`: An optional 32-bit unsigned integer (`u32`) specifying the amount of clipping after Conv2D operations.
+/// - `pp_clip`: An optional 32-bit unsigned integer (`u32`) specifying the amount of clipping after post-processign pipeline.
+/// - `simd_mode`: An optional `SimdBitMode` to control which SIMD instruction is used.
+/// - `groups`: Number of groups used.
+///
+/// # Returns
+/// - A 3-dimensional tensor of type `T` representing the output of the convolution operation.
+///
+/// # Notes
+/// - The total number of input channels must be divisible by `groups`.
+/// - The total number of kernels must also be divisible by `groups`.
+/// - Padding and stride configurations are applied consistently across all groups.
+///
+///# Example
+/// For an input tensor with 8 channels, kernels with 16 filters, and `groups = 2`:
+/// - The input channels are split into 2 groups of 4 channels each.
+/// - Each group processes its portion with 8 filters (16 filters / 2 groups).
+/// - The final output will have 16 channels (8 channels per group concatenated).
+/// ```
 pub fn grouped_conv2d<T: DlaOutput + Clone>(
     input: Tensor3<i8>,
     kernels: Tensor4<i8>,
@@ -220,7 +303,7 @@ pub fn grouped_conv2d<T: DlaOutput + Clone>(
     }
 
     // Concatenate the output tensors along the channel dimension
-    Tensor3::concat_interleaved(output_tensors)
+    Tensor3::concat_interleaved(&output_tensors)
 }
 
 fn run_layers<T: DlaOutput + Clone>(

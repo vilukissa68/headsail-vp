@@ -184,7 +184,7 @@ impl<T: Clone> Tensor3<T> {
     }
 
     /// Concatenates a Tensor along the least significant axis (axis=2) by interleaving the tensors
-    pub fn concat_interleaved(tensors: Vec<Tensor3<T>>) -> Tensor3<T> {
+    pub fn concat_interleaved(tensors: &[Tensor3<T>]) -> Tensor3<T> {
         let _target_order = tensors[0].order();
         let (height, width, channels) = (
             tensors[0].height(),
@@ -196,7 +196,7 @@ impl<T: Clone> Tensor3<T> {
         for h in 0..height {
             for w in 0..width {
                 for c in 0..channels {
-                    for tensor in &tensors {
+                    for tensor in tensors {
                         intermediary_buffer.push(tensor.data[(h, w, c)].clone());
                     }
                 }

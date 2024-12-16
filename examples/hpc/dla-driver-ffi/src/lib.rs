@@ -13,6 +13,7 @@ use dla_driver::tensor3::{Order3, Tensor3};
 use dla_driver::tensor4::{Order4, Tensor4};
 use dla_driver::utils::optimal_pp_bias_heuristic;
 use dla_driver::{Padding, Stride};
+use headsail_bsp::init_heap;
 
 /// Converts C-types to DLA Tensors for use with the highlevel layer
 #[allow(clippy::too_many_arguments)]
@@ -72,7 +73,8 @@ unsafe fn ffi_data_import(
 /// Initializes DLA by setting up necessary heap allocator from headsail-bsp. This should be called only once in the program.
 #[no_mangle]
 pub unsafe extern "C" fn dla_init() {
-    headsail_bsp::init_heap();
+    // SAFETY: `init_heap` must be called once only
+    unsafe { init_heap() };
 }
 
 /// Executes Conv2D on DLA with given parameters and writes result to output buffer.
@@ -444,8 +446,6 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
         None,
     );
 
-    let _input_order_string = unsafe { CStr::from_ptr(input_order).to_str().unwrap_unchecked() };
-
     // TVM requantization and clip
     // NOTE:(20240927 vaino-waltteri.granat@tuni.fi) on DLA clipping behaviour with TVM.
     // DLA's conv2d arithmetic is done at 16 bit width, but the output of the DLA is limited to 8 bits.
@@ -539,8 +539,6 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_grouped_bias(
         None,
         groups,
     );
-
-    let _input_order_string = unsafe { CStr::from_ptr(input_order).to_str().unwrap_unchecked() };
 
     // TVM requantization and clip
     // NOTE:(20240927 vaino-waltteri.granat@tuni.fi) on DLA clipping behaviour with TVM.

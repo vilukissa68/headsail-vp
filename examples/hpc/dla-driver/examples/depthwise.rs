@@ -14,6 +14,8 @@ use alloc::vec::Vec;
 
 fn conv_test() {
     sprintln!("conv_test: enter");
+
+	#[rustfmt:skip]
     let din: Vec<i8> = vec![
         1, 2, 3, 4, 5,
 		1, 2, 3, 4, 5,
@@ -39,6 +41,8 @@ fn conv_test() {
 		2, 4, 5, 1, 3,
 		2, 4, 5, 1, 3,
     ];
+
+	#[rustfmt:skip]
     let wgt: Vec<i8> = vec![
 		1,2,3,
 		4,5,6,
