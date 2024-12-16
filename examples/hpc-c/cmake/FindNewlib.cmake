@@ -1,4 +1,4 @@
-list(APPEND CMAKE_PREFIX_PATH "/opt/headsail-newlib" "~/work/newlib-build/build")
+list(APPEND CMAKE_PREFIX_PATH "/opt/headsail-newlib" "~/work/newlib-artifacts-newlib-ken")
 
 if(NOT NEWLIB_PATH)
   find_path(
