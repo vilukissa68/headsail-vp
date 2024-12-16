@@ -73,7 +73,6 @@ def headsail_annotate(mod):
     preprocessor_pass = tvm.transform.Sequential([relay.transform.InferType(),
                                                   relay.transform.ConvertLayout(desired_layouts),
                                                   relay.transform.SimplifyExpr()])
-    print(mod)
 
     mod = legalize_qnn_for_headsail(mod)
     annotation_pass = tvm.transform.Sequential(
@@ -130,7 +129,6 @@ def build_model(opts, shape_dict):
     # Annotate model with headsail tags
     if opts.annotate_graph:
         mod = headsail_annotate(mod)
-    print(mod)
 
     # Write mod log to output
     with open(os.path.join(build_dir, "mod_output.txt"), "w") as mod_log:

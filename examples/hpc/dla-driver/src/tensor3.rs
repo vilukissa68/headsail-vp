@@ -183,6 +183,56 @@ impl<T: Clone> Tensor3<T> {
         self.order
     }
 
+    /// Concatenates a Tensor along the least significant axis (axis=2) by interleaving the tensors
+    pub fn concat_interleaved(tensors: &[Tensor3<T>]) -> Tensor3<T> {
+        let _target_order = tensors[0].order();
+        let (height, width, channels) = (
+            tensors[0].height(),
+            tensors[0].width(),
+            tensors[0].channels(),
+        );
+        let mut intermediary_buffer: Vec<T> =
+            Vec::with_capacity(height * width * channels * tensors.len());
+        for h in 0..height {
+            for w in 0..width {
+                for c in 0..channels {
+                    for tensor in tensors {
+                        intermediary_buffer.push(tensor.data[(h, w, c)].clone());
+                    }
+                }
+            }
+        }
+        Tensor3::from_data_buffer(
+            channels * tensors.len(),
+            height,
+            width,
+            intermediary_buffer,
+            Order3::HWC,
+        )
+        .unwrap()
+    }
+
+    /// Slice tensors channel axis with the given range
+    pub fn slice_channels(&self, c_range: core::ops::Range<usize>) -> Tensor3<T> {
+        let channel_axis = match self.order {
+            Order3::CHW | Order3::CWH => 0,
+            Order3::HCW | Order3::WCH => 1,
+            Order3::HWC | Order3::WHC => 2,
+        };
+
+        let sliced_data = match channel_axis {
+            0 => self.data.slice(s![c_range, .., ..]).to_owned(),
+            1 => self.data.slice(s![.., c_range, ..]).to_owned(),
+            2 => self.data.slice(s![.., .., c_range]).to_owned(),
+            _ => unreachable!(),
+        };
+
+        Tensor3 {
+            data: sliced_data,
+            order: self.order,
+        }
+    }
+
     /// Sets a new order for the array
     pub fn permute(&mut self, order: Order3) {
         // Early return if already in order
@@ -259,8 +309,8 @@ pub fn rescale(
         };
 
         channel_slice.map_inplace(|x| {
-             let value = (input_scale / scale) * (*x as f32 * pre_scale - input_zero as f32)
-                 + output_zero as f32;
+            let value = (input_scale / scale) * (*x as f32 * pre_scale - input_zero as f32)
+                + output_zero as f32;
             *x = value.clamp(i8::MIN as f32, i8::MAX as f32) as i8
         });
     }

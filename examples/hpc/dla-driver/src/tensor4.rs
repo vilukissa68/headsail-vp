@@ -1,6 +1,6 @@
 use alloc::vec::*;
 use core::ffi::c_char;
-use ndarray::{Array, Array4};
+use ndarray::{s, Array, Array4};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Order4 {
@@ -274,6 +274,55 @@ impl<T: Clone> Tensor4<T> {
     /// Returns the dimensions of the array
     pub fn dimensions(&self) -> (usize, usize, usize, usize) {
         (self.kernels(), self.channels(), self.height(), self.width())
+    }
+
+    pub fn slice_channels(&self, c_range: core::ops::Range<usize>) -> Tensor4<T> {
+        // Determine the index of the channel dimension based on the tensor order
+        let kernel_axis = match self.order {
+            Order4::KCHW
+            | Order4::KCWH
+            | Order4::KHWC
+            | Order4::KHCW
+            | Order4::KWCH
+            | Order4::KWHC => 0,
+
+            Order4::CKHW
+            | Order4::CKWH
+            | Order4::HKCW
+            | Order4::HKWC
+            | Order4::WKCH
+            | Order4::WKHC => 1,
+
+            Order4::CHKW
+            | Order4::CWKH
+            | Order4::HCKW
+            | Order4::HWKC
+            | Order4::WCKH
+            | Order4::WHKC => 2,
+
+            Order4::CHWK
+            | Order4::CWHK
+            | Order4::HWCK
+            | Order4::HCWK
+            | Order4::WCHK
+            | Order4::WHCK => 3,
+        };
+
+        // Create a slice pattern for `s![]` by slicing only on the channels axis
+        // while keeping all other axes intact with `..`.
+        let sliced_data = match kernel_axis {
+            0 => self.data.slice(s![c_range, .., .., ..]).to_owned(),
+            1 => self.data.slice(s![.., c_range, .., ..]).to_owned(),
+            2 => self.data.slice(s![.., .., c_range, ..]).to_owned(),
+            3 => self.data.slice(s![.., .., .., c_range]).to_owned(),
+            _ => unreachable!(),
+        };
+
+        // Return a new Tensor4 with the sliced data and the same order
+        Tensor4 {
+            data: sliced_data,
+            order: self.order,
+        }
     }
 
     /// Sets a new order for the array

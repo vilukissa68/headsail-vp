@@ -62,7 +62,7 @@ pub fn generate_output_tensor<I: Clone, K: Clone, O: Clone>(
 /// * `bytes` - Number of bytes the data contains
 pub fn calculate_number_of_banks_needed(bytes: usize) -> usize {
     // Take ceil
-    (bytes + (MEMORY_BANK_SIZE - 1)) / MEMORY_BANK_SIZE
+    bytes.div_ceil(MEMORY_BANK_SIZE)
 }
 
 /// Assigns data banks for layer data
@@ -116,4 +116,14 @@ fn calculate_same_padding(input: (u32, u32), kernel: (u32, u32), stride: Stride)
         right: padding_width - padding_width / 2,
         padding_value: 0,
     }
+}
+
+/// Calculate optimal amount of PP clip based on bias heuristic for minimal loss in granularity
+pub fn optimal_pp_bias_heuristic(bias: &[i16]) -> u32 {
+    let abs_max = bias.iter().map(|&x| x.abs() as i32).max().unwrap_or(0) as u32;
+    let pp = (abs_max.max(127) / 127).ilog2() + 1;
+    if pp > 8 {
+        return 8;
+    }
+    pp
 }
