@@ -24,6 +24,9 @@ VWW_NON_PERSON_DATA_DIR = VWW_DATA_DIR / "non_person"
 VWW_PERSON_DATA_DIR = VWW_DATA_DIR / "person"
 IC_DATA_DIR = DATA_DIR / "cifar-10-batches-py"
 AD_DATA_DIR = DATA_DIR / "ToyCar" / "test"
+SOUND_DEMO_DIR = DATA_DIR / "UrbanSound8K"
+SEGMENTS_PER_FILE = 16
+SAMPLING_RATE = 16000
 
 
 # UTILS
@@ -291,6 +294,74 @@ def run_ic(total_samples=200):
     accuracy_report(selected_labels, predictions)
 
 
+def get_segments(data, num_segments):
+    segment_length = 8000
+    total_samples = len(data)
+    overlap = int(
+        ((num_segments * segment_length) - total_samples) / (num_segments - 1)
+    )
+    step_size = segment_length - overlap
+
+    # Extract segments
+    segments = []
+    for i in range(num_segments):
+        start = i * step_size
+        end = start + segment_length
+        segment = data[start:end]
+        if len(segment) < segment_length:
+            padding = np.array([0] * (segment_length - len(segment)))
+            segment = np.concatenate((segment, padding), dtype=np.int8)
+        segments.append(segment)
+
+    return segments
+
+
+def get_sound_demo_file(idx, df):
+    filename = df["slice_file_name"][idx]
+    fold = df["fold"][idx]
+    start = df["start"][idx]
+    end = df["end"][idx]
+
+    fold_path = "fold{}".format(fold)
+    file_path = SOUND_DEMO_DIR / "audio" / fold_path / filename
+
+    samples, sample_rate = lb.load(file_path, dtype=np.float32)
+    data = lb.resample(samples, orig_sr=sample_rate, target_sr=SAMPLING_RATE)
+    data = np.array((data / data.max()) * 127, dtype=np.int8)
+    return get_segments(data, SEGMENTS_PER_FILE)
+
+
+def run_sound_demo(samples=10):
+    metadata_file = SOUND_DEMO_DIR / "metadata" / "UrbanSound8K.csv"
+    df = pd.read_csv(metadata_file)
+    print(df)
+    idxs = [2, 3, 4]
+    results = []
+    for idx in idxs:
+        segments = get_sound_demo_file(idx, df)
+        label = df["classID"][idx]
+        predictions = []
+
+        for segment in segments:
+            segment = np.reshape(segment, (1, 8000, 1))
+            send_stimulus(segment.tobytes(), None)
+
+            # Wait for inference result
+            output = wait_for_result()
+            predictions.append(output)
+        summed_predictions = np.sum(predictions, axis=0)
+        prediction = np.argmax(summed_predictions)
+        print("Exptected:", label, "| Predictions:", prediction)
+        print(summed_predictions, "\n")
+
+        if prediction == label:
+            results.append(1)
+        else:
+            results.append(0)
+
+    print("Accuracy: ", np.sum(results) / len(results))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("-b", "--benchmark", required=True)
@@ -311,6 +382,11 @@ def main():
             run_ic(opts.samples)
         else:
             run_ic()
+    elif opts.benchmark == "sound":
+        if opts.samples:
+            run_sound_demo(opts.samples)
+        else:
+            run_sound_demo()
     else:
         print("Bad benchmark! Available benchmarks are: kws, vww, ic")
 

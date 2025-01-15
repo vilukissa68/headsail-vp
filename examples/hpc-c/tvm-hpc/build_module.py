@@ -19,18 +19,22 @@ SHAPES = {
     "perf_ic": {"input_1_int8": (1, 32, 32, 3)},
     "perf_vww": {"data": (1, 96, 96, 3)},
     "perf_kws": {"data": (1, 49, 10, 1)},
+    "audio_demo": {"data": (1, 1, 8000, 1)},
 }
+
 
 def normalize(v):
     norm = np.linalg.norm(v)
     if norm == 0:
-       return v
+        return v
     return v / norm
+
 
 def import_onnx_model(path_to_model, shape_dict):
     onnx_model = onnx.load(path_to_model)
     mod, params = relay.frontend.from_onnx(onnx_model, shape_dict)
     return mod, params
+
 
 def import_pytorch_model(path_to_model, shape_dict):
     shape_list = []
@@ -41,9 +45,11 @@ def import_pytorch_model(path_to_model, shape_dict):
     mod, params = relay.frontend.from_pytorch(onnx_model, shape_list)
     return mod, params
 
+
 def import_tflite_model(path_to_model, shape_dict, input_type):
     import tflite
     import tensorflow as tf
+
     tflite_model_buf = open(path_to_model, "rb").read()
     tf_model = tflite.Model.GetRootAsModel(tflite_model_buf, 0)
     dtype_dict = {}
@@ -54,6 +60,7 @@ def import_tflite_model(path_to_model, shape_dict, input_type):
     print(dtype_dict)
     mod, params = relay.frontend.from_tflite(tf_model, shape_dict, dtype_dict)
     return mod, params
+
 
 def import_tf_model(path_to_model, shape_dict, input_type):
     dtype_dict = {}
@@ -69,10 +76,14 @@ def headsail_annotate(mod):
     headsail_patterns = get_pattern_table("headsail")
 
     # Pre process
-    desired_layouts = {'qnn.conv2d': ['NCHW', 'OIHW']}
-    preprocessor_pass = tvm.transform.Sequential([relay.transform.InferType(),
-                                                  relay.transform.ConvertLayout(desired_layouts),
-                                                  relay.transform.SimplifyExpr()])
+    desired_layouts = {"qnn.conv2d": ["NCHW", "OIHW"]}
+    preprocessor_pass = tvm.transform.Sequential(
+        [
+            relay.transform.InferType(),
+            relay.transform.ConvertLayout(desired_layouts),
+            relay.transform.SimplifyExpr(),
+        ]
+    )
 
     mod = legalize_qnn_for_headsail(mod)
     annotation_pass = tvm.transform.Sequential(
@@ -82,23 +93,32 @@ def headsail_annotate(mod):
             relay.transform.MergeCompilerRegions(),
             relay.transform.PartitionGraph(),
             relay.transform.FoldConstant(),
-        ])
+        ]
+    )
     mod = annotation_pass(mod)
 
     return mod
 
+
 def export_annotated_library(mod, params, build_dir):
     print(tvm.target.Target.list_kinds())
     file_format_str = "{name}_c.{ext}"
-    RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib" : False})
+    RUNTIME = tvm.relay.backend.Runtime("crt", {"system-lib": False})
     TARGET = tvm.target.Target("c")
-    EXECUTOR = tvm.relay.backend.Executor("aot", {"unpacked-api": True, "interface-api": "c", "link-params": True})
+    EXECUTOR = tvm.relay.backend.Executor(
+        "aot", {"unpacked-api": True, "interface-api": "c", "link-params": True}
+    )
     with tvm.transform.PassContext(opt_level=3, config={"tir.disable_vectorize": True}):
-        lib = relay.build(mod, target=TARGET, runtime=RUNTIME, params=params, executor=EXECUTOR)
+        lib = relay.build(
+            mod, target=TARGET, runtime=RUNTIME, params=params, executor=EXECUTOR
+        )
 
-    lib_file_name = os.path.join(build_dir, file_format_str.format(name="model", ext="tar"))
+    lib_file_name = os.path.join(
+        build_dir, file_format_str.format(name="model", ext="tar")
+    )
     export_model_library_format(lib, lib_file_name)
     return lib, lib_file_name
+
 
 def generate_hex_dumps(lib_file_name, build_dir):
     owd = os.getcwd()
@@ -106,8 +126,8 @@ def generate_hex_dumps(lib_file_name, build_dir):
     os.system("tar -xvf {lib}".format(lib=lib_file_name))
     os.chdir(owd)
 
-def build_model(opts, shape_dict):
 
+def build_model(opts, shape_dict):
     # Create build dir for model files
     build_dir = os.path.abspath(opts.out_dir)
     if not os.path.isdir(build_dir):
@@ -142,6 +162,7 @@ def build_model(opts, shape_dict):
     os.chdir(build_dir)
     generate_hex_dumps(lib_file_name, build_dir)
 
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
 
@@ -163,5 +184,12 @@ if __name__ == "__main__":
     elif opts.model == "perf_keyword_spotting":
         build_model(opts, shape_dict=SHAPES["perf_kws"])
         os.chdir(os.path.abspath("../"))
+    elif opts.model == "audio_demo":
+        build_model(opts, shape_dict=SHAPES["audio_demo"])
+        os.chdir(os.path.abspath("../"))
     else:
-        print("No such model", opts.model, "Availeable models: perf_image_classification, perf_visual_wakeup_word, perf_keyword_spotting")
+        print(
+            "No such model",
+            opts.model,
+            "Availeable models: perf_image_classification, perf_visual_wakeup_word, perf_keyword_spotting",
+        )

@@ -1134,8 +1134,8 @@ class Dla:
             # for i, r in enumerate(input_data):
             #     print_matrix(input_data[i], "{} INPUT:".format(i))
 
-            print_matrix(input_data[0], "{} INPUT0:".format(0))
-            print_matrix(kernel_data[0][0], "{} KERNEL0:".format(0))
+            # print_matrix(input_data[0], "{} INPUT0:".format(0))
+            # print_matrix(kernel_data[0][0], "{} KERNEL0:".format(0))
             print("Mac not enabled")
             # TODO: This might be not correct, make sure S_CHANNELS work like this
             padding_value = cast_long_to_signed_byte(
@@ -1183,7 +1183,8 @@ class Dla:
                 res = execute_for_all_elements(self.mac.relu_native, res)
 
         # Prevent overflowing i16 range
-        if output_bit_width == 32:
+        if output_bit_width == 99:
+            print("FAIL!")
             self.write_output(res, 32)
         else:
             res = execute_for_all_elements(clip_value_to_i16, res)
