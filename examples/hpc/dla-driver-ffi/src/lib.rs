@@ -424,7 +424,7 @@ pub unsafe extern "C" fn dla_tvm_qnn_conv2d_bias(
     };
 
     //let optimized_pp = optimal_pp_bias_heuristic(&bias);
-    let optimized_pp = 7;
+    let optimized_pp = 8;
 
     let result: Tensor3<i8> = conv2d_bias(
         input_tensor,
